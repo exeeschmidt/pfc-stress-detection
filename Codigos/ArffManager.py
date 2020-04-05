@@ -1,8 +1,7 @@
 import os
 import numpy as np
 
-
-# Ejemplo
+#Ejemplo
 # import ArffManager as am
 # import numpy as np
 # from random import randrange
@@ -57,21 +56,22 @@ def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases):
 
 
 def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
-    # Se ingresan las caracteristicas extraidas de un cuadro y la etiqueta de clase (Estresado o No-Estresado)
+    #Se ingresan las caracteristicas extraidas de un cuadro y la etiqueta de clase (Estresado o No-Estresado)
 
-    # Abro el archivo con cabecera, la bandera 'a' permite anexar el texto
+    #Abro el archivo con cabecera, la bandera 'a' permite anexar el texto
     file = open('Caracteristicas' + os.sep + nombre + '.arff', 'a')
 
-    # Fila de caracteristicas
+    #Fila de caracteristicas
     fila = ''
 
-    # Extraigo la cantidad de vector
+    #Extraigo el largo de cada vector
     lbp_range = np.size(lbp_feat)
     hop_range = np.size(hop_feat)
-    hog_range = np.size(hog_feat)[0]
+    hog_range = len(hog_feat)
+    # hog_range = np.size(hog_feat)[0]
     au_range = np.size(au_feat)
 
-    # Concateno cada vector a la misma fila
+    #Concateno cada vector a la misma fila
     for i in range(0, lbp_range):
         fila = fila + str(lbp_feat[i]) + ','
 
@@ -89,8 +89,12 @@ def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     file.write(fila + '\n')
 
 
-def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes):
+def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes, bool_audio):
     # Los primeros dos parametros tienen que ser np.array de numeros, el tercero un booleano si se unen partes o no
+
+    extension = '.arff'
+    if bool_audio:
+        extension = '.wav.arff'
 
     # Creo el archivo que va a ser la salida de la concatenacion
     salida = open('Caracteristicas' + os.sep + nombre_salida + '.arff', 'w')
@@ -102,7 +106,7 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes):
         path = 'Caracteristicas' + os.sep + 'Sujeto_' + str(sujetos[0]) + '_' + str(etapas[0])
 
     # Tomo el primer archivo para crear la cabecera
-    archivo = open(path + '.arff', 'r')
+    archivo = open(path + extension, 'r')
     linea = archivo.readline()
     # Al encontrar @data paro, pero tengo que guardar igual esta linea y otra mas en blanco antes de los datos puros
     while linea != '@data\n':
@@ -124,8 +128,7 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes):
                     partes = 6
                 for k in range(1, partes + 1):
                     print('Concatenando parte: ', k)
-                    archivo = open(
-                        'Caracteristicas' + os.sep + 'Sujeto_' + str(i) + '_' + str(j) + '_r' + str(k) + '.arff', 'r')
+                    archivo = open('Caracteristicas' + os.sep + 'Sujeto_' + str(i) + '_' + str(j) + '_r' + str(k) + extension, 'r')
                     # Salto donde termina la cabecera y comienzan los datos
                     archivo.seek(data_pos, 0)
                     linea = archivo.readline()
@@ -135,7 +138,7 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes):
                         linea = archivo.readline()
                     archivo.close()
             else:
-                archivo = open('Caracteristicas' + os.sep + 'Sujeto_' + str(i) + '_' + str(j) + '.arff', 'r')
+                archivo = open('Caracteristicas' + os.sep + 'Sujeto_' + str(i) + '_' + str(j) + extension, 'r')
                 archivo.seek(data_pos, 0)
                 linea = archivo.readline()
                 # Cuando termina el archivo linea devuelve ""
@@ -144,3 +147,30 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes):
                     linea = archivo.readline()
                 archivo.close()
     salida.close()
+
+def AgregaEtiqueta(nombre, clases, etiqueta):
+    # Abro el archivo para lectura y escritura
+    archivo = open('Caracteristicas' + os.sep + nombre + '.arff', 'r+')
+
+    #Creo la linea como deberian ser las clases
+    linea_clases = '@attribute class {' + clases[0]
+    for i in range(1, len(clases)):
+        linea_clases = linea_clases + ',' + clases[i]
+    linea_clases = linea_clases + '}'
+
+    # Recorro todas las lineas del archivo
+    lineas = archivo.readlines()
+    ind = 0
+    for linea in lineas:
+        # Si encuentro la linea donde esta definida el atributo clase, la reemplazo por la linea creada antes
+        if linea == '@attribute class numeric\n':
+            lineas[ind] = linea_clases + '\n'
+        # Busco las lineas de datos (no estan en blanco y no tienen el '@' de atributo), corto las ultimas 3 (?\n)
+        # y agrego la etiqueta mas el salto nuevamente
+        elif linea[0] != '\n' and linea[0] != '@':
+            lineas[ind] = linea[0:len(linea)-2] + etiqueta + '\n'
+        ind = ind + 1
+    # Llevo el puntero al principio y escribo las lineas ya modificadas
+    archivo.seek(0)
+    archivo.writelines(lineas)
+    archivo.close()

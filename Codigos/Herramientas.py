@@ -125,23 +125,20 @@ def leeCSV(ruta_archivo):
     leido = list(leido)
     return leido
 
-
 def leeEtiqueta(archivo, persona, etapa, parte):
-    # Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
-    # El primer 1+ en persona va para saltear la fila donde estan las caratulas
+    #Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
+    #El primer 1+ en persona va para saltear la fila donde estan las caratulas
     ind_persona = 1 + (int(persona) - 1) * 13
     ind_etapa = (int(etapa) - 1) * 7
     ind_parte = int(parte) - 1
     etiqueta = archivo[ind_persona + ind_etapa + ind_parte][5]
     return etiqueta
 
-
 def leeTiemposRespuesta(archivo, persona, etapa, parte):
-    # Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
-    # El primer 1+ en persona va para saltear la fila donde estan las caratulas
+    #Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
+    #El primer 1+ en persona va para saltear la fila donde estan las caratulas
     ind_persona = 1 + (int(persona) - 1) * 13
     ind_etapa = (int(etapa) - 1) * 7
     ind_parte = int(parte) - 1
-    segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(
-        archivo[ind_persona + ind_etapa + ind_parte][4])
+    segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa + ind_parte][4])
     return segundos
