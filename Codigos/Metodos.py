@@ -9,10 +9,9 @@ import os
 import matplotlib.pyplot as plt
 import scipy.io.wavfile as waves
 
+##------------------Contiene todos los metodos a utilizar, las implementaciones de cada uno comienzan con un bookmark-----------------------
 
-# ------------------Contiene todos los metodos a utilizar, las implementaciones de cada uno comienzan con un bookmark-----------------------
-
-# Nota importante: al ejecutar por primera vez siempre hacerlo con openface y luego opensmile, explicado en el apartado de opensmile
+#Nota importante: al ejecutar por primera vez siempre hacerlo con openface y luego opensmile, explicado en el apartado de opensmile
 
 
 # A partir de un algoritmo hecho en MATLAB por un investigador devuelve HOP y la congruencia de fase
@@ -73,7 +72,7 @@ class LocalDescriptor(object):
         return self._neighbors
 
     def __repr__(self):
-        return "LBPOperator (neighbors=%s)" % self._neighbors
+        return "LBPOperator (neighbors=%s)" % (self._neighbors)
 
 
 class OriginalLBP(LocalDescriptor):
@@ -93,7 +92,7 @@ class OriginalLBP(LocalDescriptor):
         return X
 
     def __repr__(self):
-        return "OriginalLBP (neighbors=%s)" % self._neighbors
+        return "OriginalLBP (neighbors=%s)" % (self._neighbors)
 
 
 class ExtendedLBP(LocalDescriptor):
@@ -191,10 +190,10 @@ class VarLBP(LocalDescriptor):
         dy = int(ysize - blocksizey + 1)
         # Allocate memory for online variance calculation:
         mean = np.zeros((dy, dx), dtype=np.float32)
-        # delta = np.zeros((dy, dx), dtype=np.float32)
+        delta = np.zeros((dy, dx), dtype=np.float32)
         m2 = np.zeros((dy, dx), dtype=np.float32)
         # Holds the resulting variance matrix:
-        # result = np.zeros((dy, dx), dtype=np.float32)
+        result = np.zeros((dy, dx), dtype=np.float32)
         for i, p in enumerate(sample_points):
             # Get coordinate in the block:
             y, x = p + (origy, origx)
@@ -312,7 +311,7 @@ class LPQ(LocalDescriptor):
         Fd = np.real(Qd)
         Gd = np.imag(Qd)
 
-        # REEMPLACE matrix(..) por array(...) y flatten(1) por flatten()
+        ############ REEMPLACE matrix(..) por array(...) y flatten(1) por flatten() ##############
         F = np.array(
             [Fa.flatten(), Ga.flatten(), Fb.flatten(), Gb.flatten(), Fc.flatten(), Gc.flatten(), Fd.flatten(),
              Gd.flatten()])
@@ -351,9 +350,11 @@ class OpenSmile:
     def __init__(self, salida_csv, ventaneo, ruta_os, config_file):
         # Bandera, sale como arff si esta bandera es falsa
         self._salida_csv = salida_csv
+
         # Es otra bandera, para definir si se ventanea, en caso de ser True deben incluirse los parametros adicionales en el __call__.
         # Si no se llama el ventaneo se define cada 0.5s y el shift inicial en 0
         self._ventaneo = ventaneo
+
         # Estos corresponden a la ruta de la base de datos, la ruta del directorio de OpenSmile y el nombre del archivo de configuracion utilizado
         self._ruta_os = ruta_os
         self._config_file = config_file
@@ -384,12 +385,12 @@ class OpenSmile:
             comando.append('-appendcsv')
             comando.append('0')
             comando.append('-csvoutput')
-            comando.append(ruta_actual + 'Procesado' + os.sep + persona + '.csv')
+            comando.append(ruta_actual + 'Caracteristicas' + os.sep + persona + '.csv')
         else:
             comando.append('-appendarff')
             comando.append('0')
             comando.append('-output')
-            comando.append(ruta_actual + 'Procesado' + os.sep + persona + '.arff')
+            comando.append(ruta_actual + 'Caracteristicas' + os.sep + persona + '.arff')
 
         # En caso de ventaneo se utiliza el archivo de configuracion que se permite escribir desde la funcion archivo_ventaneo
         if self._ventaneo:
@@ -402,7 +403,7 @@ class OpenSmile:
         subprocess.run(comando, shell=True, check=True, stdout=subprocess.DEVNULL)
         os.chdir(ruta_actual)
 
-    def _archivo_ventaneo(ruta, paso, shift_ini):
+    def _archivo_ventaneo(self, ruta, paso, shift_ini):
         f = open(ruta + 'FrameModeFunctionalsVentana.conf.inc', 'w')
         f.write('frameMode = fixed\n')
         f.write('frameSize = ' + paso + '\n')
@@ -515,8 +516,8 @@ class OpenFace:
         # Cambio al directorio de OpenFace y se ejecuta el comando
         # print(comando)
         os.chdir(self._ruta_of)
-        subprocess.run(comando, shell=True, check=True, stdout=subprocess.DEVNULL)
-        # os.chdir(ruta_actual)
+        subprocess.run(comando, shell=True, check=True,  stdout=subprocess.DEVNULL)
+        os.chdir(ruta_actual)
 
 
 # LISTA DE PARAMETROS APLICABLES A OPEN FACE 2.0
@@ -693,8 +694,7 @@ class EliminaSilencios:
     def _energy(self, data):
         return sum(data * data) / len(data)
 
-
-class FFMPEG:
+class FFMPEG():
     def __init__(self, ruta_bd, ruta_ffmpeg):
         # Estos dos son la ruta de la base de datos y la ruta del directorio donde esta OpenFace
         self._ruta_bd = ruta_bd
@@ -702,11 +702,15 @@ class FFMPEG:
         # ruta_ffmpeg = 'D:' + os.sep + 'Descargas' + os.sep + 'ffmpeg' + os.sep + 'bin'
         # ruta_bd = 'D:' + os.sep + 'Google Drive' + os.sep + 'Proyecto Final de Carrera' + os.sep + 'Base de datos'
 
-    def __call__(self, persona, etapa):
+    def __call__(self, persona, etapa, parte):
         # archivo = 'Sujeto 01'
         # parte = '1'
         subdir = 'Sujeto ' + persona + os.sep + 'Etapa ' + etapa
-        persona = 'Sujeto_' + persona + '_' + etapa + '.mp4'
+        persona = 'Sujeto_' + persona + '_' + etapa + '_r' + parte + '.mp4'
+
+        #Extraigo la posicion donde esta la extension para despues eliminarla en el nombre del archivo de salida
+        nro_extension = persona.index('.mp4')
+
         # Estas lineas son para poder extraer la ruta actual del directorio, para brindar el parametro de donde se tiene que guardar la salida
         # Tambien da la posibilidad de volver al directorio actual despues de la ejecucion del comando
         pipe = subprocess.Popen('echo %cd%', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -715,13 +719,13 @@ class FFMPEG:
         ruta_actual = ret[2:len(ret[0]) - 5]
 
         # Comando base
-        comando = ['.' + os.sep + 'ffmpeg', '-n', '-i', self._ruta_bd + os.sep + subdir + os.sep + persona, '-ab',
+        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', self._ruta_bd + os.sep + subdir + os.sep + persona, '-ab',
                    '195k', '-ac', '2', '-ar', '48000',
-                   '-vn', ruta_actual + os.sep + 'Procesado' + os.sep + persona + '.wav']
+                   '-vn', ruta_actual + os.sep + 'Procesado' + os.sep + persona[0:nro_extension] + '.wav']
         # comando = ['.' + os.sep + 'ffmpeg', '-version']
 
         # Cambio al directorio de OpenFace y se ejecuta el comando
         # print(comando)
         os.chdir(self._ruta_ffmpeg)
-        subprocess.run(comando, shell=True, check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(comando, shell=True, check=True,  stdout=subprocess.DEVNULL)
         os.chdir(ruta_actual)
