@@ -500,7 +500,7 @@ class OpenFace:
         ruta_actual = ret[2:len(ret[0]) - 5]
 
         # Comando base
-        comando = ['FeatureExtraction.exe', '-f', self._ruta_bd + os.sep + subdir + os.sep + persona, '-out_dir',
+        comando = ['FeatureExtraction.exe', '-f', ruta_actual + self._ruta_bd + os.sep + subdir + os.sep + persona, '-out_dir',
                    ruta_actual + os.sep + 'Procesado']
 
         # Segun las banderas se le agregan parametros al comando
@@ -719,7 +719,7 @@ class FFMPEG():
         ruta_actual = ret[2:len(ret[0]) - 5]
 
         # Comando base
-        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', self._ruta_bd + os.sep + subdir + os.sep + persona, '-ab',
+        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', ruta_actual + self._ruta_bd + os.sep + subdir + os.sep + persona, '-ab',
                    '195k', '-ac', '2', '-ar', '48000',
                    '-vn', ruta_actual + os.sep + 'Procesado' + os.sep + persona[0:nro_extension] + '.wav']
         # comando = ['.' + os.sep + 'ffmpeg', '-version']
