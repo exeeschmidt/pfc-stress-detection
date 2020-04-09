@@ -21,7 +21,9 @@ import numpy as np
 # for i in range(0, n_au):
 #     au[i] = randrange(5)
 #
-# am.CrearCabeceraArff('Prueba', n_lbp, n_hop, n_au)
+# clases = np.array(['Estresado','No-Estresado'])
+#
+# am.CrearCabeceraArff('Prueba', n_lbp, n_hop, n_au, clases)
 # am.AgregarFilaArff('Prueba', lbp, hop, au, 'Estresado')
 
 def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases):
@@ -127,7 +129,7 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes, bool_audio):
                 if j == '2':
                     partes = 6
                 for k in range(1, partes + 1):
-                    print('Concatenando parte: ', k)
+                    # print('Concatenando parte: ', k)
                     archivo = open('Caracteristicas' + os.sep + 'Sujeto_' + str(i) + '_' + str(j) + '_r' + str(k) + extension, 'r')
                     # Salto donde termina la cabecera y comienzan los datos
                     archivo.seek(data_pos, 0)

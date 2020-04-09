@@ -3,7 +3,7 @@ import traceback
 import numpy as np
 import weka.core.jvm as jvm
 from weka.attribute_selection import ASSearch, AttributeSelection, ASEvaluation
-from weka.classifiers import Classifier, Evaluation
+from weka.classifiers import Classifier, Evaluation, PredictionOutput
 from weka.core.classes import Random
 from weka.core.converters import Loader
 from weka.filters import Filter
@@ -26,7 +26,7 @@ class CargaYFiltrado:
 
 
 class SeleccionCaracteristicas:
-    def __init__(self, metodo_seleccion):
+    def __call__(self, metodo_seleccion):
         # opciones: 'PSO' , 'PCA', 'Firsts'
         if metodo_seleccion == 'PCA':
             self.met_eval = 'weka.attributeSelection.PrincipalComponents'
@@ -38,7 +38,6 @@ class SeleccionCaracteristicas:
             else:
                 self.met_search = 'weka.attributeSelection.BestFirst'
 
-    def __call__(self, data):
         search = ASSearch(classname=self.met_search, options=["-D", "1", "-N", "5"])
         evaluation = ASEvaluation(classname=self.met_eval, options=["-P", "1", "-E", "1"])
         attsel = AttributeSelection()
@@ -59,8 +58,8 @@ class SeleccionCaracteristicas:
         return data
 
 class Clasificacion:
-    def __init__(self, metodo_clasificacion, ):
-        # Opciones, metodo = 'J48', 'RForest', 'RTree', 'SVM', 'RegreLineal', 'RedNeuronal'
+    def __call__(self, data, metodo_clasificacion, sumario=False):
+        # Opciones, metodo = 'J48', 'RForest', 'RTree', 'SVM', 'LR', 'MLP'
         switcher = {
             'J48': 'weka.classifiers.trees.J48',
             'RForest': 'weka.classifiers.trees.RandomForest',
@@ -69,20 +68,23 @@ class Clasificacion:
             'LR': 'weka.classifiers.functions.LinearRegression',
             'MLP': 'weka.classifiers.functions.MultilayerPerceptron'
         }
-        self.met_clasificacion = switcher.get(metodo_clasificacion)
 
-    def __call__(self, data):
+        self.met_clasificacion = switcher.get(metodo_clasificacion)
         classifier = Classifier(classname=self.met_clasificacion)
         classifier.build_classifier(data)
 
         evaluation = Evaluation(data)
         # Solo usando entrenamiento
-        # evl = evaluation.test_model(classifier, data)
-        # print(evl.summary())
+        # evaluation.test_model(classifier, data)
         # Dividiendo en un % para entrenamiento y para test
-        evaluation.evaluate_train_test_split(classifier, data, 66.0, Random(1))
-        print(evaluation.summary())
-
+        # evaluation.evaluate_train_test_split(classifier, data, 90.0, Random(1))
+        # print(evaluation.summary())
+        pout = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
+        evl = Evaluation(data)
+        evl.crossvalidate_model(classifier, data, 2, Random(1), pout)
+        if sumario:
+            print(evl.summary())
+        return pout.buffer_content()
 
 
 

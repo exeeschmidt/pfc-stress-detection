@@ -324,7 +324,8 @@ class VideoEnParte:
 
                 # print(nro_frame)
                 nro_frame = nro_frame + 1
-            print("Tiempo en extraer caracteristicas parte " + str(j + 1) + " : ", time.time() - start, " segundos")
+            # print("Tiempo en extraer caracteristicas parte " + str(j + 1) + " : ", time.time() - start, " segundos")
+        return frames_totales
 
 class Audio:
     def __init__(self, binarizar_etiquetas):

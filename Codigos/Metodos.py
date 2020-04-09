@@ -361,7 +361,7 @@ class OpenSmile:
         # ruta_os = 'D:' + os.sep + 'Descargas' + os.sep + 'opensmile' + os.sep + 'opensmile-2.3.0'
         # config_file = 'IS09_emotion.conf'
 
-    def __call__(self, persona, etapa, parte=-1, paso_ventaneo='0.5', shift_ini_ventaneo='0'):
+    def __call__(self, persona, etapa, parte=-1, paso_ventaneo='0.125', shift_ini_ventaneo='0'):
         # archivo = '01'
         # parte = '1'
         if parte == -1:
@@ -400,7 +400,7 @@ class OpenSmile:
             comando.append('config' + os.sep + 'shared' + os.sep + 'FrameModeFunctionalsVentana.conf.inc')
 
         os.chdir(self._ruta_os)
-        subprocess.run(comando, shell=True, check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(comando, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         os.chdir(ruta_actual)
 
     def _archivo_ventaneo(self, ruta, paso, shift_ini):
@@ -516,7 +516,7 @@ class OpenFace:
         # Cambio al directorio de OpenFace y se ejecuta el comando
         # print(comando)
         os.chdir(self._ruta_of)
-        subprocess.run(comando, shell=True, check=True,  stdout=subprocess.DEVNULL)
+        subprocess.run(comando, shell=True, check=True,  stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         os.chdir(ruta_actual)
 
 
@@ -583,7 +583,7 @@ class EliminaSilencios:
         # tam_ventana = 0.2
         self._plotear = plotear
 
-    def __call__(self, persona, etapa, parte=-1, tam_ventana=0.2, umbral=0.008):
+    def __call__(self, persona, etapa, parte=-1, tam_ventana=0.125, umbral=0.008):
         # persona = 'Sujeto 01'
         # parte = 'a'
         if parte == -1:
@@ -607,8 +607,7 @@ class EliminaSilencios:
             energia[:, i], cruces[:, i] = self._calcula_caract(sonido[:, i], nro_muestras, tam_ventana, muestreo)
 
         # Devolucion del vector de booleanos, indicando si cada muestra contiene o no silencio
-        vector_silencios = self._metodo1(energia, cruces, umbral, nro_muestras, tam_ventana, muestreo,
-                                         canales)
+        vector_silencios = self._metodo1(energia, cruces, umbral, nro_muestras, tam_ventana, muestreo, canales)
 
         if self._plotear:
             plt.plot(sonido)
@@ -727,5 +726,5 @@ class FFMPEG():
         # Cambio al directorio de OpenFace y se ejecuta el comando
         # print(comando)
         os.chdir(self._ruta_ffmpeg)
-        subprocess.run(comando, shell=True, check=True,  stdout=subprocess.DEVNULL)
+        subprocess.run(comando, shell=True, check=True,  stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         os.chdir(ruta_actual)
