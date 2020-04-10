@@ -144,15 +144,20 @@ def leeTiemposRespuesta(archivo, persona, etapa, parte):
     return segundos
 
 def convPrediccion(predi):
+    # Sirve para convertir los csv de las predicciones en vectores de numpy formato: [ [...,...,...], [....,...,...]...]
     vec = np.array([])
     fila = np.array([])
     dato = ''
+    # Recorro cada char
     for i in predi:
+        # Si es una coma o salto de linea agrego el dato a la fila y lo reinicio
         if i == ',' or i == '\n':
+            # En caso de dos comas seguidas o datos incompletos que el dato sea un espacio
             if dato == '':
                 dato = ' '
             fila = np.append(fila, dato)
             dato = ''
+            # En caso de ser salto de linea agrego la fila entera al vector y la reinicio
             if i == '\n':
                 if len(vec) == 0:
                     vec = np.array([fila])
@@ -161,6 +166,7 @@ def convPrediccion(predi):
                     vec = np.concatenate([vec, np.array([fila])], axis=0)
                     fila = np.array([])
         else:
+            # Concateno el dato apartir de los char
             dato = dato + i
     return vec
 
@@ -169,8 +175,8 @@ def segmentaPrediccion(predi_1, predi_2):
     # of speech and gestures
 
     # A partir de dos conjuntos de etiquetas, con distinto tamaño, devuelvo los dos conjuntos con las misma segmentacion
-    # conservando las etiquetas que se tenian. Esta nueva segmentacion cuenta con segmentos de tamaño variable, por lo que
-    # de cada segmento se guarda su etiqueta, y el porcentaje del total que representa
+    # conservando las etiquetas que se tenian. Esta nueva segmentacion cuenta con segmentos de tamaño variable, por lo
+    # que de cada segmento se guarda su etiqueta, y el porcentaje del total que representa
     #
     # Ejemplo:
     #   [ ['Estresado', 0.3], ['No-Estresado', 1.3] .... ]
@@ -215,12 +221,12 @@ def segmentaPrediccion(predi_1, predi_2):
         if porc_1 < porc_2:
             avance = porc_1
             ind1 = ind1 + 1
-            porc_2 = tam_segmento_2 - avance
+            porc_2 = porc_2 - avance
             porc_1 = tam_segmento_1
         elif porc_2 < porc_1:
             avance = porc_2
             ind2 = ind2 + 1
-            porc_1 = tam_segmento_1 - avance
+            porc_1 = porc_1 - avance
             porc_2 = tam_segmento_2
         else:
             avance = porc_1

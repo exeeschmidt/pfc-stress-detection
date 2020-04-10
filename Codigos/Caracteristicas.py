@@ -368,7 +368,7 @@ class Audio:
 
             # Ejecuto los metodos para extraer el wav del video y luego el extractor de caracteristicas
             ffmpeg(persona, etapa, str(j + 1))
-            open_smile(persona, etapa, str(j + 1))
+            open_smile(persona, etapa, str(j + 1), paso_ventaneo='0.3')
 
             if self.binarizar_etiquetas:
                 # Binarizacion
