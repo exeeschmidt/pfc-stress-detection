@@ -44,15 +44,12 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
 
     rango = switcher.get(region)
     frame = np.copy(img)
-    landmarks_propios = np.zeros(0)
+    landmarks_propios = np.empty((0, 2), dtype=int)
 
     for i in rango:
         punto = np.array([[int(float(landmarks_x[i])), int(float(landmarks_y[i]))]])
         # Este if esta por problemas al ir concatenando cuando esta vacio
-        if len(landmarks_propios) == 0:
-            landmarks_propios = punto
-        else:
-            landmarks_propios = np.concatenate((landmarks_propios, punto), axis=0)
+        landmarks_propios = np.append(landmarks_propios, punto, axis=0)
 
     x1, y1, w1, h1 = cv.boundingRect(landmarks_propios)
     x2 = x1 + w1
@@ -159,6 +156,7 @@ def convPrediccion(predi):
             dato = ''
             # En caso de ser salto de linea agrego la fila entera al vector y la reinicio
             if i == '\n':
+                # Como no conozco la cantidad de columnas para inicializar un vector vacio, tengo que hacer esto
                 if len(vec) == 0:
                     vec = np.array([fila])
                     fila = np.array([])
@@ -178,23 +176,28 @@ def segmentaPrediccion(predi_1, predi_2):
     # conservando las etiquetas que se tenian. Esta nueva segmentacion cuenta con segmentos de tamaño variable, por lo
     # que de cada segmento se guarda su etiqueta, y el porcentaje del total que representa
     #
-    # Ejemplo:
-    #   [ ['Estresado', 0.3], ['No-Estresado', 1.3] .... ]
-    #   Esto representaria que el primer segmento representa un 0.3% del total y el siguiente el 1.3%
-    #   Guardar los porcentajes sirve para realizar el pesaje del largo de segmento al hacer majority voting
+    # Recibe dos vectores de matrices (uno con los resultados de multiples clasificaciones de video y otro con los de audio)
+    # Devuele una matriz por modalidad, donde las filas son los segmentos, la primer columna el porcentaje y luego tiene
+    # una columna por las etiquetas de cada metodo de clasificacion
 
-    tam_pre_1 = predi_1.shape[0]
-    tam_pre_2 = predi_2.shape[0]
+    # Numero de metodos en cada modalidad
+    num_metodos_1 = predi_1.shape[0]
+    num_metodos_2 = predi_2.shape[0]
+
+    # Cantidad de segmentos de cada modalidad
+    tam_pre_1 = predi_1.shape[1]
+    tam_pre_2 = predi_2.shape[1]
 
     # Saco el porcentaje inicial que representa cada segmento constante en los conjuntos originales
     tam_segmento_1 = 1 / tam_pre_1
     tam_segmento_2 = 1 / tam_pre_2
 
     # Busco en la cabecera donde se encuentran las predicciones
-    fila_prediccion = np.where(predi_1[0] == 'predicted')
+    fila_prediccion = np.where(predi_1[0, 0, :] == 'predicted')[0]
 
-    new_predi_1 = np.array([['etiqueta', 'porcentaje']])
-    new_predi_2 = np.array([['etiqueta', 'porcentaje']])
+    # Inicializo ambos vectores vacios con el primer numero de fila y las columnas apropiadas(etiqueta y porcentaje)
+    new_predi_1 = np.empty((0, num_metodos_1 + 1))
+    new_predi_2 = np.empty((0, num_metodos_2 + 1))
 
     # Las porciones que queden de segmento, inicialmente son igual al tamaño entero de segmento
     porc_1 = tam_segmento_1
@@ -214,9 +217,18 @@ def segmentaPrediccion(predi_1, predi_2):
         # conjuntos
         # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los indices de los conjuntos
 
-        # print(str(ind1) + '/' + str(predi_1.shape[0]), str(ind2) + '/' + str(predi_2.shape[0]))
-        new_predi_1 = np.concatenate([new_predi_1, np.array([np.append(predi_1[ind1][fila_prediccion], avance)])])
-        new_predi_2 = np.concatenate([new_predi_2, np.array([np.append(predi_2[ind2][fila_prediccion], avance)])])
+        # Recorro cada metodo de cada modalidad y formo una fila por modalidad
+        fila_1 = np.array([avance])
+        for i in range(0, num_metodos_1):
+            fila_1 = np.append(fila_1, predi_1[i, ind1, fila_prediccion], axis=0)
+
+        fila_2 = np.array([avance])
+        for i in range(0, num_metodos_2):
+            fila_2 = np.append(fila_2, predi_1[i, ind1, fila_prediccion], axis=0)
+
+        # Agrego cada fila al vector general correspondiente
+        new_predi_1 = np.append(new_predi_1, np.array([fila_1]), axis=0)
+        new_predi_2 = np.append(new_predi_2, np.array([fila_2]), axis=0)
 
         if porc_1 < porc_2:
             avance = porc_1
