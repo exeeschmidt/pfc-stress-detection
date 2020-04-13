@@ -26,7 +26,7 @@ import numpy as np
 # am.CrearCabeceraArff('Prueba', n_lbp, n_hop, n_au, clases)
 # am.AgregarFilaArff('Prueba', lbp, hop, au, 'Estresado')
 
-def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases):
+def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zonas):
     # Se ingresan el largo de cada caracteristica (las columnas)
     # Tiene en cuenta dos clases : Estresado y No-Estresado
 
@@ -35,11 +35,19 @@ def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases):
     # La primer linea no se para que sirve pero lo vi en otros arff
     file.write('@relation VideoFeatures' + os.linesep)
 
-    for i in range(0, lbp_range):
-        file.write('@attribute lbp_hist[' + str(i + 1) + '] numeric' + '\n')
+    # Recorro dentro de los intervalos pasados por el rango seleccionando la zona correspondiente
+    for j in range(0, len(lbp_range) - 1):
+        cont = 1
+        for i in range(lbp_range[j], lbp_range[j + 1]):
+            file.write('@attribute lbp_hist_' + zonas[j] + '[' + str(cont) + '] numeric' + '\n')
+            cont = cont + 1
 
-    for i in range(0, hop_range):
-        file.write('@attribute hop_hist[' + str(i + 1) + '] numeric' + '\n')
+    # Recorro dentro de los intervalos pasados por el rango seleccionando la zona correspondiente
+    for j in range(0, len(hop_range) - 1):
+        cont = 1
+        for i in range(hop_range[j], hop_range[j + 1]):
+            file.write('@attribute hop_hist_' + zonas[j] + '[' + str(cont) + '] numeric' + '\n')
+            cont = cont + 1
 
     for i in range(0, hog_range):
         file.write('@attribute hog_hist[' + str(i + 1) + '] numeric' + '\n')

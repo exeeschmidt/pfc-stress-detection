@@ -92,10 +92,14 @@ class VideoEntero:
             LimIntAUs1 = archivo[0].index('AU01_r')
             LimIntAUs2 = archivo[0].index('AU45_r')
 
-
         # Inicializo las clases de los metodos de extraccion
         lbp = met.OriginalLBP()
         hop = met.HistogramOfPhase(False, False)
+
+        # Inicializo los rangos donde indican el inicio y fin de las caracteristicas en cada zona segun el metodo
+        # Esto sirve para darles el nombre de zonas al guardar las caracteristicas en los arff
+        lbp_range = list([0])
+        hop_range = list([0])
 
         # Leo la etiqueta correspondiente a la primer parte para empezar
         etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, 1)
@@ -106,11 +110,12 @@ class VideoEntero:
             else:
                 etiqueta = clases[0]
 
-
         # Permite saber en que respuesta voy para saber cuando cambiar la etiqueta
         nro_intervalo = 1
         # Numero de cuadro que va recorriendo
         nro_frame = 1
+
+        # Comienzo a recorrer el video por cada cuadro
         while video.isOpened():
             ret, frame = video.read()
             if ret == 0:
@@ -123,6 +128,7 @@ class VideoEntero:
             # Inicializo los vectores donde se van a ir concatenando las caracteristicas de todas las zonas
             lbp_hist = np.array([])
             hop_hist = np.array([])
+
             # Por cada zona repito
             for i in range(0, nro_zonas):
                 # Recorto las roi, las expando y aplico un resize para que tengan tamaño constante en todos los frames
@@ -130,13 +136,21 @@ class VideoEntero:
 
                 if self.bool_metodos[0]:
                     # Obtengo los patrones locales binarios y sus histogramas
-                    lbp_hist = np.concatenate([lbp_hist, np.array(hrm.Histograma(lbp(roi)))])
+                    aux_lbp = np.array(hrm.Histograma(lbp(roi)))
+                    if nro_frame == 1:
+                        # A partir del anterior, le voy sumando el tamaño de este
+                        lbp_range.append(lbp_range[len(lbp_range) - 1] + len(aux_lbp))
+                    lbp_hist = np.concatenate([lbp_hist, aux_lbp])
 
                 if self.bool_metodos[1]:
                     # Obtengo los histogramas de fase, ravel lo uso para que quede en una sola fila
                     # DATASO: Al agregar mas regiones para analizar con HOP, aunque estan impliquen menor tamaño que tomar una region mas grande, demora mas
                     # start2 = time.time()
-                    hop_hist = np.concatenate([hop_hist, np.ravel(hop(roi))])
+                    aux_hop = np.ravel(hop(roi))
+                    if nro_frame == 1:
+                        # A partir del anterior, le voy sumando el tamaño de este
+                        hop_range.append(hop_range[len(hop_range) - 1] + len(aux_hop))
+                    hop_hist = np.concatenate([hop_hist, aux_hop])
                     # print("Tiempo HOP " + zonas[i] + ' ', time.time() - start2)
 
             if self.bool_metodos[3]:
@@ -168,16 +182,15 @@ class VideoEntero:
             if self.bool_metodos[2]:
                 # Si es el primer frame que genere la cabecera, lo hago aca porque tengo que saber el largo de los vectores de caracteristicas
                 if nro_frame == 1:
-                    am.CabeceraArff(nombre, len(lbp_hist), len(hop_hist), len(hog[nro_frame - 1]), len(AUs), clases)
+                    am.CabeceraArff(nombre, lbp_range, hop_range, len(hog[nro_frame - 1]), len(AUs), clases, self.zonas)
                 # Agrego la fila con los vectores concatenados por metodo
                 am.FilaArff(nombre, lbp_hist, hop_hist, hog[nro_frame - 1], AUs, etiqueta)
             else:
                 if nro_frame == 1:
-                    am.CabeceraArff(nombre, len(lbp_hist), len(hop_hist), len(hog), len(AUs), clases)
+                    am.CabeceraArff(nombre, lbp_range, hop_range, len(hog), len(AUs), clases, self.zonas)
                 am.FilaArff(nombre, lbp_hist, hop_hist, hog, AUs, etiqueta)
 
-
-            print(nro_frame)
+            # print(nro_frame)
             nro_frame = nro_frame + 1
         print("Tiempo en extraer caracteristicas: ", time.time() - start, " segundos")
 
@@ -262,6 +275,7 @@ class VideoEnParte:
                 hog = np.array([])
 
             AUs = np.array([])
+
             if self.bool_metodos[3]:
                 # Lo mismo con las intensidades de los AUs
                 LimIntAUs1 = archivo[0].index('AU01_r')
@@ -276,8 +290,15 @@ class VideoEnParte:
                 else:
                     etiqueta = clases[0]
 
+            # Inicializo los rangos donde indican el inicio y fin de las caracteristicas en cada zona segun el metodo
+            # Esto sirve para darles el nombre de zonas al guardar las caracteristicas en los arff
+            lbp_range = list([0])
+            hop_range = list([0])
+
             # Numero de cuadro que va recorriendo
             nro_frame = 1
+
+            # Comienzo a recorrer el video por cada cuadro
             while video.isOpened():
                 ret, frame = video.read()
                 if ret == 0:
@@ -297,13 +318,22 @@ class VideoEnParte:
 
                     if self.bool_metodos[0]:
                         # Obtengo los patrones locales binarios y sus histogramas
-                        lbp_hist = np.concatenate([lbp_hist, np.array(hrm.Histograma(lbp(roi)))])
+                        aux_lbp = np.array(hrm.Histograma(lbp(roi)))
+                        if nro_frame == 1:
+                            # A partir del anterior, le voy sumando el tamaño de este
+                            lbp_range.append(lbp_range[len(lbp_range) - 1] + len(aux_lbp))
+                        lbp_hist = np.concatenate([lbp_hist, aux_lbp])
 
                     if self.bool_metodos[1]:
                         # Obtengo los histogramas de fase, ravel lo uso para que quede en una sola fila
                         # DATASO: Al agregar mas regiones para analizar con HOP, aunque estan impliquen menor tamaño que tomar una region mas grande, demora mas
                         # start2 = time.time()
-                        hop_hist = np.concatenate([hop_hist, np.ravel(hop(roi))])
+                        # Obtengo los patrones locales binarios y sus histogramas
+                        aux_lbp = np.array(hrm.Histograma(lbp(roi)))
+                        if nro_frame == 1:
+                            # A partir del anterior, le voy sumando el tamaño de este
+                            lbp_range.append(lbp_range[len(lbp_range) - 1] + len(aux_lbp))
+                        lbp_hist = np.concatenate([lbp_hist, aux_lbp])
                         # print("Tiempo HOP " + zonas[i] + ' ', time.time() - start2)
 
                 if self.bool_metodos[3]:
@@ -314,18 +344,18 @@ class VideoEnParte:
                 if self.bool_metodos[2]:
                     # Si es el primer frame que genere la cabecera, lo hago aca porque tengo que saber el largo de los vectores de caracteristicas
                     if nro_frame == 1:
-                        am.CabeceraArff(nombre, len(lbp_hist), len(hop_hist), len(hog[nro_frame - 1]), len(AUs), clases)
+                        am.CabeceraArff(nombre, lbp_range, hop_range, len(hog[nro_frame - 1]), len(AUs), clases,
+                                        self.zonas)
                     # Agrego la fila con los vectores concatenados por metodo
                     am.FilaArff(nombre, lbp_hist, hop_hist, hog[nro_frame - 1], AUs, etiqueta)
                 else:
                     if nro_frame == 1:
-                        am.CabeceraArff(nombre, len(lbp_hist), len(hop_hist), len(hog), len(AUs), clases)
+                        am.CabeceraArff(nombre, lbp_range, hop_range, len(hog), len(AUs), clases, self.zonas)
                     am.FilaArff(nombre, lbp_hist, hop_hist, hog, AUs, etiqueta)
 
                 # print(nro_frame)
                 nro_frame = nro_frame + 1
-            # print("Tiempo en extraer caracteristicas parte " + str(j + 1) + " : ", time.time() - start, " segundos")
-        return frames_totales
+            print("Tiempo en extraer caracteristicas parte " + str(j + 1) + " : ", time.time() - start, " segundos")
 
 class Audio:
     def __init__(self, binarizar_etiquetas):
