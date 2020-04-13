@@ -4,8 +4,8 @@ import cv2 as cv
 import read_hog_file
 
 
-# Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda)
 def Histograma(imagen):
+    # Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda)
     img = np.copy(imagen)
     f = img.shape[0]
     c = img.shape[1]
@@ -142,3 +142,90 @@ def leeTiemposRespuesta(archivo, persona, etapa, parte):
     ind_parte = int(parte) - 1
     segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa + ind_parte][4])
     return segundos
+
+def convPrediccion(predi):
+    vec = np.array([])
+    fila = np.array([])
+    dato = ''
+    for i in predi:
+        if i == ',' or i == '\n':
+            if dato == '':
+                dato = ' '
+            fila = np.append(fila, dato)
+            dato = ''
+            if i == '\n':
+                if len(vec) == 0:
+                    vec = np.array([fila])
+                    fila = np.array([])
+                else:
+                    vec = np.concatenate([vec, np.array([fila])], axis=0)
+                    fila = np.array([])
+        else:
+            dato = dato + i
+    return vec
+
+def segmentaPrediccion(predi_1, predi_2):
+    # Algoritmo para segmentar como en Lefter - Recognizing stress using semantics and modulation
+    # of speech and gestures
+
+    # A partir de dos conjuntos de etiquetas, con distinto tamaño, devuelvo los dos conjuntos con las misma segmentacion
+    # conservando las etiquetas que se tenian. Esta nueva segmentacion cuenta con segmentos de tamaño variable, por lo que
+    # de cada segmento se guarda su etiqueta, y el porcentaje del total que representa
+    #
+    # Ejemplo:
+    #   [ ['Estresado', 0.3], ['No-Estresado', 1.3] .... ]
+    #   Esto representaria que el primer segmento representa un 0.3% del total y el siguiente el 1.3%
+    #   Guardar los porcentajes sirve para realizar el pesaje del largo de segmento al hacer majority voting
+
+    tam_pre_1 = predi_1.shape[0]
+    tam_pre_2 = predi_2.shape[0]
+
+    # Saco el porcentaje inicial que representa cada segmento constante en los conjuntos originales
+    tam_segmento_1 = 1 / tam_pre_1
+    tam_segmento_2 = 1 / tam_pre_2
+
+    # Busco en la cabecera donde se encuentran las predicciones
+    fila_prediccion = np.where(predi_1[0] == 'predicted')
+
+    new_predi_1 = np.array([['etiqueta', 'porcentaje']])
+    new_predi_2 = np.array([['etiqueta', 'porcentaje']])
+
+    # Las porciones que queden de segmento, inicialmente son igual al tamaño entero de segmento
+    porc_1 = tam_segmento_1
+    porc_2 = tam_segmento_2
+
+    if porc_1 < porc_2:
+        avance = porc_1
+    else:
+        avance = porc_2
+    #Indices en los conjuntos iniciales
+    ind1 = 1
+    ind2 = 1
+    while ind1 < tam_pre_1 and ind2 < tam_pre_2:
+        # Depende que porcion mas chica, avanzo unicamente esa cantidad
+        # Al avanzar la cantidad mas chica, tengo que reducir el tamaño de la otra porcion ya que estaria cortando un segmento
+        # Al indicar la porcion mas chica es porque termino ese segmento, por lo que tengo que avanzar en el indice de los
+        # conjuntos
+        # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los indices de los conjuntos
+
+        # print(str(ind1) + '/' + str(predi_1.shape[0]), str(ind2) + '/' + str(predi_2.shape[0]))
+        new_predi_1 = np.concatenate([new_predi_1, np.array([np.append(predi_1[ind1][fila_prediccion], avance)])])
+        new_predi_2 = np.concatenate([new_predi_2, np.array([np.append(predi_2[ind2][fila_prediccion], avance)])])
+
+        if porc_1 < porc_2:
+            avance = porc_1
+            ind1 = ind1 + 1
+            porc_2 = tam_segmento_2 - avance
+            porc_1 = tam_segmento_1
+        elif porc_2 < porc_1:
+            avance = porc_2
+            ind2 = ind2 + 1
+            porc_1 = tam_segmento_1 - avance
+            porc_2 = tam_segmento_2
+        else:
+            avance = porc_1
+            ind1 = ind1 + 1
+            ind2 = ind2 + 1
+            porc_1 = tam_segmento_1
+            porc_2 = tam_segmento_2
+    return new_predi_1, new_predi_2

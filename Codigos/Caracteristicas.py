@@ -83,6 +83,8 @@ class VideoEntero:
         if self.bool_metodos[2]:
             # Cargo el archivo con las caracteristicas hog
             hog, inds_hog = hrm.leeHOG('Procesado' + os.sep + nombre + '.hog')
+        else:
+            hog = np.array([])
 
         AUs = np.array([])
         if self.bool_metodos[3]:
@@ -244,7 +246,6 @@ class VideoEnParte:
                 print("Ruta de archivo incorrecta o no valida")
                 return
             video = cv.VideoCapture(path)
-            frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
 
             archivo = hrm.leeCSV('Procesado' + os.sep + nombre + '.csv')
 
@@ -257,6 +258,8 @@ class VideoEnParte:
             if self.bool_metodos[2]:
                 # Cargo el archivo con las caracteristicas hog
                 hog, inds_hog = hrm.leeHOG('Procesado' + os.sep + nombre + '.hog')
+            else:
+                hog = np.array([])
 
             AUs = np.array([])
             if self.bool_metodos[3]:
@@ -321,7 +324,8 @@ class VideoEnParte:
 
                 # print(nro_frame)
                 nro_frame = nro_frame + 1
-            print("Tiempo en extraer caracteristicas parte " + str(j + 1) + " : ", time.time() - start, " segundos")
+            # print("Tiempo en extraer caracteristicas parte " + str(j + 1) + " : ", time.time() - start, " segundos")
+        return frames_totales
 
 class Audio:
     def __init__(self, binarizar_etiquetas):
