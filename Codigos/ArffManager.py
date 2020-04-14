@@ -1,38 +1,39 @@
 import os
 import numpy as np
 
-#Ejemplo
-# import ArffManager as am
-# import numpy as np
-# from random import randrange
+
+# Ejemplo:
+#   import ArffManager as am
+#   import numpy as np
+#   from random import randrange
 #
-# n_lbp = 10
-# n_hop = 5
-# n_au = 7
+#   n_lbp = 10
+#   n_hop = 5
+#   n_au = 7
 #
-# lbp = np.zeros(n_lbp)
-# hop = np.zeros(n_hop)
-# au = np.zeros(n_au)
+#   lbp = np.zeros(n_lbp)
+#   hop = np.zeros(n_hop)
+#   au = np.zeros(n_au)
 #
-# for i in range(0, n_lbp):
+#   for i in range(0, n_lbp):
 #     lbp[i] = randrange(256)
-# for i in range(0, n_hop):
+#   for i in range(0, n_hop):
 #     hop[i] = randrange(100) / 100
-# for i in range(0, n_au):
+#   for i in range(0, n_au):
 #     au[i] = randrange(5)
 #
-# clases = np.array(['Estresado','No-Estresado'])
+#   clases = np.array(['Estresado','No-Estresado'])
 #
-# am.CrearCabeceraArff('Prueba', n_lbp, n_hop, n_au, clases)
-# am.AgregarFilaArff('Prueba', lbp, hop, au, 'Estresado')
+#   am.CrearCabeceraArff('Prueba', n_lbp, n_hop, n_au, clases)
+#   am.AgregarFilaArff('Prueba', lbp, hop, au, 'Estresado')
 
 def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zonas):
-    # Se ingresan el largo de cada caracteristica (las columnas)
+    # Se ingresan el largo de cada característica (las columnas)
     # Tiene en cuenta dos clases : Estresado y No-Estresado
 
     # Crea el archivo si no existe, modo escritura
     file = open('Caracteristicas' + os.sep + nombre + '.arff', 'w')
-    # La primer linea no se para que sirve pero lo vi en otros arff
+    # La primera línea no se para que sirve pero lo vi en otros arff
     file.write('@relation VideoFeatures' + os.linesep)
 
     # Recorro dentro de los intervalos pasados por el rango seleccionando la zona correspondiente
@@ -66,22 +67,22 @@ def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zona
 
 
 def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
-    #Se ingresan las caracteristicas extraidas de un cuadro y la etiqueta de clase (Estresado o No-Estresado)
+    # Se ingresan las características extraídas de un cuadro y la etiqueta de clase (Estresado o No-Estresado)
 
-    #Abro el archivo con cabecera, la bandera 'a' permite anexar el texto
+    # Abro el archivo con cabecera, la bandera 'a' permite anexar el texto
     file = open('Caracteristicas' + os.sep + nombre + '.arff', 'a')
 
-    #Fila de caracteristicas
+    # Fila de caracteristicas
     fila = ''
 
-    #Extraigo el largo de cada vector
+    # Extraigo el largo de cada vector
     lbp_range = np.size(lbp_feat)
     hop_range = np.size(hop_feat)
     hog_range = len(hog_feat)
     # hog_range = np.size(hog_feat)[0]
     au_range = np.size(au_feat)
 
-    #Concateno cada vector a la misma fila
+    # Concateno cada vector a la misma fila
     for i in range(0, lbp_range):
         fila = fila + str(lbp_feat[i]) + ','
 

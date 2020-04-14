@@ -4,24 +4,49 @@ import cv2 as cv
 import read_hog_file
 
 
-def Histograma(imagen):
-    # Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda)
-    img = np.copy(imagen)
-    f = img.shape[0]
-    c = img.shape[1]
-    histo = np.zeros(256)
+def leeCSV(ruta_archivo):
+    # Devuelve una lista con los datos a partir de un csv
+    archivo = open(ruta_archivo)
+    leido = csv.reader(archivo, delimiter=',', skipinitialspace=True)
+    leido = list(leido)
+    return leido
 
-    for i in range(0, f):
-        for j in range(0, c):
-            histo[img[i, j]] = histo[img[i, j]] + 1
-    return histo
+
+def leeTiemposRespuesta(archivo, persona, etapa, parte):
+    # Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
+    # El primer 1+ en persona va para saltear la fila donde estan las caratulas
+    ind_persona = 1 + (int(persona) - 1) * 13
+    ind_etapa = (int(etapa) - 1) * 7
+    ind_parte = int(parte) - 1
+    segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa + ind_parte][4])
+    return segundos
+
+
+def leeHOG(ruta_archivo):
+    # ruta_archivo = 'Procesado/Sujeto 01a.hog'
+    # Devuelve la matriz con los hog por cuadro
+    # El segundo parámetro devuelve si en ese cuadro se extrajo correctamente
+    rhf = read_hog_file.initialize()
+    [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
+    rhf.terminate()
+    return hog, inds
+
+
+def leeEtiqueta(archivo, persona, etapa, parte):
+    # Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
+    # El primer 1+ en persona va para saltear la fila donde estan las caratulas
+    ind_persona = 1 + (int(persona) - 1) * 13
+    ind_etapa = (int(etapa) - 1) * 7
+    ind_parte = int(parte) - 1
+    etiqueta = archivo[ind_persona + ind_etapa + ind_parte][5]
+    return etiqueta
 
 
 def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
-    # Devuelve el minimo rectangulo segun la region de la cara que se elija
+    # Devuelve el mínimo rectángulo según la región de la cara que se elija
 
-    # Landmarks deberia traer toda la lista de puntos faciales de un frame
-    # Por ejemplo desde open face archivo[nro_frame][....]
+    # Landmarks debería traer toda la lista de puntos faciales de un frame
+    # Por ejemplo desde open face: archivo[nro_frame][....]
 
     # LISTA DE NUMEROS DE PUNTOS FACIALES SEGUN LA REGION
     # Borde de la cara 0 al 16
@@ -48,17 +73,17 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
 
     for i in rango:
         punto = np.array([[int(float(landmarks_x[i])), int(float(landmarks_y[i]))]])
-        # Este if esta por problemas al ir concatenando cuando esta vacio
+        # Este if esta por problemas al ir concatenando cuando esta vacío
         landmarks_propios = np.append(landmarks_propios, punto, axis=0)
 
     x1, y1, w1, h1 = cv.boundingRect(landmarks_propios)
     x2 = x1 + w1
     y2 = y1 + h1
     if expandir:
-        # Si tomamos un 5% de expansion para cada lado
+        # Si tomamos un 5% de expansión para cada lado
         pix_y = int(w1 / 20)
         pix_x = int(h1 / 20)
-        # Verificacion que no sobrepase los limites de la imagen
+        # Verificación que no sobrepase los límites de la imagen
         if y1 - pix_y < 0:
             y1 = 0
         else:
@@ -88,7 +113,8 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
 
 
 def ResizeZona(imagen, region):
-    # Segun la region lo lleva a un tamaño fijo, estos numeros se sacaron manualmente a partir de la observacion de un frame
+    # Según la región lo lleva a un tamaño fijo, estos números se sacaron manualmente a partir de la observación de un
+    # frame
     switcher = {
         'cara': (200, 200),
         'cejas': (180, 30),
@@ -105,40 +131,24 @@ def ResizeZona(imagen, region):
     return img
 
 
-def leeHOG(ruta_archivo):
-    # ruta_archivo = 'Procesado/Sujeto 01a.hog'
-    # Devuelve la matriz con los hog por cuadro
-    # El segundo parametro devuelve si en ese cuadro se extrajo correctamente
-    rhf = read_hog_file.initialize()
-    [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
-    rhf.terminate()
-    return hog, inds
+def Histograma(imagen):
+    # Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda)
+    img = np.copy(imagen)
+    f = img.shape[0]
+    c = img.shape[1]
+    histo = np.zeros(256)
+
+    for i in range(0, f):
+        for j in range(0, c):
+            histo[img[i, j]] = histo[img[i, j]] + 1
+    return histo
 
 
-def leeCSV(ruta_archivo):
-    # Devuelve del csv una lista con los datos
-    archivo = open(ruta_archivo)
-    leido = csv.reader(archivo, delimiter=',', skipinitialspace=True)
-    leido = list(leido)
-    return leido
 
-def leeEtiqueta(archivo, persona, etapa, parte):
-    #Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
-    #El primer 1+ en persona va para saltear la fila donde estan las caratulas
-    ind_persona = 1 + (int(persona) - 1) * 13
-    ind_etapa = (int(etapa) - 1) * 7
-    ind_parte = int(parte) - 1
-    etiqueta = archivo[ind_persona + ind_etapa + ind_parte][5]
-    return etiqueta
 
-def leeTiemposRespuesta(archivo, persona, etapa, parte):
-    #Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
-    #El primer 1+ en persona va para saltear la fila donde estan las caratulas
-    ind_persona = 1 + (int(persona) - 1) * 13
-    ind_etapa = (int(etapa) - 1) * 7
-    ind_parte = int(parte) - 1
-    segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa + ind_parte][4])
-    return segundos
+
+
+
 
 def convPrediccion(predi):
     # Sirve para convertir los csv de las predicciones en vectores de numpy formato: [ [...,...,...], [....,...,...]...]

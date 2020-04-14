@@ -1,0 +1,28 @@
+import os
+from pathlib import Path
+
+# Se definen las variables y constantes necesarias para la inicialización y ejecución de todas las funciones
+
+ROOT_PATH = Path(__file__).parent.parent
+PATH_BD = os.path.join(ROOT_PATH, 'Base de datos')
+PATH_CODIGOS = os.path.join(ROOT_PATH, 'Codigos')
+PATH_LIBRERIAS = os.path.join(ROOT_PATH, 'Librerias')
+PATH_OPENFACE = os.path.join(PATH_LIBRERIAS, 'openface')
+PATH_PROCESADO = os.path.join(ROOT_PATH, 'Procesado')
+PATH_CARACTERISTICAS = os.path.join(ROOT_PATH, 'Caracteristicas')
+
+
+def buildVideoName(persona, etapa, parte=-1, extension=False):
+    video_name = 'Sujeto_' + persona + '_' + etapa
+    if parte != -1:
+        video_name += '_r' + parte
+    if extension:
+        video_name += '.mp4'
+    return
+
+
+def buildPathVideo(persona, etapa, nombre_video, extension=True):
+    path_video = os.path.join(PATH_BD, 'Sujeto ' + persona, 'Etapa ' + etapa, nombre_video)
+    if extension:
+        path_video += '.mp4'
+    return path_video

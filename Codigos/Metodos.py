@@ -3,62 +3,107 @@ import cv2 as cv
 import imagesc
 import numpy as np
 import matlab
-from scipy.signal import convolve2d
 import subprocess
 import os
 import matplotlib.pyplot as plt
 import scipy.io.wavfile as waves
+from scipy.signal import convolve2d
+import Codigos.Datos as datos
 
-##------------------Contiene todos los metodos a utilizar, las implementaciones de cada uno comienzan con un bookmark-----------------------
+# Contiene todos los métodos a utilizar, las implementaciones de cada uno comienzan con un bookmark
 
-#Nota importante: al ejecutar por primera vez siempre hacerlo con openface y luego opensmile, explicado en el apartado de opensmile
-
-
-# A partir de un algoritmo hecho en MATLAB por un investigador devuelve HOP y la congruencia de fase
-# Ejemplo
-# img = cv.imread("Frame.jpg")
-# hop = Metodos.HistogramOfPhase(False, False)
-# [feat, pc] = hop(img)
-
-class HistogramOfPhase:
-    def __init__(self, plotear, resize):
-        self._plotear = plotear
-        self._resize = resize
-
-    def __call__(self, imagen):
-        image = np.copy(imagen)
-
-        # Se convierte a escala de grises por si no lo esta
-        image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-
-        # Convierto de tipo np a uint8 de matlab para poder ser pasado a la libreria
-        image = matlab.uint8(image.tolist())
-
-        hop = histogramofphase.initialize()
-        # Devuelve los histogramas de HOP concatenados y la congruencia de fase
-        features, pc = hop.mainHOP(image, self._resize, nargout=2)
-        hop.terminate()
-
-        # print(pc.size)
-        # print(features)
-        if self._plotear:
-            array_pc = np.array(pc)
-            imagesc.clean(array_pc)
-        # Solo retorno las caracteristicas
-        return features
+# Nota importante:
+#   Al ejecutar por primera vez siempre hacerlo con OpenFace y luego OpenSmile, explicado en el apartado de OpenSmile
 
 
-# !/usr/bin/env python
-# -*- coding: utf-8 -*-
+# ==================================================== OPEN FACE ====================================================
+
+# Extrae las carasterísticas a partir de OpenFace, guardando estos en una carpeta "Procesado" dentro del proyecto
+# Toma los videos de la ruta de la base de datos
+# Ejemplo:
+#   ruta_of = 'D:/Descargas/OpenFace_2.2.0_win_x64'
+#   ruta_bd = 'D:/Descargas/Proyecto Final de Carrera/BD propia/Conejitos de india'
+#   op_fa = Metodos.OpenFace(False, True, True, True, ruta_bd, ruta_of)
+#   persona = 'Sujeto 01a'
+#   parte = 'a'
+#   op_fa(persona, parte)
+
+class OpenFace:
+    def __init__(self, cara, hog, landmarks, aus):
+        # Los 4 parámetros son banderas para extraer características
+        self._cara = cara
+        self._hog = hog
+        self._landmarks = landmarks
+        self._aus = aus
+
+    def __call__(self, persona, etapa, parte=-1):
+        nombre_video = datos.buildVideoName(persona, etapa, parte)
+        path_video = datos.buildPathVideo(persona, etapa, nombre_video)
+        path_save = datos.PATH_PROCESADO
+
+        # Comando base para ejecutar OpenFace
+        comando = ['FeatureExtraction.exe', '-f', path_video, '-out_dir', path_save]
+
+        # Según las banderas se le agregan parámetros al comando
+        if self._cara:
+            comando.append('-simalign')
+        if self._hog:
+            comando.append('-hogalign')
+        if self._landmarks:
+            comando.append('-2Dfp')
+        if self._aus:
+            comando.append('-aus')
+
+        # Cambio al directorio de OpenFace, ejecuto el comando y luego vuelvo al directorio donde están los códigos
+        os.chdir(datos.PATH_OPENFACE)
+        subprocess.run(comando, shell=True, check=True,  stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        os.chdir(datos.PATH_CODIGOS)
+
+# LISTA DE PARAMETROS APLICABLES A OPEN FACE 2.0
+#
+# CADA UNO DEBE AGREGARSE COMO PARTE DEL VECTOR A EJECUTAR POR SUBPROCESS
+#
+# -verbose visualise the processing steps live: tracked face with gaze, action units, similarity aligned face, and HOG
+#   features (not visualized by default), this flag turns all of them on, below flags allow for more fine-grained
+#   control. Visualizing these outputs will reduce processing speeds, potentially by a significant amount.
+# -vis-track visualise the tracked face
+# -vis-hog visualise the HOG features
+# -vis-align visualise similarity aligned faces
+# -vis-aus visualise Action Units
+# -simscale <float> scale of the face for similarity alignment (default 0.7)
+# -simsize <int> width and height of image in pixels when similarity aligned (default 112)
+# -format_aligned <format> output image format for aligned faces (e.g. png or jpg), any format supported by OpenCV
+# -format_vis_image <format> output image format for visualized images (e.g. png or jpg), any format supported by
+#   OpenCV. Only applicable to FaceLandmarkImg
+# -nomask forces the aligned face output images to not be masked out
+# -g output images should be grayscale (for saving space)
+#
+# By default the executable will output all features (tracked videos, HOG files, similarity aligned images and a .csv
+# file with landmarks, action units and gaze). You might not always want to extract all the output features, you can
+# specify the desired output using the following flags:
+# -2Dfp output 2D landmarks in pixels
+# -3Dfp output 3D landmarks in milimeters
+# -pdmparams output rigid and non-rigid shape parameters
+# -pose output head pose (location and rotation)
+# -aus output the Facial Action Units
+# -gaze output gaze and related features (2D and 3D locations of eye landmarks)
+# -hogalign output extracted HOG feaure file
+# -simalign output similarity aligned images of the tracked faces
+# -nobadaligned if outputting similarity aligned images, do not output from frames where detection failed or is
+#   unreliable (thus saving some disk space)
+
+# ===================================================================================================================
+
+
+# ======================================================= LBP =======================================================
 
 # Copyright (c) Philipp Wagner. All rights reserved.
 # Licensed under the BSD license. See LICENSE file in the project root for full license information.
 
-
 # Ejemplo:
-# lbp_original = Metodos.OriginalLBP()
-# lbp = lbp_original(imagen_en_escala_de_grises)
-# Ademas de pasar la imagen en escala de grises se debe castear a np.uint8 para ser visualizada
+#   lbp_original = Metodos.OriginalLBP()
+#   lbp = lbp_original(imagen_en_escala_de_grises)
+# Además de pasar la imagen en escala de grises, se debe castear a np.uint8 para ser visualizada
 
 class LocalDescriptor(object):
     def __init__(self, neighbors):
@@ -72,7 +117,7 @@ class LocalDescriptor(object):
         return self._neighbors
 
     def __repr__(self):
-        return "LBPOperator (neighbors=%s)" % (self._neighbors)
+        return "LBPOperator (neighbors=%s)" % self._neighbors
 
 
 class OriginalLBP(LocalDescriptor):
@@ -92,7 +137,7 @@ class OriginalLBP(LocalDescriptor):
         return X
 
     def __repr__(self):
-        return "OriginalLBP (neighbors=%s)" % (self._neighbors)
+        return "OriginalLBP (neighbors=%s)" % self._neighbors
 
 
 class ExtendedLBP(LocalDescriptor):
@@ -190,10 +235,10 @@ class VarLBP(LocalDescriptor):
         dy = int(ysize - blocksizey + 1)
         # Allocate memory for online variance calculation:
         mean = np.zeros((dy, dx), dtype=np.float32)
-        delta = np.zeros((dy, dx), dtype=np.float32)
+        # delta = np.zeros((dy, dx), dtype=np.float32)
         m2 = np.zeros((dy, dx), dtype=np.float32)
         # Holds the resulting variance matrix:
-        result = np.zeros((dy, dx), dtype=np.float32)
+        # result = np.zeros((dy, dx), dtype=np.float32)
         for i, p in enumerate(sample_points):
             # Get coordinate in the block:
             y, x = p + (origy, origx)
@@ -215,7 +260,8 @@ class VarLBP(LocalDescriptor):
             np.add(N, w2 * X[fy:fy + dy, cx:cx + dx], out=N, casting="unsafe")
             np.add(N, w3 * X[cy:cy + dy, fx:fx + dx], out=N, casting="unsafe")
             np.add(N, w4 * X[cy:cy + dy, cx:cx + dx], out=N, casting="unsafe")
-            # Update the matrices for Online Variance calculation (http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#On-line_algorithm):
+            # Update the matrices for Online Variance calculation
+            # (http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#On-line_algorithm):
             delta = N - mean
             mean = mean + delta / float(i + 1)
             m2 = m2 + delta * (N - mean)
@@ -234,9 +280,7 @@ class VarLBP(LocalDescriptor):
 class LPQ(LocalDescriptor):
     """ This implementation of Local Phase Quantization (LPQ) is a 1:1 adaption of the
         original implementation by Ojansivu V & Heikkilä J, which is available at:
-
             * http://www.cse.oulu.fi/CMV/Downloads/LPQMatlab
-
         So all credit goes to them.
 
       Reference:
@@ -250,7 +294,8 @@ class LPQ(LocalDescriptor):
         LocalDescriptor.__init__(self, neighbors=8)
         self._radius = radius
 
-    def euc_dist(self, X):
+    @staticmethod
+    def euc_dist(X):
         Y = X = X.astype(np.float)
         XX = np.sum(X * X, axis=1)[:, np.newaxis]
         YY = XX.T
@@ -311,7 +356,7 @@ class LPQ(LocalDescriptor):
         Fd = np.real(Qd)
         Gd = np.imag(Qd)
 
-        ############ REEMPLACE matrix(..) por array(...) y flatten(1) por flatten() ##############
+        # REEMPLACE matrix(..) por array(...) y flatten(1) por flatten()
         F = np.array(
             [Fa.flatten(), Ga.flatten(), Fb.flatten(), Gb.flatten(), Fc.flatten(), Gc.flatten(), Fd.flatten(),
              Gd.flatten()])
@@ -320,8 +365,9 @@ class LPQ(LocalDescriptor):
         t = 0
 
         # Calculate the LPQ Patterns:
-        B = (G[0, :] >= t) * 1 + (G[1, :] >= t) * 2 + (G[2, :] >= t) * 4 + (G[3, :] >= t) * 8 + (G[4, :] >= t) * 16 + (
-                G[5, :] >= t) * 32 + (G[6, :] >= t) * 64 + (G[7, :] >= t) * 128
+        B = (G[0, :] >= t) * 1 + (G[1, :] >= t) * 2 + (G[2, :] >= t) * 4 + (G[3, :] >= t) * 8 + (
+                    G[4, :] >= t) * 16 + (
+                    G[5, :] >= t) * 32 + (G[6, :] >= t) * 64 + (G[7, :] >= t) * 128
 
         return np.reshape(B, np.shape(Fa))
 
@@ -331,6 +377,50 @@ class LPQ(LocalDescriptor):
 
     def __repr__(self):
         return "LPQ (neighbors=%s, radius=%s)" % (self._neighbors, self._radius)
+
+# ===================================================================================================================
+
+
+# ======================================================= HOP =======================================================
+
+# A partir de un algoritmo hecho en MATLAB por un investigador devuelve HOP y la congruencia de fase
+# Ejemplo:
+#   img = cv.imread("Frame.jpg")
+#   hop = Metodos.HistogramOfPhase(False, False)
+#   [feat, pc] = hop(img)
+
+class HistogramOfPhase:
+    def __init__(self, plotear, resize):
+        self._plotear = plotear
+        self._resize = resize
+
+    def __call__(self, imagen):
+        image = np.copy(imagen)
+
+        # Se convierte a escala de grises por si no lo está
+        image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+
+        # Convierto de tipo np a uint8 de matlab para poder ser pasado a la librería
+        image = matlab.uint8(image.tolist())
+
+        hop = histogramofphase.initialize()
+        # Devuelve los histogramas de HOP concatenados y la congruencia de fase
+        features, pc = hop.mainHOP(image, self._resize, nargout=2)
+        hop.terminate()
+
+        # print(pc.size)
+        # print(features)
+        if self._plotear:
+            array_pc = np.array(pc)
+            imagesc.clean(array_pc)
+        # Solo retorno las características
+        return features
+
+# ===================================================================================================================
+
+
+
+
 
 
 # Extrae las carasteristicas a partir de opensmile, guardando estos en una carpeta "Procesado" en la ruta actual
@@ -414,169 +504,59 @@ class OpenSmile:
 # The following options are available for controlling the output data formats (for configurations
 # which provide feature summaries via statistical functionals, such as all INTERSPEECH and
 # AVEC challenge sets):
-# =============================
+# -----------------------------
 # -instname <string> Usually the input filename, saved in first column in CSV and ARFF output. Default is "unknown".
-# =============================
+# -----------------------------
 # -lldcsvoutput, -D <filename> Enables LLD frame-wise output to CSV.
 # -appendcsvlld <0/1> Set to 1 to append to existing CSV output file. Default is overwrite (0).
 # -timestampcsvlld <0/1> Set to 0 to disable timestamp output to CSV in second column. Default is 1.
 # -headercsvlld <0/1> Set to 0 to disable header output (1st line) to CSV. Default is 1 (enabled)
-# =============================
+# -----------------------------
 # -lldhtkoutput <filename> Enables LLD frame-wise output to HTK format.
-# =============================
+# -----------------------------
 # -lldarffoutput, -D <filename> Enables LLD frame-wise output to ARFF.
 # -appendarfflld <0/1> Set to 1 to append to existing ARFF output file. Default is overwrite (0).
 # -timestamparfflld <0/1> Set to 0 to disable timestamp output to ARFF in second column. Default 1.
 # -lldarfftargetsfile <file> Specify the configuration include, that defines the target fields (classes) Default: shared/arff_targets_conf.inc
-# =============================
+# -----------------------------
 # -output, -O <filename> The default output option. To ARFF file format, for feature summaries.
 # -appendarff <0/1> Set to 0 to not append to existing ARFF output file. Default is append (1).
 # -timestamparff <0/1> Set to 1 to enable timestamp output to ARFF in second column. Default 0.
 # -arfftargetsfile <file> Specify the configuration include, that defines the target fields (classes) Default: shared/arff_targets_conf.inc
-# =============================
+# -----------------------------
 # -csvoutput <filename> The default output option. To CSV file format, for feature summaries.
 # -appendcsv <0/1> Set to 0 to not append to existing CSV output file. Default is append (1).
 # -timestampcsv <0/1> Set to 0 to disable timestamp output to CSV in second column. Default 1.
 # -headercsv <0/1> Set to 0 to disable header output (1st line) to CSV. Default is 1 (enabled)
-# =============================
+# -----------------------------
 # -htkoutput <filename> Enables output to HTK format of feature summaries (functionals)
 
 
 # For configurations which provide Low-Level-Descriptor (LLD) features only (i.e. which do
 # not summarise features by means of statistical functionals over time), the following output
 # options are available:
-# =============================
+# -----------------------------
 # -csvoutput <filename> The default output option. To CSV file format, for frame-wise LLD.
 # -appendcsv <0/1> Set to 1 to append to existing CSV output file. Default is overwrite (0).
 # -timestampcsv <0/1> Set to 0 to disable timestamp output to CSV in second column. Default 1.
 # -headercsv <0/1> Set to 0 to disable header output (1st line) to CSV. Default is 1 (enabled)
-# =============================
+# -----------------------------
 # -output, -O <filename> Default output to HTK format of feature summaries (functionals).
-# =============================
+# -----------------------------
 # -arffoutput <filename> The default output option. To ARFF file format, for frame-wise LLD.
 # -appendarff <0/1> Set to 0 to not append to existing ARFF output file. Default is append (1).
 # -timestamparff <0/1> Set to 0 to disable timestamp output to ARFF in second column. Default 1.
 # -arfftargetsfile <file> Specify the configuration include, that defines the target fields (classes) Default: shared/arff_targets_conf.inc
 
-
-# Extrae las carasteristicas a partir de OpenFace, guardando estos en una carpeta "Procesado" en la ruta actual
-# Toma los videos de la ruta de la base de datos
-
-# Ejemplo
-# ruta_of = 'D:/Descargas/OpenFace_2.2.0_win_x64'
-# ruta_bd = 'D:/Descargas/Proyecto Final de Carrera/Bd propia/Conejitos de india'
-# op_fa = Metodos.OpenFace(False, True, True, True, ruta_bd, ruta_of)
-# persona = 'Sujeto 01a'
-# parte = 'a'
-# op_fa(persona, parte)
-
-class OpenFace:
-    def __init__(self, cara, hog, landmarks, aus, ruta_bd, ruta_of):
-        # Las primeras 4 son banderas para extraer caracteristicas
-        self._cara = cara
-        self._hog = hog
-        self._landmarks = landmarks
-        self._aus = aus
-        # Estos dos son la ruta de la base de datos y la ruta del directorio donde esta OpenFace
-        self._ruta_bd = ruta_bd
-        self._ruta_of = ruta_of
-        # ruta_of = 'D:' + os.sep + 'Descargas' + os.sep + 'OpenFace_2.2.0_win_x64'
-        # ruta_bd = 'D:' + os.sep + 'Google Drive' + os.sep + 'Proyecto Final de Carrera' + os.sep + 'Base de datos'
-
-    def __call__(self, persona, etapa, parte=-1):
-        # archivo = 'Sujeto 01'
-        # parte = '1'
-        subdir = 'Sujeto ' + persona + os.sep + 'Etapa ' + etapa
-        if parte == -1:
-            persona = 'Sujeto_' + persona + '_' + etapa + '.mp4'
-        else:
-            persona = 'Sujeto_' + persona + '_' + etapa + '_r' + parte + '.mp4'
-
-        # Estas lineas son para poder extraer la ruta actual del directorio, para brindar el parametro de donde se tiene que guardar la salida
-        # Tambien da la posibilidad de volver al directorio actual despues de la ejecucion del comando
-        pipe = subprocess.Popen('echo %cd%', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        ret = pipe.communicate()
-        ret = str(ret[0])
-        ruta_actual = ret[2:len(ret[0]) - 5]
-
-        # Comando base
-        comando = ['FeatureExtraction.exe', '-f', ruta_actual + self._ruta_bd + os.sep + subdir + os.sep + persona, '-out_dir',
-                   ruta_actual + os.sep + 'Procesado']
-
-        # Segun las banderas se le agregan parametros al comando
-        if self._cara:
-            comando.append('-simalign')
-        if self._hog:
-            comando.append('-hogalign')
-        if self._landmarks:
-            comando.append('-2Dfp')
-        if self._aus:
-            comando.append('-aus')
-
-        # Cambio al directorio de OpenFace y se ejecuta el comando
-        # print(comando)
-        os.chdir(self._ruta_of)
-        subprocess.run(comando, shell=True, check=True,  stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-        os.chdir(ruta_actual)
-
-
-# LISTA DE PARAMETROS APLICABLES A OPEN FACE 2.0
-#
-# CADA UNO DEBE AGREGARSE COMO PARTE DEL VECTOR A EJECUTAR POR SUBPROCESS
-#
-# -verbose visualise the processing steps live: tracked face with gaze, action units, similarity aligned face, and HOG features (not visualized by default), this flag turns all of them on, below flags allow for more fine-grained control. Visualizing these outputs will reduce processing speeds, potentially by a significant amount.
-#
-# -vis-track visualise the tracked face
-#
-# -vis-hog visualise the HOG features
-#
-# -vis-align visualise similarity aligned faces
-#
-# -vis-aus visualise Action Units
-#
-# -simscale <float> scale of the face for similarity alignment (default 0.7)
-#
-# -simsize <int> width and height of image in pixels when similarity aligned (default 112)
-#
-# -format_aligned <format> output image format for aligned faces (e.g. png or jpg), any format supported by OpenCV
-#
-# -format_vis_image <format> output image format for visualized images (e.g. png or jpg), any format supported by OpenCV. Only applicable to FaceLandmarkImg
-#
-# -nomask forces the aligned face output images to not be masked out
-#
-# -g output images should be grayscale (for saving space)
-#
-# By default the executable will output all features (tracked videos, HOG files, similarity aligned images and a .csv file with landmarks, action units and gaze). You might not always want to extract all the output features, you can specify the desired output using the following flags:
-#
-# -2Dfp output 2D landmarks in pixels
-#
-# -3Dfp output 3D landmarks in milimeters
-#
-# -pdmparams output rigid and non-rigid shape parameters
-#
-# -pose output head pose (location and rotation)
-#
-# -aus output the Facial Action Units
-#
-# -gaze output gaze and related features (2D and 3D locations of eye landmarks)
-#
-# -hogalign output extracted HOG feaure file
-#
-# -simalign output similarity aligned images of the tracked faces
-#
-# -nobadaligned if outputting similarity aligned images, do not output from frames where detection failed or is unreliable (thus saving some disk space)
-#
-
-# A través de los cruces por cero y energia calcula los silencios
-# Deuelve el audio con igual longitud que el original pero con valor 0 donde se presentan silencios segun lo calculado
-# Lee los wav desde la carpeta procesado, que ya habrian debido generarse con FFMPEG
-
-# Ejemplo
-# ruta_bd = 'D:/Descargas/Proyecto Final de Carrera/Bd propia/Conejitos de india'
-# el_si = Metodos.EliminaSilencios(ruta_bd, True)
-# persona = 'Sujeto 01a'
-# parte = 'a'
-# el_si(persona, parte)
+# A través de los cruces por cero y energía calcula los silencios
+# Devuelve el audio con igual longitud que el original pero con valor 0 donde se presentan silencios según lo calculado
+# Lee los wav desde la carpeta Procesado, que ya deberían haberse generado con FFMPEG
+# Ejemplo:
+#   ruta_bd = 'D:/Descargas/Proyecto Final de Carrera/Bd propia/Conejitos de india'
+#   el_si = Metodos.EliminaSilencios(ruta_bd, True)
+#   persona = 'Sujeto 01a'
+#   parte = 'a'
+#   el_si(persona, parte)
 
 class EliminaSilencios:
     def __init__(self, plotear):
