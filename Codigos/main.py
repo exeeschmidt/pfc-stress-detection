@@ -10,15 +10,13 @@ import os
 
 # Solamente la arranco, si la detengo a lo ultimo tira una excepcion MATLAB, se ve que la detiene por su cuenta
 jvm.start()
-# features = carac.VideoCompleto(False, np.array(['ojoizq', 'ojoder', 'boca', 'nariz']), np.array(['LBP', 'HOP', 'AU']))
-# features('05', '1')
 
-# features = carac.VideoPorRespuesta(False, np.array(['ojoizq', 'ojoder', 'boca']), np.array(['LBP', 'AU']))
-# features('03', '1')
-am.ConcatenaArff('Resultado Video', np.array(['03']), np.array(['1']), True, False)
-
-features = carac.Audio(False)
-features('03', '1', True)
+features = carac.Video(False, np.array(['ojoizq', 'ojoder', 'boca', 'nariz']), np.array(['LBP', 'AU']))
+features('07', '1', completo=False)
+# am.ConcatenaArff('Resultado Video', np.array(['03']), np.array(['1']), True, False)
+#
+# features = carac.Audio(False)
+# features('03', '1', True)
 # am.ConcatenaArff('Resultado Audio', np.array(['03']), np.array(['1']), True, True)
 
 # path1 = 'Caracteristicas' + os.sep + 'Resultado Video.arff'
