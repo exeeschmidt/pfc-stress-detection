@@ -99,12 +99,17 @@ def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     file.write(fila + '\n')
 
 
-def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes, bool_audio):
-    # Los primeros dos parametros tienen que ser np.array de numeros, el tercero un booleano si se unen partes o no
+def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=False, rangos_audibles=list()):
+    # Los primeros dos parametros tienen que ser np.array de numeros
+
+    bool_audible = False
+    if len(rangos_audibles) > 0:
+        bool_audible = True
 
     extension = '.arff'
     if bool_audio:
         extension = '.wav.arff'
+        bool_partes = True
 
     # Creo el archivo que va a ser la salida de la concatenacion
     salida = open('Caracteristicas' + os.sep + nombre_salida + '.arff', 'w')
@@ -132,13 +137,31 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes, bool_audio):
 
     for i in sujetos:
         for j in etapas:
+            # Las partes serian si se dividen en respuestas, las subpartes en caso de eliminar los silencios donde cada
+            # respuesta a su vez se vuelve a segmentar
+            partes = 1
+            subpartes = 1
             if bool_partes:
                 partes = 7
                 if j == '2':
                     partes = 6
-                for k in range(1, partes + 1):
-                    # print('Concatenando parte: ', k)
-                    archivo = open('Caracteristicas' + os.sep + 'Sujeto_' + str(i) + '_' + str(j) + '_r' + str(k) + extension, 'r')
+
+            for k in range(0, partes):
+                # print('Concatenando parte: ', k)
+                base = 'Caracteristicas' + os.sep + 'Sujeto_' + str(i) + '_' + str(j)
+
+                if bool_audible:
+                    subpartes = rangos_audibles[k].shape[0]
+
+                for l in range(0, subpartes):
+                    if bool_partes:
+                        parte_path = '_r' + str(k + 1)
+                        if bool_audible:
+                            subpartes = rangos_audibles[k].shape[0]
+                            parte_path = parte_path + '_' + str(l + 1)
+                    else:
+                        parte_path = ''
+                    archivo = open(base + parte_path + extension, 'r')
                     # Salto donde termina la cabecera y comienzan los datos
                     archivo.seek(data_pos, 0)
                     linea = archivo.readline()
@@ -147,15 +170,6 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes, bool_audio):
                         salida.write(linea)
                         linea = archivo.readline()
                     archivo.close()
-            else:
-                archivo = open('Caracteristicas' + os.sep + 'Sujeto_' + str(i) + '_' + str(j) + extension, 'r')
-                archivo.seek(data_pos, 0)
-                linea = archivo.readline()
-                # Cuando termina el archivo linea devuelve ""
-                while linea != "":
-                    salida.write(linea)
-                    linea = archivo.readline()
-                archivo.close()
     salida.close()
 
 def AgregaEtiqueta(nombre, clases, etiqueta):
