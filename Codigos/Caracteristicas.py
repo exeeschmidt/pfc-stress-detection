@@ -6,7 +6,7 @@ import Codigos.Herramientas as hrm
 import cv2 as cv
 import time
 
-class VideoEntero:
+class VideoCompleto:
     def __init__(self, binarizar_etiquetas, zonas, metodos):
         self.binarizar_etiquetas = binarizar_etiquetas
 
@@ -194,7 +194,7 @@ class VideoEntero:
             nro_frame = nro_frame + 1
         print("Tiempo en extraer caracteristicas: ", time.time() - start, " segundos")
 
-class VideoEnParte:
+class VideoPorRespuesta:
     def __init__(self, binarizar_etiquetas, zonas, metodos):
         self.binarizar_etiquetas = binarizar_etiquetas
 
@@ -361,7 +361,7 @@ class Audio:
     def __init__(self, binarizar_etiquetas):
         self.binarizar_etiquetas = binarizar_etiquetas
 
-    def __call__(self, persona, etapa):
+    def __call__(self, persona, etapa, eliminar_silencios=False):
         # Defino los nombres de la clase segun si binarizo
         clases = np.array(['Estresado', 'No-Estresado'])
         if not self.binarizar_etiquetas:
@@ -376,12 +376,17 @@ class Audio:
         ruta_os = 'Librerias' + os.sep +  'opensmile'
         open_smile = met.OpenSmile(False, True, ruta_os, 'IS09_emotion.conf')
 
+        eli_silencios = met.EliminaSilencios(False)
+
         arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
 
         #Segun la etapa, distinta cantidad de partes
         partes = 7
         if etapa == 2:
             partes = 6
+
+        # Parametro a retornar, en caso que no se eliminen los silencios quedara la lista vacia como retorno
+        rangos_silencios = list()
 
         for j in range(0, partes):
             start = time.time()
@@ -398,7 +403,17 @@ class Audio:
 
             # Ejecuto los metodos para extraer el wav del video y luego el extractor de caracteristicas
             ffmpeg(persona, etapa, str(j + 1))
-            open_smile(persona, etapa, str(j + 1), paso_ventaneo='0.3')
+
+            if eliminar_silencios:
+                # Obtengo los rangos donde hay segmentos audibles
+                rango = eli_silencios('Procesado' + os.sep + nombre + '.wav')
+                # Utilizo la cantidad de segmentos para saber cuantos archivos se generaron
+                for i in range(0, rango.shape[0]):
+                    open_smile(nombre + '_' + str(i + 1) + '.wav', paso_ventaneo='0.3')
+                # Lo agrego a la lista con los rangos de segmentos de cada respuesta
+                rangos_silencios.append(rango)
+            else:
+                open_smile(nombre + '.wav', paso_ventaneo='0.3')
 
             if self.binarizar_etiquetas:
                 # Binarizacion
