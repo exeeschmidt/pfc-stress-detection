@@ -451,14 +451,7 @@ class OpenSmile:
         # ruta_os = 'D:' + os.sep + 'Descargas' + os.sep + 'opensmile' + os.sep + 'opensmile-2.3.0'
         # config_file = 'IS09_emotion.conf'
 
-    def __call__(self, persona, etapa, parte=-1, paso_ventaneo='0.125', shift_ini_ventaneo='0'):
-        # archivo = '01'
-        # parte = '1'
-        if parte == -1:
-            persona = 'Sujeto_' + persona + '_' + etapa + '.wav'
-        else:
-            persona = 'Sujeto_' + persona + '_' + etapa + '_r' + parte + '.wav'
-
+    def __call__(self, path, paso_ventaneo='0.125', shift_ini_ventaneo='0'):
         # Estas lineas son para poder extraer la ruta actual del directorio, para brindar el parametro de donde se tiene que guardar la salida
         # Tambien da la posibilidad de volver al directorio actual despues de la ejecucion del comando
         pipe = subprocess.Popen('echo %cd%', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -468,19 +461,19 @@ class OpenSmile:
 
         # Comando base
         comando = ['SMILExtract_Release', '-C', 'config' + os.sep + self._config_file, '-I', ruta_actual + os.sep +
-                   'Procesado' + os.sep + persona]
+                   'Procesado' + os.sep + path]
 
         # Segun las banderas se le agregan parametros al comando
         if self._salida_csv:
             comando.append('-appendcsv')
             comando.append('0')
             comando.append('-csvoutput')
-            comando.append(ruta_actual + 'Caracteristicas' + os.sep + persona + '.csv')
+            comando.append(ruta_actual + 'Caracteristicas' + os.sep + path + '.csv')
         else:
             comando.append('-appendarff')
             comando.append('0')
             comando.append('-output')
-            comando.append(ruta_actual + 'Caracteristicas' + os.sep + persona + '.arff')
+            comando.append(ruta_actual + 'Caracteristicas' + os.sep + path + '.arff')
 
         # En caso de ventaneo se utiliza el archivo de configuracion que se permite escribir desde la funcion archivo_ventaneo
         if self._ventaneo:
@@ -563,16 +556,13 @@ class EliminaSilencios:
         # tam_ventana = 0.2
         self._plotear = plotear
 
-    def __call__(self, persona, etapa, parte=-1, tam_ventana=0.125, umbral=0.008):
-        # persona = 'Sujeto 01'
-        # parte = 'a'
-        if parte == -1:
-            persona = 'Procesado' + os.sep + 'Sujeto_' + persona + '_' + etapa + '.wav'
-        else:
-            persona = 'Procesado' + os.sep + 'Sujeto_' + persona + '_' + etapa + '_r' + parte + '.wav'
+    def __call__(self, path, tam_ventana=0.125, umbral=0.008):
+
+        #Extraigo la posicion donde esta la extension para despues eliminarla en el nombre del archivo de salida
+        nro_extension = path.index('.wav')
 
         # Lectura, casteo y extraccion de caracteristicas basicas de la señal
-        muestreo, sonido = waves.read(persona)
+        muestreo, sonido = waves.read(path)
         sonido = sonido.astype(np.int64)
         nro_muestras = sonido.shape[0]
         canales = sonido.shape[1]
@@ -586,19 +576,49 @@ class EliminaSilencios:
         for i in range(0, canales):
             energia[:, i], cruces[:, i] = self._calcula_caract(sonido[:, i], nro_muestras, tam_ventana, muestreo)
 
-        # Devolucion del vector de booleanos, indicando si cada muestra contiene o no silencio
-        vector_silencios = self._metodo1(energia, cruces, umbral, nro_muestras, tam_ventana, muestreo, canales)
+        # Devolucion del vector de booleanos, indicando con verdadero cada porcion que sea audible
+        vector_audible = self._metodo1(energia, cruces, umbral, nro_muestras, tam_ventana, muestreo, canales)
 
         if self._plotear:
             plt.plot(sonido)
             plt.plot(vector_silencios * np.max(sonido), 'r')
             plt.show()
 
-        # Solo dejo del sonido las partes donde no hay silencio
-        for i in range(0, canales):
-            sonido[:, i] = sonido[:, i] * vector_silencios
+        # Guardo los rangos donde se encuentran los segmentos audibles como tuplas
+        # Aprovecho también para cortar el audio y guardarlos en wavs por separado
+        activo = False
+        rangos_audibles = np.empty((0, 2))
+        # Recorto el nombre para borrarle la extension y que no me quede como parte de los archivos de salida
+        path = path[0:nro_extension]
+        for i in range(0, vector_audible.size):
+            # Si es audible y no estaba activada la bandera, comienza un tramo
+            if vector_audible[i] == True and activo == False:
+                activo = True
+                comienzo = i
+            # Si estaba activo el rango y deja de ser audible, o si sigue siendo audible pero llego al final del vector,
+            # guardo el comienzo y el fin del rango
+            elif (vector_audible[i] == False and activo == True) or \
+                    (vector_audible[i] == True and i == vector_audible.size - 1):
+                activo = False
+                rangos_audibles = np.append(rangos_audibles, np.array([np.array([comienzo, i])]), axis=0)
+                # Segun la cantidad de canales recorto uno solo o los recorto por separado para luego unirlos
+                if canales == 1:
+                    recortado = sonido[comienzo:i, 0]
+                else:
+                    # aux1 = sonido[comienzo:i, 0]
+                    # aux2 = sonido[comienzo:i, 1]
+                    # recortado = np.empty((0, i-comienzo))
+                    # recortado = np.append(recortado, np.array([aux1]), axis=0)
+                    # recortado = np.append(recortado, np.array([aux2]), axis=0)
+                    recortado = sonido[comienzo:i]
+                # Guardo el wav
+                recortado = recortado.astype(np.int16)
+                waves.write(path + '_' + str(rangos_audibles.shape[0]) + '.wav', muestreo, recortado)
 
-        return sonido
+        # Como solo me interesa devolver los porcentajes del total en los segmentos para recortar el video
+        rangos_audibles = rangos_audibles / nro_muestras
+
+        return rangos_audibles
 
     def _metodo1(self, energia, cruces, umbral, nro_muestras, tam_ventana, muestreo, canales):
         # El metodo se basa en calcular un puntaje con todas las caracteristicas para cada muestra y compararlo con un umbral
