@@ -127,8 +127,9 @@ class Video:
             lbp_range = list([0])
             hop_range = list([0])
 
-            # Leo la etiqueta correspondiente a la primer parte para empezar
-            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, 1)
+            # Leo la etiqueta correspondiente a la primer parte para empezar en caso de ser completo, o la de la
+            # respuesta en el caso
+            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, j + 1)
             if self.binarizar_etiquetas:
                 # Binarizacion
                 if etiqueta == 'N':

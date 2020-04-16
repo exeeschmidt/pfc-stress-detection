@@ -140,7 +140,7 @@ def leeTiemposRespuesta(archivo, persona, etapa, parte):
     segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa + ind_parte][4])
     return segundos
 
-def convPrediccion(predi):
+def prediccionCSVtoArray(predi):
     # Sirve para convertir los csv de las predicciones en vectores de numpy formato: [ [...,...,...], [....,...,...]...]
     vec = np.array([])
     fila = np.array([])
@@ -208,8 +208,8 @@ def segmentaPrediccion(predi_1, predi_2):
     else:
         avance = porc_2
     #Indices en los conjuntos iniciales
-    ind1 = 1
-    ind2 = 1
+    ind1 = 0
+    ind2 = 0
     while ind1 < tam_pre_1 and ind2 < tam_pre_2:
         # Depende que porcion mas chica, avanzo unicamente esa cantidad
         # Al avanzar la cantidad mas chica, tengo que reducir el tamaño de la otra porcion ya que estaria cortando un segmento
@@ -220,11 +220,11 @@ def segmentaPrediccion(predi_1, predi_2):
         # Recorro cada metodo de cada modalidad y formo una fila por modalidad
         fila_1 = np.array([avance])
         for i in range(0, num_metodos_1):
-            fila_1 = np.append(fila_1, predi_1[i, ind1, fila_prediccion], axis=0)
+            fila_1 = np.append(fila_1, predi_1[i, ind1, 2], axis=0)
 
         fila_2 = np.array([avance])
         for i in range(0, num_metodos_2):
-            fila_2 = np.append(fila_2, predi_1[i, ind1, fila_prediccion], axis=0)
+            fila_2 = np.append(fila_2, predi_1[i, ind1, 2], axis=0)
 
         # Agrego cada fila al vector general correspondiente
         new_predi_1 = np.append(new_predi_1, np.array([fila_1]), axis=0)
@@ -247,3 +247,21 @@ def segmentaPrediccion(predi_1, predi_2):
             porc_1 = tam_segmento_1
             porc_2 = tam_segmento_2
     return new_predi_1, new_predi_2
+
+def resumoPredicciones(predi, metodos):
+    # El primer parametro representa el vector de matrices con las predicciones, el segundo un vector con el nombre del
+    # de los metodos usados. Por ejemplo, para la prediccion en la posicion 0 se utilizo 'PCA + SVM'. Con esto creo la
+    # cabecera
+
+    # Numero de metodos
+    num_metodos = predi.shape[0]
+
+    # Cantidad de segmentos de cada modalidad
+    tam_pre = predi.shape[1]
+
+    new_predi = np.zeros((tam_pre + 1, 0), dtype='S20')
+    # Del primer metodo ademas de obtener la prediccion saco la columna con las etiquetas (iguales en todos los metodos)
+    new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta']), predi[0, :, 1])]).T, axis=1)
+    for i in range(0, num_metodos):
+        new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i]]), predi[i, :, 2])]).T, axis=1)
+    return new_predi
