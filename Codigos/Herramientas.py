@@ -184,16 +184,13 @@ def segmentaPrediccion(predi_1, predi_2):
     num_metodos_1 = predi_1.shape[0]
     num_metodos_2 = predi_2.shape[0]
 
-    # Cantidad de segmentos de cada modalidad
+    # Cantidad de segmentos de cada modalidad mas cabecera
     tam_pre_1 = predi_1.shape[1]
     tam_pre_2 = predi_2.shape[1]
 
     # Saco el porcentaje inicial que representa cada segmento constante en los conjuntos originales
-    tam_segmento_1 = 1 / tam_pre_1
-    tam_segmento_2 = 1 / tam_pre_2
-
-    # Busco en la cabecera donde se encuentran las predicciones
-    fila_prediccion = np.where(predi_1[0, 0, :] == 'predicted')[0]
+    tam_segmento_1 = 1 / (tam_pre_1 - 1)
+    tam_segmento_2 = 1 / (tam_pre_2 - 1)
 
     # Inicializo ambos vectores vacios con el primer numero de fila y las columnas apropiadas(etiqueta y porcentaje)
     new_predi_1 = np.empty((0, num_metodos_1 + 1))
@@ -224,7 +221,7 @@ def segmentaPrediccion(predi_1, predi_2):
 
         fila_2 = np.array([avance])
         for i in range(0, num_metodos_2):
-            fila_2 = np.append(fila_2, predi_1[i, ind1, 2], axis=0)
+            fila_2 = np.append(fila_2, predi_2[i, ind2, 2], axis=0)
 
         # Agrego cada fila al vector general correspondiente
         new_predi_1 = np.append(new_predi_1, np.array([fila_1]), axis=0)
@@ -248,6 +245,84 @@ def segmentaPrediccion(predi_1, predi_2):
             porc_2 = tam_segmento_2
     return new_predi_1, new_predi_2
 
+def segmentaResumen(resu_1, resu_2):
+    # Algoritmo para segmentar como en Lefter - Recognizing stress using semantics and modulation
+    # of speech and gestures
+
+    # A partir de dos resumenes de predicciones (suponiendo que pueden ser de distinto tamaño) devuelvo los dos
+    # conjuntos en un solo resumen con las misma segmentacion conservando las etiquetas que se tenian. Esta nueva
+    # segmentacion cuenta con segmentos de tamaño variable, por lo  que de cada segmento se guarda su etiqueta, y el
+    # porcentaje del total que representa
+
+    # Numero de metodos en cada modalidad
+    num_metodos_1 = resu_1.shape[1] - 1
+    num_metodos_2 = resu_2.shape[1] - 1
+
+    # Cantidad de segmentos de cada modalidad mas cabecera
+    tam_pre_1 = resu_1.shape[0]
+    tam_pre_2 = resu_2.shape[0]
+
+    # Saco el porcentaje inicial que representa cada segmento constante en los conjuntos originales
+    tam_segmento_1 = 1 / (tam_pre_1 - 1)
+    tam_segmento_2 = 1 / (tam_pre_2 - 1)
+
+    # Inicializo el nuevo vector que todavia no sabemos el numero de segmentos pero tendra los metodos aplicados a audio
+    # como a video mas la etiqueta mas una columna con los porcentajes que representan cada segmento
+    new_resu = np.empty((0, num_metodos_1 + num_metodos_2 + 2))
+
+    # Armo la cabecera, extraigo los metodos usados en cada resumen
+    new_resu = np.append(new_resu, np.array([np.append(np.array(['Porcentaje', 'Etiqueta']), 
+                        np.append(resu_1[0, 1:], resu_2[0, 1:]) )] ), axis=0 )
+
+    # Las porciones que queden de segmento, inicialmente son igual al tamaño entero de segmento
+    porc_1 = tam_segmento_1
+    porc_2 = tam_segmento_2
+
+    if porc_1 < porc_2:
+        avance = porc_1
+    else:
+        avance = porc_2
+    #Indices en los conjuntos iniciales
+    ind1 = 1
+    ind2 = 1
+    while ind1 < tam_pre_1 and ind2 < tam_pre_2:
+        # Depende que porcion mas chica, avanzo unicamente esa cantidad
+        # Al avanzar la cantidad mas chica, tengo que reducir el tamaño de la otra porcion ya que estaria cortando un segmento
+        # Al indicar la porcion mas chica es porque termino ese segmento, por lo que tengo que avanzar en el indice de los
+        # conjuntos
+        # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los indices de los conjuntos
+
+        # Recorro cada metodo de cada modalidad y formo una fila por modalidad
+        # De la primera ya agrego el porcentaje y luego del primer metodo de la primer modalidad la etiqueta
+        fila_1 = np.array([avance, resu_1[ind1, 0]])
+        for i in range(1, num_metodos_1 + 1):
+            fila_1 = np.append(fila_1, np.array([resu_1[ind1, i]]))
+
+        fila_2 = np.empty((0))
+        for i in range(1, num_metodos_2 + 1):
+            fila_2 = np.append(fila_2, np.array([resu_2[ind2, i]]))
+
+        # Agrego cada fila al vector general correspondiente
+        new_resu = np.append(new_resu, np.array([np.concatenate([fila_1, fila_2])]), axis=0)
+
+        if porc_1 < porc_2:
+            avance = porc_1
+            ind1 = ind1 + 1
+            porc_2 = porc_2 - avance
+            porc_1 = tam_segmento_1
+        elif porc_2 < porc_1:
+            avance = porc_2
+            ind2 = ind2 + 1
+            porc_1 = porc_1 - avance
+            porc_2 = tam_segmento_2
+        else:
+            avance = porc_1
+            ind1 = ind1 + 1
+            ind2 = ind2 + 1
+            porc_1 = tam_segmento_1
+            porc_2 = tam_segmento_2
+    return new_resu
+
 def resumoPredicciones(predi, metodos):
     # El primer parametro representa el vector de matrices con las predicciones, el segundo un vector con el nombre del
     # de los metodos usados. Por ejemplo, para la prediccion en la posicion 0 se utilizo 'PCA + SVM'. Con esto creo la
@@ -259,7 +334,7 @@ def resumoPredicciones(predi, metodos):
     # Cantidad de segmentos de cada modalidad
     tam_pre = predi.shape[1]
 
-    new_predi = np.zeros((tam_pre + 1, 0), dtype='S20')
+    new_predi = np.empty((tam_pre + 1, 0))
     # Del primer metodo ademas de obtener la prediccion saco la columna con las etiquetas (iguales en todos los metodos)
     new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta']), predi[0, :, 1])]).T, axis=1)
     for i in range(0, num_metodos):
