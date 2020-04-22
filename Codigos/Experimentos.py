@@ -64,14 +64,14 @@ def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_selecci
     if len(met_seleccion) > 0:
         selecciono_caracteristicas = True
 
-    # print('Extracción de caracteristicas en progreso')
-    # features_v = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
-    # features_a = carac.Audio(binarizo_etiquetas)
-    # for i in personas:
-    #     for j in etapas:
-    #         features_v(i, j, completo=False)
-    #         features_a(i, j, eliminar_silencios=False)
-    #         print('...')
+    print('Extracción de caracteristicas en progreso')
+    features_v = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
+    features_a = carac.Audio(binarizo_etiquetas)
+    for i in personas:
+        for j in etapas:
+            features_v(i, j, completo=False)
+            features_a(i, j, eliminar_silencios=False)
+            print('...')
     print('Completada extraccion de caracteristicas')
 
     am.ConcatenaArff('Resultado Video', personas, etapas)

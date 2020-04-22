@@ -49,8 +49,12 @@ def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zona
             file.write('@attribute hop_hist_' + zonas[j] + '[' + str(cont) + '] numeric' + '\n')
             cont = cont + 1
 
-    for i in range(0, hog_range):
-        file.write('@attribute hog_hist[' + str(i + 1) + '] numeric' + '\n')
+    # Recorro dentro de los intervalos pasados por el rango seleccionando la zona correspondiente
+    for j in range(0, len(hog_range) - 1):
+        cont = 1
+        for i in range(hog_range[j], hog_range[j + 1]):
+            file.write('@attribute hog_hist_' + zonas[j] + '[' + str(cont) + '] numeric' + '\n')
+            cont = cont + 1
 
     for i in range(0, au_range):
         file.write('@attribute au_intensity[' + str(i + 1) + '] numeric' + '\n')
@@ -77,7 +81,7 @@ def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     #Extraigo el largo de cada vector
     lbp_range = np.size(lbp_feat)
     hop_range = np.size(hop_feat)
-    hog_range = len(hog_feat)
+    hog_range = np.size(hog_feat)
     # hog_range = np.size(hog_feat)[0]
     au_range = np.size(au_feat)
 

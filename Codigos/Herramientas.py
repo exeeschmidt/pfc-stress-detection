@@ -106,7 +106,6 @@ def ResizeZona(imagen, region):
 
 
 def leeHOG(ruta_archivo):
-    # ruta_archivo = 'Procesado/Sujeto 01a.hog'
     # Devuelve la matriz con los hog por cuadro
     # El segundo parametro devuelve si en ese cuadro se extrajo correctamente
     rhf = read_hog_file.initialize()
