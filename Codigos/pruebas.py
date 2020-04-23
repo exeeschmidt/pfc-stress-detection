@@ -1,3 +1,3 @@
 import Codigos.Datos as data
 
-print(data.nro_persona)
+print(data.PATH_FFMPEG)
