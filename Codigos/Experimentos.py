@@ -13,7 +13,7 @@ import Codigos.ArffManager as am
 # met_clasificacion = np.array(['RForest', 'J48', 'SVM', 'MLP'])
 
 def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False):
-    jvm.start()
+    jvm.start(packages=True)
     selecciono_caracteristicas = False
     if len(met_seleccion) > 0:
         selecciono_caracteristicas = True
@@ -58,21 +58,21 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
     resultados = hrm.resumoPredicciones(vec_predicciones, lista_metodos)
     return resultados
 
-
-def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False):
-    jvm.start()
+def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
+                       binarizo_etiquetas=False, elimino_silencios=False):
+    jvm.start(packages=True)
     selecciono_caracteristicas = False
     if len(met_seleccion) > 0:
         selecciono_caracteristicas = True
 
-    # print('Extracción de caracteristicas en progreso')
-    # features_v = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
-    # features_a = carac.Audio(binarizo_etiquetas)
-    # for i in personas:
-    #     for j in etapas:
-    #         features_v(i, j, completo=False)
-    #         features_a(i, j, eliminar_silencios=False)
-    #         print('...')
+    print('Extracción de caracteristicas en progreso')
+    features_v = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
+    features_a = carac.Audio(binarizo_etiquetas)
+    for i in personas:
+        for j in etapas:
+            rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
+            features_v(i, j, completo=False, rangos_audibles=rang_audibles)
+            print('...')
     print('Completada extraccion de caracteristicas')
 
     am.ConcatenaArff('Resultado Video', personas, etapas)
@@ -120,5 +120,3 @@ def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_selecci
     resultados_a = hrm.resumoPredicciones(vec_predicciones_a, lista_metodos)
     resultados = hrm.segmentaResumen(resultados_v, resultados_a)
     return resultados
-
-# def MultimodalSinSilencios():

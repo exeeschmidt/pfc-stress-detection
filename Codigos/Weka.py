@@ -33,8 +33,8 @@ def SeleccionCaracteristicas(data, metodo_seleccion, sumario=False):
         else:
             met_search = 'weka.attributeSelection.BestFirst'
 
-    search = ASSearch(classname=met_search, options=["-D", "1", "-N", "5"])
-    evaluation = ASEvaluation(classname=met_eval, options=["-P", "1", "-E", "1"])
+    search = ASSearch(classname=met_search)
+    evaluation = ASEvaluation(classname=met_eval)
     attsel = AttributeSelection()
     attsel.search(search)
     attsel.evaluator(evaluation)
@@ -63,7 +63,7 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
         'J48': 'weka.classifiers.trees.J48',
         'RForest': 'weka.classifiers.trees.RandomForest',
         'RTree': 'weka.classifiers.trees.RandomTree',
-        'SVM': 'weka.classifiers.functions.SMO',
+        'SVM': 'weka.classifiers.functions.LibSVM',
         'LR': 'weka.classifiers.functions.LinearRegression',
         'MLP': 'weka.classifiers.functions.MultilayerPerceptron'
     }

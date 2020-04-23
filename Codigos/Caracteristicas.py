@@ -69,6 +69,12 @@ class Video:
         # Inicializo las clases de los métodos de extracción
         lbp = met.OriginalLBP()
         hop = met.HistogramOfPhase(plotear=False, resize=False)
+        winSize = (64, 64)
+        blockSize = (8, 8)
+        blockStride = (8, 8)
+        cellSize = (8, 8)
+        nbins = 9
+        hog = cv.HOGDescriptor(winSize, blockSize, blockStride, cellSize, nbins)
 
         for j in range(0, rango):
             # Diferencias en los nombres de archivo y llamada a open face
@@ -117,12 +123,6 @@ class Video:
             LimLandmarksY1 = archivo[0].index('y_0')
             dif_landmarks = LimLandmarksX2 - LimLandmarksX1
 
-            if self.bool_metodos[2]:
-                # Cargo el archivo con las características hog
-                hog, inds_hog = hrm.leeHOG(os.path.join(datos.PATH_PROCESADO, nombre + '.hog'))
-            else:
-                hog = np.array([])
-
             AUs = np.array([])
             if self.bool_metodos[3]:
                 # Lo mismo con las intensidades de los AUs
@@ -133,6 +133,7 @@ class Video:
             # Esto sirve para darles el nombre de zonas al guardar las características en los arff
             lbp_range = list([0])
             hop_range = list([0])
+            hog_range = list([0])
 
             # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
             # respuesta en el caso
@@ -163,6 +164,7 @@ class Video:
                     # Inicializo los vectores donde se van a ir concatenando las características de todas las zonas
                     lbp_hist = np.array([])
                     hop_hist = np.array([])
+                    hog_hist = np.array([])
 
                     # Por cada zona repito
                     for i in range(0, nro_zonas):
@@ -184,12 +186,19 @@ class Video:
                             # que tomar una región más grande, demora más
                             # start2 = time.time()
                             # Obtengo los patrones locales binarios y sus histogramas
-                            aux_hop = np.array(hrm.Histograma(hop(roi)))
+                            aux_hop = np.ravel(hop(roi))
                             if primer_frame:
                                 # A partir del anterior, le voy sumando el tamaño de este
                                 hop_range.append(hop_range[len(hop_range) - 1] + len(aux_hop))
                             hop_hist = np.concatenate([hop_hist, aux_hop])
                             # print("Tiempo HOP " + zonas[i] + ' ', time.time() - start2)
+
+                        if self.bool_metodos[2]:
+                            # Obtengo los histogramas de gradiente
+                            aux_hog = np.ravel(hog.compute(cv.resize(roi, (64, 64))))
+                            if primer_frame:
+                                hog_range.append(hog_range[len(hog_range) - 1] + len(aux_hog))
+                            hog_hist = np.concatenate([hog_hist, aux_hog])
 
                     if self.bool_metodos[3]:
                         # Obtengo las intensidades de las AUs de OpenFace
@@ -218,20 +227,10 @@ class Video:
                                 else:
                                     etiqueta = clases[0]
 
-                    # Como hog se trata desde una lista extraída del archivo, tengo que cambiar si tengo la lista, sino
-                    # le paso un vector vacío
-                    if self.bool_metodos[2]:
-                        # Si es el primer frame que genere la cabecera (lo hago aca porque tengo que saber el largo de
-                        # los vectores de características)
-                        if primer_frame:
-                            am.CabeceraArff(nombre, lbp_range, hop_range, len(hog[nro_frame - 1]), len(AUs), clases,
-                                            self.zonas)
-                        # Agrego la fila con los vectores concatenados por método
-                        am.FilaArff(nombre, lbp_hist, hop_hist, hog[nro_frame - 1], AUs, etiqueta)
-                    else:
-                        if primer_frame:
-                            am.CabeceraArff(nombre, lbp_range, hop_range, len(hog), len(AUs), clases, self.zonas)
-                        am.FilaArff(nombre, lbp_hist, hop_hist, hog, AUs, etiqueta)
+                    # Agrego la cabecera en el caso de ser el primer frame, luego agrego la fila al archivo arff
+                    if primer_frame:
+                        am.CabeceraArff(nombre, lbp_range, hop_range, hog_range, len(AUs), clases, self.zonas)
+                    am.FilaArff(nombre, lbp_hist, hop_hist, hog_hist, AUs, etiqueta)
                     if primer_frame:
                         primer_frame = False
                 # print(nro_frame)
