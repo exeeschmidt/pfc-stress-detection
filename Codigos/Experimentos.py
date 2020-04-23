@@ -5,6 +5,7 @@ import Codigos.Caracteristicas as carac
 import Codigos.Herramientas as hrm
 import Codigos.Weka as wek
 import Codigos.ArffManager as am
+import Codigos.Datos as datos
 
 
 # zonas = np.array(['ojoizq', 'ojoder', 'boca', 'nariz'])
@@ -27,7 +28,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
     print('Completada extraccion de caracteristicas')
 
     am.ConcatenaArff('Resultado Video', personas, etapas, bool_partes=False)
-    path = 'Caracteristicas' + os.sep + 'Resultado Video.arff'
+    path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
     data = wek.CargaYFiltrado(path)
 
     cant_met_seleccion = 1
@@ -58,6 +59,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
     resultados = hrm.resumoPredicciones(vec_predicciones, lista_metodos)
     return resultados
 
+
 def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
                        binarizo_etiquetas=False, elimino_silencios=False):
     jvm.start(packages=True)
@@ -77,8 +79,8 @@ def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_selecci
 
     am.ConcatenaArff('Resultado Video', personas, etapas)
     am.ConcatenaArff('Resultado Audio', personas, etapas, bool_audio=True)
-    path_v = 'Caracteristicas' + os.sep + 'Resultado Video.arff'
-    path_a = 'Caracteristicas' + os.sep + 'Resultado Audio.arff'
+    path_v = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
+    path_a = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Audio.arff')
 
     data_v = wek.CargaYFiltrado(path_v)
     data_a = wek.CargaYFiltrado(path_a)

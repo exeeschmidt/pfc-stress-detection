@@ -129,7 +129,7 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
 
     # Cambio la ruta del primer archivo a leer según si considero o no las partes
     if bool_partes:
-        path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0]), 1))
+        path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0]), str(1)))
     else:
         path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0])))
 

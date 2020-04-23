@@ -1,10 +1,10 @@
+import histogramofphase
+import imagesc
 import os
 import cv2 as cv
 import numpy as np
 import matlab
-import imagesc
 import subprocess
-import histogramofphase
 import matplotlib.pyplot as plt
 import scipy.io.wavfile as waves
 from scipy.signal import convolve2d
@@ -214,6 +214,7 @@ options are available:
 -arfftargetsfile <file> Specify the configuration include, that defines the target fields (classes)
   Default: shared/arff_targets_conf.inc
 """
+
 
 # ======================================================== LBP =========================================================
 
@@ -720,10 +721,7 @@ class FFMPEG:
         nombre_video = datos.buildVideoName(persona, etapa, parte, extension=False)
 
         # Comando base
-        # comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', ruta_actual + self._ruta_bd + os.sep + subdir + os.sep + persona, '-ab',
-        #           '195k', '-ac', '2', '-ar', '48000',
-        #           '-vn', ruta_actual + os.sep + 'Procesado' + os.sep + persona[0:nro_extension] + '.wav']
-        comando = [datos.PATH_FFMPEG, '-y', '-i', datos.buildPathVideo(persona, etapa, nombre_video, extension=True),
+        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', datos.buildPathVideo(persona, etapa, nombre_video, extension=True),
                    '-ab', '195k', '-ac', '2', '-ar', '48000', '-vn',
                    os.path.join(datos.PATH_PROCESADO, nombre_video + '.wav')]
         # comando = ['.' + os.sep + 'ffmpeg', '-version']
@@ -732,3 +730,41 @@ class FFMPEG:
         os.chdir(datos.PATH_FFMPEG)
         subprocess.run(comando, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         os.chdir(datos.PATH_CODIGOS)
+
+
+# class FFMPEG:
+#     def __init__(self):
+#         # Estos dos son la ruta de la base de datos y la ruta del directorio donde esta OpenFace
+#         self._ruta_bd = 'Base de datos'
+#         self._ruta_ffmpeg = 'Librerias' + os.sep + 'ffmpeg' + os.sep + 'bin'
+#         # ruta_ffmpeg = 'D:' + os.sep + 'Descargas' + os.sep + 'ffmpeg' + os.sep + 'bin'
+#         # ruta_bd = 'D:' + os.sep + 'Google Drive' + os.sep + 'Proyecto Final de Carrera' + os.sep + 'Base de datos'
+#
+#     def __call__(self, persona, etapa, parte):
+#         # archivo = 'Sujeto 01'
+#         # parte = '1'
+#         subdir = 'Sujeto ' + persona + os.sep + 'Etapa ' + etapa
+#         persona = 'Sujeto_' + persona + '_' + etapa + '_r' + parte + '.mp4'
+#
+#         # Extraigo la posicion donde esta la extension para despues eliminarla en el nombre del archivo de salida
+#         nro_extension = persona.index('.mp4')
+#
+#         # Estas lineas son para poder extraer la ruta actual del directorio, para brindar el parametro de donde se tiene que guardar la salida
+#         # Tambien da la posibilidad de volver al directorio actual despues de la ejecucion del comando
+#         pipe = subprocess.Popen('echo %cd%', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+#         ret = pipe.communicate()
+#         ret = str(ret[0])
+#         ruta_actual = ret[2:len(ret[0]) - 5]
+#
+#         # Comando base
+#         comando = ['.' + os.sep + 'ffmpeg', '-y', '-i',
+#                    ruta_actual + self._ruta_bd + os.sep + subdir + os.sep + persona, '-ab',
+#                    '195k', '-ac', '2', '-ar', '48000',
+#                    '-vn', ruta_actual + os.sep + 'Procesado' + os.sep + persona[0:nro_extension] + '.wav']
+#         # comando = ['.' + os.sep + 'ffmpeg', '-version']
+#
+#         # Cambio al directorio de OpenFace y se ejecuta el comando
+#         # print(comando)
+#         os.chdir(self._ruta_ffmpeg)
+#         subprocess.run(comando, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+#         os.chdir(ruta_actual)

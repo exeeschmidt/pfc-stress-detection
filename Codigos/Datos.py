@@ -21,7 +21,7 @@ def buildVideoName(persona, etapa, parte=-1, extension=False):
         video_name += '_r' + parte
     if extension:
         video_name += '.mp4'
-    return
+    return video_name
 
 
 def buildPathVideo(persona, etapa, nombre_video, extension=True):

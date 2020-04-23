@@ -82,8 +82,8 @@ class Video:
                 nombre = datos.buildVideoName(persona, etapa)
                 op_fa(persona, etapa)
             else:
-                nombre = datos.buildVideoName(persona, etapa, j+1)
-                op_fa(persona, etapa, j+1)
+                nombre = datos.buildVideoName(persona, etapa, str(j+1))
+                op_fa(persona, etapa, str(j+1))
 
             path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
 
@@ -109,7 +109,7 @@ class Video:
                 # esto está en segundos
                 tiempos = np.zeros(partes)
                 for i in range(0, partes):
-                    tiempos[i] = hrm.leeTiemposRespuesta(arch_etiquetas, persona, etapa, i+1)
+                    tiempos[i] = hrm.leeTiemposRespuesta(arch_etiquetas, persona, etapa, str(i+1))
                 # Obtengo los fps para que al multiplicarlos por los tiempos sepa en que cuadro voy del video
                 fps = frames_totales / tiempos[partes - 1]
                 # Permite saber en que respuesta voy para saber cuando cambiar la etiqueta
@@ -137,7 +137,7 @@ class Video:
 
             # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
             # respuesta en el caso
-            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, j+1)
+            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
             if self.binarizar_etiquetas:
                 if etiqueta == 'N':
                     etiqueta = clases[1]
@@ -267,14 +267,14 @@ class Audio:
 
         for j in range(0, partes):
             # Me fijo si existe el archivo
-            nombre = datos.buildVideoName(persona, etapa, j+1)
+            nombre = datos.buildVideoName(persona, etapa, str(j+1))
             path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
             if not os.path.exists(path):
                 print("Ruta de archivo incorrecta o no válida")
                 return
 
             # Leo la etiqueta correspondiente
-            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, j+1)
+            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
             if self.binarizar_etiquetas:
                 if etiqueta == 'N':
                     etiqueta = clases[1]
@@ -282,7 +282,7 @@ class Audio:
                     etiqueta = clases[0]
 
             # Ejecuto los métodos para extraer el wav del video y luego el extractor de características
-            ffmpeg(persona, etapa, j+1)
+            ffmpeg(persona, etapa, str(j+1))
 
             if eliminar_silencios:
                 # Obtengo los rangos donde hay segmentos audibles
