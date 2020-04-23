@@ -4,50 +4,19 @@ import cv2 as cv
 import read_hog_file
 
 
-def leeCSV(ruta_archivo):
+def Histograma(imagen):
     """
-    Devuelve una lista con los datos a partir de un csv.
+    Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda).
     """
-    archivo = open(ruta_archivo)
-    leido = csv.reader(archivo, delimiter=',', skipinitialspace=True)
-    leido = list(leido)
-    return leido
+    img = np.copy(imagen)
+    f = img.shape[0]
+    c = img.shape[1]
+    histo = np.zeros(256)
 
-
-def leeTiemposRespuesta(archivo, persona, etapa, parte):
-    """
-    Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
-    saltear la fila donde están las carátulas.
-    """
-    ind_persona = 1 + (int(persona) - 1) * 13
-    ind_etapa = (int(etapa) - 1) * 7
-    ind_parte = int(parte) - 1
-    segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa + ind_parte][4])
-    return segundos
-
-
-def leeHOG(ruta_archivo):
-    """
-    Devuelve dos valores. El primero corresponde a la matriz con los hog por cuadro y el segundo devuelve si en ese
-    cuadro se extrajo correctamente.
-    Ejemplo: ruta_archivo = 'Procesado/Sujeto 01a.hog'
-    """
-    rhf = read_hog_file.initialize()
-    [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
-    rhf.terminate()
-    return hog, inds
-
-
-def leeEtiqueta(archivo, persona, etapa, parte):
-    """
-    Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
-    saltear la fila donde están las carátulas.
-    """
-    ind_persona = 1 + (int(persona) - 1) * 13
-    ind_etapa = (int(etapa) - 1) * 7
-    ind_parte = int(parte) - 1
-    etiqueta = archivo[ind_persona + ind_etapa + ind_parte][5]
-    return etiqueta
+    for i in range(0, f):
+        for j in range(0, c):
+            histo[img[i, j]] = histo[img[i, j]] + 1
+    return histo
 
 
 def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
@@ -141,19 +110,50 @@ def ResizeZona(imagen, region):
     return img
 
 
-def Histograma(imagen):
+def leeHOG(ruta_archivo):
     """
-    Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda).
+    Devuelve dos valores. El primero corresponde a la matriz con los hog por cuadro y el segundo devuelve si en ese
+    cuadro se extrajo correctamente.
+    Ejemplo: ruta_archivo = 'Procesado/Sujeto 01a.hog'
     """
-    img = np.copy(imagen)
-    f = img.shape[0]
-    c = img.shape[1]
-    histo = np.zeros(256)
+    rhf = read_hog_file.initialize()
+    [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
+    rhf.terminate()
+    return hog, inds
 
-    for i in range(0, f):
-        for j in range(0, c):
-            histo[img[i, j]] = histo[img[i, j]] + 1
-    return histo
+
+def leeCSV(ruta_archivo):
+    """
+    Devuelve una lista con los datos a partir de un csv.
+    """
+    archivo = open(ruta_archivo)
+    leido = csv.reader(archivo, delimiter=',', skipinitialspace=True)
+    leido = list(leido)
+    return leido
+
+
+def leeEtiqueta(archivo, persona, etapa, parte):
+    """
+    Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
+    saltear la fila donde están las carátulas.
+    """
+    ind_persona = 1 + (int(persona) - 1) * 13
+    ind_etapa = (int(etapa) - 1) * 7
+    ind_parte = int(parte) - 1
+    etiqueta = archivo[ind_persona + ind_etapa + ind_parte][5]
+    return etiqueta
+
+
+def leeTiemposRespuesta(archivo, persona, etapa, parte):
+    """
+    Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
+    saltear la fila donde están las carátulas.
+    """
+    ind_persona = 1 + (int(persona) - 1) * 13
+    ind_etapa = (int(etapa) - 1) * 7
+    ind_parte = int(parte) - 1
+    segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa + ind_parte][4])
+    return segundos
 
 
 def prediccionCSVtoArray(predi):
