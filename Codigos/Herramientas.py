@@ -5,7 +5,9 @@ import read_hog_file
 
 
 def leeCSV(ruta_archivo):
-    # Devuelve una lista con los datos a partir de un csv
+    """
+    Devuelve una lista con los datos a partir de un csv.
+    """
     archivo = open(ruta_archivo)
     leido = csv.reader(archivo, delimiter=',', skipinitialspace=True)
     leido = list(leido)
@@ -13,8 +15,10 @@ def leeCSV(ruta_archivo):
 
 
 def leeTiemposRespuesta(archivo, persona, etapa, parte):
-    # Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
-    # El primer 1+ en persona va para saltear la fila donde estan las caratulas
+    """
+    Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
+    saltear la fila donde están las carátulas.
+    """
     ind_persona = 1 + (int(persona) - 1) * 13
     ind_etapa = (int(etapa) - 1) * 7
     ind_parte = int(parte) - 1
@@ -23,9 +27,11 @@ def leeTiemposRespuesta(archivo, persona, etapa, parte):
 
 
 def leeHOG(ruta_archivo):
-    # ruta_archivo = 'Procesado/Sujeto 01a.hog'
-    # Devuelve la matriz con los hog por cuadro
-    # El segundo parámetro devuelve si en ese cuadro se extrajo correctamente
+    """
+    Devuelve dos valores. El primero corresponde a la matriz con los hog por cuadro y el segundo devuelve si en ese
+    cuadro se extrajo correctamente.
+    Ejemplo: ruta_archivo = 'Procesado/Sujeto 01a.hog'
+    """
     rhf = read_hog_file.initialize()
     [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
     rhf.terminate()
@@ -33,8 +39,10 @@ def leeHOG(ruta_archivo):
 
 
 def leeEtiqueta(archivo, persona, etapa, parte):
-    # Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
-    # El primer 1+ en persona va para saltear la fila donde estan las caratulas
+    """
+    Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
+    saltear la fila donde están las carátulas.
+    """
     ind_persona = 1 + (int(persona) - 1) * 13
     ind_etapa = (int(etapa) - 1) * 7
     ind_parte = int(parte) - 1
@@ -43,17 +51,17 @@ def leeEtiqueta(archivo, persona, etapa, parte):
 
 
 def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
-    # Devuelve el mínimo rectángulo según la región de la cara que se elija
+    """
+    Devuelve el mínimo rectángulo según la región de la cara que se elija. Landmarks debería traer toda la lista de
+    puntos faciales de un frame. Por ejemplo desde open face: archivo[nro_frame][....]
 
-    # Landmarks debería traer toda la lista de puntos faciales de un frame
-    # Por ejemplo desde open face: archivo[nro_frame][....]
-
-    # LISTA DE NUMEROS DE PUNTOS FACIALES SEGUN LA REGION
-    # Borde de la cara 0 al 16
-    # Cejas 17 al 26 (izquierda 17 a 21 y derecha 22 a 26)
-    # Nariz 27 al 35
-    # Ojos 36 al 47 (izquierdo 36 a 41 y derecha 42 a 47)
-    # Boca 48 al 59
+    LISTA DE NUMEROS DE PUNTOS FACIALES SEGUN LA REGION
+        Borde de la cara 0 al 16
+        Cejas 17 al 26 (izquierda 17 a 21 y derecha 22 a 26)
+        Nariz 27 al 35
+        Ojos 36 al 47 (izquierdo 36 a 41 y derecha 42 a 47)
+        Boca 48 al 59
+    """
 
     switcher = {
         'cara': list(range(0, 27)),
@@ -73,7 +81,7 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
 
     for i in rango:
         punto = np.array([[int(float(landmarks_x[i])), int(float(landmarks_y[i]))]])
-        # Este if esta por problemas al ir concatenando cuando esta vacío
+        # Este if esta por problemas al ir concatenando cuando está vacío
         landmarks_propios = np.append(landmarks_propios, punto, axis=0)
 
     x1, y1, w1, h1 = cv.boundingRect(landmarks_propios)
@@ -113,8 +121,10 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
 
 
 def ResizeZona(imagen, region):
-    # Según la región lo lleva a un tamaño fijo, estos números se sacaron manualmente a partir de la observación de un
-    # frame
+    """
+    Según la región lo lleva a un tamaño fijo, estos números se sacaron manualmente a partir de la observación de un
+    frame.
+    """
     switcher = {
         'cara': (200, 200),
         'cejas': (180, 30),
@@ -132,7 +142,9 @@ def ResizeZona(imagen, region):
 
 
 def Histograma(imagen):
-    # Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda)
+    """
+    Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda).
+    """
     img = np.copy(imagen)
     f = img.shape[0]
     c = img.shape[1]
@@ -144,29 +156,25 @@ def Histograma(imagen):
     return histo
 
 
-
-
-
-
-
-
 def prediccionCSVtoArray(predi):
-    # Sirve para convertir los csv de las predicciones en vectores de numpy formato: [ [...,...,...], [....,...,...]...]
+    """
+    Sirve para convertir los csv de las predicciones en vectores de numpy formato: [ [...,...,...], [....,...,...]...]
+    """
     vec = np.array([])
     fila = np.array([])
     dato = ''
     # Recorro cada char
     for i in predi:
-        # Si es una coma o salto de linea agrego el dato a la fila y lo reinicio
+        # Si es una coma o salto de línea agrego el dato a la fila y lo reinicio
         if i == ',' or i == '\n':
             # En caso de dos comas seguidas o datos incompletos que el dato sea un espacio
             if dato == '':
                 dato = ' '
             fila = np.append(fila, dato)
             dato = ''
-            # En caso de ser salto de linea agrego la fila entera al vector y la reinicio
+            # En caso de ser salto de línea agrego la fila entera al vector y la reinicio
             if i == '\n':
-                # Como no conozco la cantidad de columnas para inicializar un vector vacio, tengo que hacer esto
+                # Como no conozco la cantidad de columnas para inicializar un vector vacío, tengo que hacer esto
                 if len(vec) == 0:
                     vec = np.array([fila])
                     fila = np.array([])
@@ -174,27 +182,27 @@ def prediccionCSVtoArray(predi):
                     vec = np.concatenate([vec, np.array([fila])], axis=0)
                     fila = np.array([])
         else:
-            # Concateno el dato apartir de los char
+            # Concateno el dato a partir de los char
             dato = dato + i
     return vec
 
+
 def segmentaPrediccion(predi_1, predi_2):
-    # Algoritmo para segmentar como en Lefter - Recognizing stress using semantics and modulation
-    # of speech and gestures
+    """
+    Algoritmo para segmentar como en Lefter - Recognizing stress using semantics and modulation of speech and gestures.
+    A partir de dos conjuntos de etiquetas, con distinto tamaño, devuelvo los dos conjuntos con las misma segmentación
+    conservando las etiquetas que se tenían. Esta nueva segmentación cuenta con segmentos de tamaño variable, por lo
+    que de cada segmento se guarda su etiqueta, y el porcentaje del total que representa.
+    Recibe dos vectores de matrices (uno con los resultados de múltiples clasificaciones de video y otro con los de
+    audio). Devuele una matriz por modalidad, donde las filas son los segmentos, la primer columna el porcentaje y luego
+    tiene una columna por las etiquetas de cada método de clasificación.
+    """
 
-    # A partir de dos conjuntos de etiquetas, con distinto tamaño, devuelvo los dos conjuntos con las misma segmentacion
-    # conservando las etiquetas que se tenian. Esta nueva segmentacion cuenta con segmentos de tamaño variable, por lo
-    # que de cada segmento se guarda su etiqueta, y el porcentaje del total que representa
-    #
-    # Recibe dos vectores de matrices (uno con los resultados de multiples clasificaciones de video y otro con los de audio)
-    # Devuele una matriz por modalidad, donde las filas son los segmentos, la primer columna el porcentaje y luego tiene
-    # una columna por las etiquetas de cada metodo de clasificacion
-
-    # Numero de metodos en cada modalidad
+    # Número de métodos en cada modalidad
     num_metodos_1 = predi_1.shape[0]
     num_metodos_2 = predi_2.shape[0]
 
-    # Cantidad de segmentos de cada modalidad mas cabecera
+    # Cantidad de segmentos de cada modalidad más cabecera
     tam_pre_1 = predi_1.shape[1]
     tam_pre_2 = predi_2.shape[1]
 
@@ -202,7 +210,7 @@ def segmentaPrediccion(predi_1, predi_2):
     tam_segmento_1 = 1 / (tam_pre_1 - 1)
     tam_segmento_2 = 1 / (tam_pre_2 - 1)
 
-    # Inicializo ambos vectores vacios con el primer numero de fila y las columnas apropiadas(etiqueta y porcentaje)
+    # Inicializo ambos vectores vacíos con el primer número de fila y las columnas apropiadas (etiqueta y porcentaje)
     new_predi_1 = np.empty((0, num_metodos_1 + 1))
     new_predi_2 = np.empty((0, num_metodos_2 + 1))
 
@@ -214,17 +222,18 @@ def segmentaPrediccion(predi_1, predi_2):
         avance = porc_1
     else:
         avance = porc_2
-    #Indices en los conjuntos iniciales
+
+    # Índices en los conjuntos iniciales
     ind1 = 0
     ind2 = 0
     while ind1 < tam_pre_1 and ind2 < tam_pre_2:
-        # Depende que porcion mas chica, avanzo unicamente esa cantidad
-        # Al avanzar la cantidad mas chica, tengo que reducir el tamaño de la otra porcion ya que estaria cortando un segmento
-        # Al indicar la porcion mas chica es porque termino ese segmento, por lo que tengo que avanzar en el indice de los
-        # conjuntos
-        # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los indices de los conjuntos
+        # Depende que porción sea más chica, avanzo unicamente esa cantidad
+        # Al avanzar la cantidad más chica tengo que reducir el tamaño de la otra porción ya que estaría cortando un
+        # segmento. Al indicar la porcion más chica es porque termino ese segmento, por lo que tengo que avanzar en el
+        # índice de los conjuntos.
+        # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los índices de los conjuntos.
 
-        # Recorro cada metodo de cada modalidad y formo una fila por modalidad
+        # Recorro cada método de cada modalidad y formo una fila por modalidad
         fila_1 = np.array([avance])
         for i in range(0, num_metodos_1):
             fila_1 = np.append(fila_1, predi_1[i, ind1, 2], axis=0)
@@ -255,20 +264,21 @@ def segmentaPrediccion(predi_1, predi_2):
             porc_2 = tam_segmento_2
     return new_predi_1, new_predi_2
 
+
 def segmentaResumen(resu_1, resu_2):
-    # Algoritmo para segmentar como en Lefter - Recognizing stress using semantics and modulation
-    # of speech and gestures
+    """
+    Algoritmo para segmentar como en Lefter - Recognizing stress using semantics and modulation of speech and gestures.
+    A partir de dos resumenes de predicciones (suponiendo que pueden ser de distinto tamaño) devuelvo los dos conjuntos
+    en un solo resumen con la misma segmentación, conservando las etiquetas que se tenían. Esta nueva segmentación
+    cuenta con segmentos de tamaño variable, por lo que de cada segmento se guarda su etiqueta y el porcentaje del total
+    que representa.
+    """
 
-    # A partir de dos resumenes de predicciones (suponiendo que pueden ser de distinto tamaño) devuelvo los dos
-    # conjuntos en un solo resumen con las misma segmentacion conservando las etiquetas que se tenian. Esta nueva
-    # segmentacion cuenta con segmentos de tamaño variable, por lo  que de cada segmento se guarda su etiqueta, y el
-    # porcentaje del total que representa
-
-    # Numero de metodos en cada modalidad
+    # Número de métodos en cada modalidad
     num_metodos_1 = resu_1.shape[1] - 1
     num_metodos_2 = resu_2.shape[1] - 1
 
-    # Cantidad de segmentos de cada modalidad mas cabecera
+    # Cantidad de segmentos de cada modalidad más cabecera
     tam_pre_1 = resu_1.shape[0]
     tam_pre_2 = resu_2.shape[0]
 
@@ -276,13 +286,13 @@ def segmentaResumen(resu_1, resu_2):
     tam_segmento_1 = 1 / (tam_pre_1 - 1)
     tam_segmento_2 = 1 / (tam_pre_2 - 1)
 
-    # Inicializo el nuevo vector que todavia no sabemos el numero de segmentos pero tendra los metodos aplicados a audio
-    # como a video mas la etiqueta mas una columna con los porcentajes que representan cada segmento
+    # Inicializo el nuevo vector que todavía no sabemos el número de segmentos, pero tendrá los métodos aplicados a
+    # audio como a video, más la etiqueta, más una columna con los porcentajes que representan cada segmento
     new_resu = np.empty((0, num_metodos_1 + num_metodos_2 + 2))
 
-    # Armo la cabecera, extraigo los metodos usados en cada resumen
-    new_resu = np.append(new_resu, np.array([np.append(np.array(['Porcentaje', 'Etiqueta']), 
-                        np.append(resu_1[0, 1:], resu_2[0, 1:]) )] ), axis=0 )
+    # Armo la cabecera, extraigo los métodos usados en cada resumen
+    new_resu = np.append(new_resu, np.array([np.append(np.array(['Porcentaje', 'Etiqueta']),
+                                                       np.append(resu_1[0, 1:], resu_2[0, 1:]))]), axis=0)
 
     # Las porciones que queden de segmento, inicialmente son igual al tamaño entero de segmento
     porc_1 = tam_segmento_1
@@ -292,23 +302,24 @@ def segmentaResumen(resu_1, resu_2):
         avance = porc_1
     else:
         avance = porc_2
-    #Indices en los conjuntos iniciales
+
+    # Índices en los conjuntos iniciales
     ind1 = 1
     ind2 = 1
     while ind1 < tam_pre_1 and ind2 < tam_pre_2:
-        # Depende que porcion mas chica, avanzo unicamente esa cantidad
-        # Al avanzar la cantidad mas chica, tengo que reducir el tamaño de la otra porcion ya que estaria cortando un segmento
-        # Al indicar la porcion mas chica es porque termino ese segmento, por lo que tengo que avanzar en el indice de los
-        # conjuntos
-        # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los indices de los conjuntos
+        # Depende que porción sea más chica, avanzo unicamente esa cantidad
+        # Al avanzar la cantidad más chica tengo que reducir el tamaño de la otra porción ya que estaría cortando un
+        # segmento. Al indicar la porcion más chica es porque termino ese segmento, por lo que tengo que avanzar en el
+        # índice de los conjuntos.
+        # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los índices de los conjuntos.
 
-        # Recorro cada metodo de cada modalidad y formo una fila por modalidad
-        # De la primera ya agrego el porcentaje y luego del primer metodo de la primer modalidad la etiqueta
+        # Recorro cada método de cada modalidad y formo una fila por modalidad
+        # De la primera ya agrego el porcentaje y luego del primer método de la primer modalidad la etiqueta
         fila_1 = np.array([avance, resu_1[ind1, 0]])
         for i in range(1, num_metodos_1 + 1):
             fila_1 = np.append(fila_1, np.array([resu_1[ind1, i]]))
 
-        fila_2 = np.empty((0))
+        fila_2 = np.empty(0)
         for i in range(1, num_metodos_2 + 1):
             fila_2 = np.append(fila_2, np.array([resu_2[ind2, i]]))
 
@@ -333,19 +344,21 @@ def segmentaResumen(resu_1, resu_2):
             porc_2 = tam_segmento_2
     return new_resu
 
-def resumoPredicciones(predi, metodos):
-    # El primer parametro representa el vector de matrices con las predicciones, el segundo un vector con el nombre del
-    # de los metodos usados. Por ejemplo, para la prediccion en la posicion 0 se utilizo 'PCA + SVM'. Con esto creo la
-    # cabecera
 
-    # Numero de metodos
+def resumoPredicciones(predi, metodos):
+    """
+    El primer parámetro representa el vector de matrices con las predicciones, el segundo un vector con el nombre de los
+    métodos usados. Por ejemplo, para la predicción en la posicion 0 se utilizó 'PCA + SVM'. Con esto creo la cabecera.
+    """
+
+    # Número de métodos
     num_metodos = predi.shape[0]
 
     # Cantidad de segmentos de cada modalidad
     tam_pre = predi.shape[1]
 
     new_predi = np.empty((tam_pre + 1, 0))
-    # Del primer metodo ademas de obtener la prediccion saco la columna con las etiquetas (iguales en todos los metodos)
+    # Del primer método además de obtener la predicción saco la columna con las etiquetas (iguales en todos los métodos)
     new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta']), predi[0, :, 1])]).T, axis=1)
     for i in range(0, num_metodos):
         new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i]]), predi[i, :, 2])]).T, axis=1)

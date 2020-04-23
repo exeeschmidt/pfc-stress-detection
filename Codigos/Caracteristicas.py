@@ -8,7 +8,7 @@ import Codigos.Herramientas as hrm
 import Codigos.Datos as datos
 
 
-# ==================================================== VIDEO ====================================================
+# ======================================================= VIDEO ========================================================
 
 class Video:
     def __init__(self, binarizar_etiquetas, zonas, metodos):
@@ -34,11 +34,12 @@ class Video:
         for i in metodos:
             self.bool_metodos[switcher.get(i)] = True
 
-    def __call__(self, persona, etapa, completo=False, rangos_audibles=list()):
+    def __call__(self, persona, etapa, completo=False, rangos_audibles=None):
         start = time.time()
 
-        elimina_silencio = False
-        if len(rangos_audibles) > 0:
+        if rangos_audibles is None:
+            elimina_silencio = False
+        else:
             elimina_silencio = True
 
         # Defino los nombres de la clase según si se binariza o no
@@ -49,10 +50,8 @@ class Video:
 
         nro_zonas = len(self.zonas)
 
-        # Creo las rutas y verifico si son valida
-        ruta_bd = 'Base de datos'
-        ruta_of = 'Librerias' + os.sep + 'openface'
-        op_fa = met.OpenFace(False, True, True, True, ruta_bd, ruta_of)
+        # Inicializo OpenFace pasando las banderas
+        op_fa = met.OpenFace(cara=False, hog=True, landmarks=True, aus=True)
 
         # Cargo el archivo con las etiquetas
         arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
@@ -61,35 +60,36 @@ class Video:
         else:
             partes = 6
 
-        #Si es por respuesta hago que recorra cada parte
+        # Si es por respuesta hago que recorra cada parte
         if completo:
             rango = 1
         else:
             rango = partes
 
-        # Inicializo las clases de los metodos de extraccion
+        # Inicializo las clases de los métodos de extracción
         lbp = met.OriginalLBP()
-        hop = met.HistogramOfPhase(False, False)
+        hop = met.HistogramOfPhase(plotear=False, resize=False)
 
         for j in range(0, rango):
             # Diferencias en los nombres de archivo y llamada a open face
             if completo:
-                nombre = 'Sujeto_' + persona + '_' + etapa
+                nombre = datos.buildVideoName(persona, etapa)
                 op_fa(persona, etapa)
             else:
-                nombre = 'Sujeto_' + persona + '_' + etapa + '_r' + str(j + 1)
-                # Ejecuto open face
-                op_fa(persona, etapa, parte=str(j + 1))
+                nombre = datos.buildVideoName(persona, etapa, j+1)
+                op_fa(persona, etapa, j+1)
 
-            path = ruta_bd + os.sep + 'Sujeto ' + persona + os.sep + 'Etapa ' + etapa + os.sep + nombre + ".mp4"
+            path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+
             if not os.path.exists(path):
-                print("Ruta de archivo incorrecta o no valida")
+                print("Ruta de archivo incorrecta o no válida")
                 return
+
             video = cv.VideoCapture(path)
             frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
 
-            # Tomo los porcentajes de los segmentos audibles y al multiplicarlos por el numero de frames totales
-            # obtengo la traduccion al rango de cuadros
+            # Se toman los porcentajes de los segmentos audibles ya que al multiplicarlos por el número de frames
+            # totales, se obtiene la traducción al rango de cuadros
             if elimina_silencio:
                 rangos_cuadros = rangos_audibles[j] * frames_totales
                 rangos_cuadros = rangos_cuadros.astype(int)
@@ -99,26 +99,27 @@ class Video:
 
             # En el completo necesito esto es para definir los intervalos de etiqueta
             if completo:
-                # Cargo los tiempos donde termina cada respuesta, para saber en que intervalos va cada etiqueta, esto esta en segundos
+                # Cargo los tiempos donde termina cada respuesta, para saber en que intervalos va cada etiqueta,
+                # esto está en segundos
                 tiempos = np.zeros(partes)
                 for i in range(0, partes):
-                    tiempos[i] = hrm.leeTiemposRespuesta(arch_etiquetas, persona, etapa, i + 1)
-                # Obtengo los fps para que al multiplicarlos por los tiempos sepa en cuadro voy del video
+                    tiempos[i] = hrm.leeTiemposRespuesta(arch_etiquetas, persona, etapa, i+1)
+                # Obtengo los fps para que al multiplicarlos por los tiempos sepa en que cuadro voy del video
                 fps = frames_totales / tiempos[partes - 1]
                 # Permite saber en que respuesta voy para saber cuando cambiar la etiqueta
                 nro_intervalo = 1
 
-            archivo = hrm.leeCSV('Procesado' + os.sep + nombre + '.csv')
+            archivo = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
 
-            # Del 0 al 67 son los landmarks, guardo los indices de inicio y fin de cada coordenada de estos
+            # Del 0 al 67 son los landmarks, guardo los índices de inicio y fin de cada coordenada de estos
             LimLandmarksX1 = archivo[0].index('x_0')
             LimLandmarksX2 = archivo[0].index('x_67')
             LimLandmarksY1 = archivo[0].index('y_0')
             dif_landmarks = LimLandmarksX2 - LimLandmarksX1
 
             if self.bool_metodos[2]:
-                # Cargo el archivo con las caracteristicas hog
-                hog, inds_hog = hrm.leeHOG('Procesado' + os.sep + nombre + '.hog')
+                # Cargo el archivo con las características hog
+                hog, inds_hog = hrm.leeHOG(os.path.join(datos.PATH_PROCESADO, nombre + '.hog'))
             else:
                 hog = np.array([])
 
@@ -128,24 +129,23 @@ class Video:
                 LimIntAUs1 = archivo[0].index('AU01_r')
                 LimIntAUs2 = archivo[0].index('AU45_r')
 
-            # Inicializo los rangos donde indican el inicio y fin de las caracteristicas en cada zona segun el metodo
-            # Esto sirve para darles el nombre de zonas al guardar las caracteristicas en los arff
+            # Inicializo los rangos donde indican el inicio y fin de las características en cada zona según el método
+            # Esto sirve para darles el nombre de zonas al guardar las características en los arff
             lbp_range = list([0])
             hop_range = list([0])
 
-            # Leo la etiqueta correspondiente a la primer parte para empezar en caso de ser completo, o la de la
+            # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
             # respuesta en el caso
-            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, j + 1)
+            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, j+1)
             if self.binarizar_etiquetas:
-                # Binarizacion
                 if etiqueta == 'N':
                     etiqueta = clases[1]
                 else:
                     etiqueta = clases[0]
 
-            # Numero de cuadro que va recorriendo
+            # Número de cuadro que va recorriendo
             nro_frame = 1
-            # Booleano para saber si es el primer frame que extraigo caracteristicas
+            # Booleano para saber si es el primer frame que extraigo características
             primer_frame = True
             # Comienzo a recorrer el video por cada cuadro
             while video.isOpened():
@@ -153,20 +153,22 @@ class Video:
                 if ret == 0:
                     break
 
-                # Si no esta eliminando silencios o encuentra que el frame se encuentra de los frames audibles, se extraen las caracteristicas
+                # Si no está eliminando silencios o encuentra que el frame se encuentra de los frames audibles, se
+                # extraen las características
                 if (not elimina_silencio) or cuadros_audibles.count(nro_frame) > 0:
                     # Obtengo los landmarks del archivo
                     lm_x = archivo[nro_frame][LimLandmarksX1:LimLandmarksX1 + dif_landmarks]
                     lm_y = archivo[nro_frame][LimLandmarksY1:LimLandmarksY1 + dif_landmarks]
 
-                    # Inicializo los vectores donde se van a ir concatenando las caracteristicas de todas las zonas
+                    # Inicializo los vectores donde se van a ir concatenando las características de todas las zonas
                     lbp_hist = np.array([])
                     hop_hist = np.array([])
 
                     # Por cada zona repito
                     for i in range(0, nro_zonas):
-                        # Recorto las roi, las expando y aplico un resize para que tengan tamaño constante en todos los frames
-                        roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i], True, True)
+                        # Recorto las roi, las expando y aplico un resize para que tengan tamaño constante en todos
+                        # los frames
+                        roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i], expandir=True, resize=True)
 
                         if self.bool_metodos[0]:
                             # Obtengo los patrones locales binarios y sus histogramas
@@ -178,7 +180,8 @@ class Video:
 
                         if self.bool_metodos[1]:
                             # Obtengo los histogramas de fase, ravel lo uso para que quede en una sola fila
-                            # DATASO: Al agregar mas regiones para analizar con HOP, aunque estan impliquen menor tamaño que tomar una region mas grande, demora mas
+                            # DATASO: Al agregar más regiones para analizar con HOP, aunque estas impliquen menor tamaño
+                            # que tomar una región más grande, demora más
                             # start2 = time.time()
                             # Obtengo los patrones locales binarios y sus histogramas
                             aux_hop = np.array(hrm.Histograma(hop(roi)))
@@ -189,39 +192,41 @@ class Video:
                             # print("Tiempo HOP " + zonas[i] + ' ', time.time() - start2)
 
                     if self.bool_metodos[3]:
-                        # Obtengo las intensidades de las AUs de openface
+                        # Obtengo las intensidades de las AUs de OpenFace
                         AUs = archivo[nro_frame][LimIntAUs1:LimIntAUs2]
 
                     # Para definir intervalo de etiqueta
                     if completo:
                         # Si paso el tiempo donde termina la respuesta, leo la siguiente etiqueta
-                        # Me fijo tambien si el nro de intervalo no es el ultimo, en ese caso debe etiquetarse hasta el final
-                        # por esa razon no debe cambiar mas de etiqueta, esta verificacion esta por si el error numerico al calcular
-                        # los fps y detecte un cambio de etiqueta unos cuadros antes de la ultima etiqueta, lo que provocaria que
-                        # quiera leer la etiqueta de un nro de intervalo que no existe
-                        if nro_frame >= tiempos[nro_intervalo - 1] * fps and nro_intervalo != -1:
+                        # Me fijo también si el nro de intervalo no es el último, en ese caso debe etiquetarse hasta el
+                        # final. Por esa razón no debe cambiar más de etiqueta. Esta verificación está por si hay error
+                        # numérico al calcular los fps y se detecte un cambio de etiqueta unos cuadros antes de la
+                        # última etiqueta, lo que provocaría que quiera leer la etiqueta de un número de intervalo que
+                        # no existe
+                        if (nro_frame >= tiempos[nro_intervalo - 1] * fps) and (nro_intervalo != -1):
                             nro_intervalo = nro_intervalo + 1
                             etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, nro_intervalo)
                             print(etiqueta)
                             # print(nro_frame)
                             print("Tiempo: ", time.time() - start)
-                            # Paso a usar nro_intervalo como bandera por si es la ultima etiqueta de la ultima parte
+                            # Paso a usar nro_intervalo como bandera por si es la última etiqueta de la última parte
                             if nro_intervalo == partes:
-                                nro_intervalo == -1
+                                nro_intervalo = -1
                             if self.binarizar_etiquetas:
-                                # Binarizacion
                                 if etiqueta == 'N':
                                     etiqueta = clases[1]
                                 else:
                                     etiqueta = clases[0]
 
-                    # Como hog se trata desde una lista extraida del archivo, tengo que cambiar si tengo la lista, sino le paso un vector vacio
+                    # Como hog se trata desde una lista extraída del archivo, tengo que cambiar si tengo la lista, sino
+                    # le paso un vector vacío
                     if self.bool_metodos[2]:
-                        # Si es el primer frame que genere la cabecera, lo hago aca porque tengo que saber el largo de los vectores de caracteristicas
+                        # Si es el primer frame que genere la cabecera (lo hago aca porque tengo que saber el largo de
+                        # los vectores de características)
                         if primer_frame:
                             am.CabeceraArff(nombre, lbp_range, hop_range, len(hog[nro_frame - 1]), len(AUs), clases,
                                             self.zonas)
-                        # Agrego la fila con los vectores concatenados por metodo
+                        # Agrego la fila con los vectores concatenados por método
                         am.FilaArff(nombre, lbp_hist, hop_hist, hog[nro_frame - 1], AUs, etiqueta)
                     else:
                         if primer_frame:
@@ -232,73 +237,68 @@ class Video:
                 # print(nro_frame)
                 nro_frame = nro_frame + 1
 
-# ===================================================================================================================
 
+# ======================================================= AUDIO ========================================================
 
 class Audio:
     def __init__(self, binarizar_etiquetas):
         self.binarizar_etiquetas = binarizar_etiquetas
 
     def __call__(self, persona, etapa, eliminar_silencios=False):
-        # Defino los nombres de la clase segun si binarizo
-        clases = np.array(['Estresado', 'No-Estresado'])
-        if not self.binarizar_etiquetas:
+        # Defino los nombres de la clase según si binarizo o no
+        if self.binarizar_etiquetas:
+            clases = np.array(['Estresado', 'No-Estresado'])
+        else:
             clases = np.array(['N', 'B', 'M', 'A'])
 
-        # Definicion de rutas e inicializaciones de los metodos
-        ruta_bd = 'Base de datos'
-
-        ruta_ffmpeg = 'Librerias' + os.sep + 'ffmpeg' + os.sep + 'bin'
-        ffmpeg = met.FFMPEG(ruta_bd, ruta_ffmpeg)
-
-        ruta_os = 'Librerias' + os.sep + 'opensmile'
-        open_smile = met.OpenSmile(False, True, ruta_os, 'IS09_emotion.conf')
-
-        eli_silencios = met.EliminaSilencios(False)
-
+        # Inicializaciones de los métodos
+        ffmpeg = met.FFMPEG()
+        open_smile = met.OpenSmile(salida_csv=False, ventaneo=True, config_file='IS09_emotion.conf')
+        eli_silencios = met.EliminaSilencios(plotear=False)
         arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
 
         # Según la etapa, distinta cantidad de partes
-        partes = 7
-        if etapa == 2:
+        if etapa == 1:
+            partes = 7
+        else:
             partes = 6
 
-        # Parametro a retornar, en caso que no se eliminen los silencios quedara la lista vacia como retorno
+        # Parámetro a retornar, en caso que no se eliminen los silencios quedará la lista vacía como retorno
         rangos_silencios = list()
 
         for j in range(0, partes):
             # Me fijo si existe el archivo
-            nombre = 'Sujeto_' + persona + '_' + etapa + '_r' + str(j + 1)
-            path = ruta_bd + os.sep + 'Sujeto ' + persona + os.sep + 'Etapa ' + etapa + os.sep + nombre + ".mp4"
+            nombre = datos.buildVideoName(persona, etapa, j+1)
+            path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
             if not os.path.exists(path):
-                print("Ruta de archivo incorrecta o no valida")
+                print("Ruta de archivo incorrecta o no válida")
                 return
 
             # Leo la etiqueta correspondiente
-            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j + 1))
+            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, j+1)
             if self.binarizar_etiquetas:
-                # Binarizacion
                 if etiqueta == 'N':
                     etiqueta = clases[1]
                 else:
                     etiqueta = clases[0]
 
-            # Ejecuto los metodos para extraer el wav del video y luego el extractor de caracteristicas
-            ffmpeg(persona, etapa, str(j + 1))
+            # Ejecuto los métodos para extraer el wav del video y luego el extractor de características
+            ffmpeg(persona, etapa, j+1)
 
             if eliminar_silencios:
                 # Obtengo los rangos donde hay segmentos audibles
-                rango = eli_silencios('Procesado' + os.sep + nombre + '.wav')
+                rango = eli_silencios(os.path.join(datos.PATH_PROCESADO, nombre + '.wav'))
                 # Utilizo la cantidad de segmentos para saber cuantos archivos se generaron
                 for i in range(0, rango.shape[0]):
-                    open_smile(nombre + '_' + str(i + 1) + '.wav', paso_ventaneo='0.3')
+                    nombre_archivo = nombre + '_' + str(i + 1)
+                    open_smile(nombre_archivo, paso_ventaneo='0.3')
                     # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                    am.AgregaEtiqueta(nombre + '_' + str(i + 1) + '.wav', clases, etiqueta)
+                    am.AgregaEtiqueta(nombre_archivo, clases, etiqueta)
                 # Lo agrego a la lista con los rangos de segmentos de cada respuesta
                 rangos_silencios.append(rango)
             else:
-                open_smile(nombre + '.wav', paso_ventaneo='0.3')
+                open_smile(nombre, paso_ventaneo='0.3')
                 # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                am.AgregaEtiqueta(nombre + '.wav', clases, etiqueta)
+                am.AgregaEtiqueta(nombre, clases, etiqueta)
 
         return rangos_silencios

@@ -5,11 +5,14 @@ from pathlib import Path
 
 ROOT_PATH = Path(__file__).parent.parent
 PATH_BD = os.path.join(ROOT_PATH, 'Base de datos')
+PATH_CARACTERISTICAS = os.path.join(ROOT_PATH, 'Caracteristicas')
 PATH_CODIGOS = os.path.join(ROOT_PATH, 'Codigos')
 PATH_LIBRERIAS = os.path.join(ROOT_PATH, 'Librerias')
-PATH_OPENFACE = os.path.join(PATH_LIBRERIAS, 'openface')
 PATH_PROCESADO = os.path.join(ROOT_PATH, 'Procesado')
-PATH_CARACTERISTICAS = os.path.join(ROOT_PATH, 'Caracteristicas')
+
+PATH_OPENFACE = os.path.join(PATH_LIBRERIAS, 'openface')
+PATH_OPENSMILE = os.path.join(PATH_LIBRERIAS, 'opensmile')
+PATH_FFMPEG = os.path.join(PATH_LIBRERIAS, 'ffmpeg', 'bin')
 
 
 def buildVideoName(persona, etapa, parte=-1, extension=False):

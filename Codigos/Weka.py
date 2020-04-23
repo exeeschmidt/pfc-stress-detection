@@ -1,7 +1,4 @@
-import traceback
-
 import numpy as np
-import weka.core.jvm as jvm
 from weka.attribute_selection import ASSearch, AttributeSelection, ASEvaluation
 from weka.classifiers import Classifier, Evaluation, PredictionOutput
 from weka.core.classes import Random
@@ -19,7 +16,7 @@ def CargaYFiltrado(path):
     remove.inputformat(data)
     data = remove.filter(data)
 
-    # Indico que la clase es el ultimo atributo
+    # Indico que la clase es el último atributo
     data.class_is_last()
     return data
 
@@ -47,17 +44,18 @@ def SeleccionCaracteristicas(data, metodo_seleccion, sumario=False):
         print("# attributes: " + str(attsel.number_attributes_selected))
         print("result string:\n" + attsel.results_string)
 
-    # Selecciono los atributos a partir de los resultados del metodo
+    # Selecciono los atributos a partir de los resultados del método
     num_att = data.num_attributes
-    # Empiezo por el final porque sino corro los indices del vector y no me sirven los resultados del metodo de seleccion
+    # Empiezo por el final porque sino corro los índices del vector y no me sirven los resultados del método de selección
     ind = num_att - 1
     for i in range(num_att, 0, -1):
-        # El where devuelve una tupla con el vector con los indices que contienen la data y el tipo
-        # Tengo en cuenta tambien la clase porque el metodo de seleccion no lo hace
+        # El where devuelve una tupla con el vector con los índices que contienen la data y el tipo
+        # Tengo en cuenta también la clase porque el método de selección no lo hace
         if np.where(attsel.selected_attributes == ind)[0].size == 0 and data.class_index != ind:
             data.delete_attribute(ind)
         ind = ind - 1
     return data
+
 
 def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
     # Opciones, metodo = 'J48', 'RForest', 'RTree', 'SVM', 'LR', 'MLP'
@@ -74,7 +72,7 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
     classifier = Classifier(classname=met_clasificacion)
     classifier.build_classifier(data_train)
 
-    # Validacion cruzada
+    # Validación cruzada
     # evl.crossvalidate_model(classifier, data, 2, Random(1), pout)
 
     pout = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
@@ -83,9 +81,10 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
 
     if sumario:
         print(evl.summary())
-    # Las columnas de predicciones (5) indican: numero de segmento, etiqueta real, etiqueta predicha, error (indica con un }
-    # '+' donde se presentan), y el porcentaje de confianza o algo asi
+    # Las columnas de predicciones (5) indican: número de segmento, etiqueta real, etiqueta predicha, error (indica con
+    # un } '+' donde se presentan), y el porcentaje de confianza o algo asi
     return pout.buffer_content()
+
 
 def ParticionaDatos(data, porcentaje=66.0):
     train, test = data.train_test_split(porcentaje, Random(1))

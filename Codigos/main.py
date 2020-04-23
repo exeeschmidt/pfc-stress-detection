@@ -1,6 +1,7 @@
-import Codigos.Experimentos as exp
 import numpy as np
 from tabulate import tabulate
+import Codigos.Experimentos as exp
+
 
 personas = np.array(['01'])
 etapas = np.array(['1'])

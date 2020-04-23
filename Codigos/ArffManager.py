@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import Codigos.Datos as datos
 
 
 # Ejemplo:
@@ -28,11 +29,13 @@ import numpy as np
 #   am.AgregarFilaArff('Prueba', lbp, hop, au, 'Estresado')
 
 def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zonas):
-    # Se ingresan el largo de cada característica (las columnas)
-    # Tiene en cuenta dos clases : Estresado y No-Estresado
+    """
+    Se ingresa el largo de cada característica (las columnas).
+    Tiene en cuenta dos clases: Estresado y No-Estresado.
+    """
 
-    # Crea el archivo si no existe, modo escritura
-    file = open('Caracteristicas' + os.sep + nombre + '.arff', 'w')
+    # Crea el archivo si no existe, en modo escritura
+    file = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.arff'), 'w')
     # La primera línea no se para que sirve pero lo vi en otros arff
     file.write('@relation VideoFeatures' + os.linesep)
 
@@ -67,12 +70,14 @@ def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zona
 
 
 def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
-    # Se ingresan las características extraídas de un cuadro y la etiqueta de clase (Estresado o No-Estresado)
+    """
+    Se ingresan las características extraídas de un cuadro y la etiqueta de clase (Estresado o No-Estresado).
+    """
 
     # Abro el archivo con cabecera, la bandera 'a' permite anexar el texto
-    file = open('Caracteristicas' + os.sep + nombre + '.arff', 'a')
+    file = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.arff'), 'a')
 
-    # Fila de caracteristicas
+    # Fila de características
     fila = ''
 
     # Extraigo el largo de cada vector
@@ -100,11 +105,14 @@ def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     file.write(fila + '\n')
 
 
-def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=False, rangos_audibles=list()):
-    # Los primeros dos parametros tienen que ser np.array de numeros
+def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=False, rangos_audibles=None):
+    """
+    Los primeros dos parametros tienen que ser np.array de números.
+    """
 
-    bool_audible = False
-    if len(rangos_audibles) > 0:
+    if rangos_audibles is None:
+        bool_audible = False
+    else:
         bool_audible = True
 
     extension = '.arff'
@@ -112,33 +120,33 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
         extension = '.wav.arff'
         bool_partes = True
 
-    # Creo el archivo que va a ser la salida de la concatenacion
-    salida = open('Caracteristicas' + os.sep + nombre_salida + '.arff', 'w')
+    # Creo el archivo que va a ser la salida de la concatenación
+    salida = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_salida + '.arff'), 'w')
 
-    # Cambio la ruta del primer archivo a leer segun si considero o no las partes
+    # Cambio la ruta del primer archivo a leer según si considero o no las partes
     if bool_partes:
-        path = 'Caracteristicas' + os.sep + 'Sujeto_' + str(sujetos[0]) + '_' + str(etapas[0]) + '_r1'
+        path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0]), 1))
     else:
-        path = 'Caracteristicas' + os.sep + 'Sujeto_' + str(sujetos[0]) + '_' + str(etapas[0])
+        path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0])))
 
     # Tomo el primer archivo para crear la cabecera
     archivo = open(path + extension, 'r')
     linea = archivo.readline()
-    # Al encontrar @data paro, pero tengo que guardar igual esta linea y otra mas en blanco antes de los datos puros
+    # Al encontrar @data paro, pero tengo que guardar igual esta línea y otra más en blanco antes de los datos puros
     while linea != '@data\n':
         salida.write(linea)
         linea = archivo.readline()
     salida.write(linea)
     linea = archivo.readline()
     salida.write(linea)
-    # Guardo la posicion en bytes de donde termina la cabecera, al tener todos los archivos la misma cabecera comienzo
+    # Guardo la posición en bytes de donde termina la cabecera, al tener todos los archivos la misma cabecera comienzo
     # leyendo siempre del mismo lugar
     data_pos = archivo.tell()
     archivo.close()
 
     for i in sujetos:
         for j in etapas:
-            # Las partes serian si se dividen en respuestas, las subpartes en caso de eliminar los silencios donde cada
+            # Las partes serían si se dividen en respuestas, las subpartes en caso de eliminar los silencios donde cada
             # respuesta a su vez se vuelve a segmentar
             partes = 1
             subpartes = 1
@@ -149,17 +157,17 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
 
             for k in range(0, partes):
                 # print('Concatenando parte: ', k)
-                base = 'Caracteristicas' + os.sep + 'Sujeto_' + str(i) + '_' + str(j)
+                base = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(i), str(j)))
 
                 if bool_audible:
                     subpartes = rangos_audibles[k].shape[0]
 
-                for l in range(0, subpartes):
+                for n in range(0, subpartes):
                     if bool_partes:
                         parte_path = '_r' + str(k + 1)
                         if bool_audible:
                             subpartes = rangos_audibles[k].shape[0]
-                            parte_path = parte_path + '_' + str(l + 1)
+                            parte_path = parte_path + '_' + str(n + 1)
                     else:
                         parte_path = ''
                     archivo = open(base + parte_path + extension, 'r')
@@ -173,29 +181,30 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
                     archivo.close()
     salida.close()
 
+
 def AgregaEtiqueta(nombre, clases, etiqueta):
     # Abro el archivo para lectura y escritura
-    archivo = open('Caracteristicas' + os.sep + nombre + '.arff', 'r+')
+    archivo = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.arff'), 'r+')
 
-    #Creo la linea como deberian ser las clases
+    # Creo la línea como deberían ser las clases
     linea_clases = '@attribute class {' + clases[0]
     for i in range(1, len(clases)):
         linea_clases = linea_clases + ',' + clases[i]
     linea_clases = linea_clases + '}'
 
-    # Recorro todas las lineas del archivo
+    # Recorro todas las líneas del archivo
     lineas = archivo.readlines()
     ind = 0
     for linea in lineas:
-        # Si encuentro la linea donde esta definida el atributo clase, la reemplazo por la linea creada antes
+        # Si encuentro la línea donde está definida el atributo clase, la reemplazo por la línea creada antes
         if linea == '@attribute class numeric\n':
             lineas[ind] = linea_clases + '\n'
-        # Busco las lineas de datos (no estan en blanco y no tienen el '@' de atributo), corto las ultimas 3 (?\n)
-        # y agrego la etiqueta mas el salto nuevamente
+        # Busco las líneas de datos (no están en blanco y no tienen el '@' de atributo), corto las últimas 3 (?\n)
+        # y agrego la etiqueta más el salto nuevamente
         elif linea[0] != '\n' and linea[0] != '@':
             lineas[ind] = linea[0:len(linea)-2] + etiqueta + '\n'
         ind = ind + 1
-    # Llevo el puntero al principio y escribo las lineas ya modificadas
+    # Llevo el puntero al principio y escribo las líneas ya modificadas
     archivo.seek(0)
     archivo.writelines(lineas)
     archivo.close()

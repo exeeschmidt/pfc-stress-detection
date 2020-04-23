@@ -1,10 +1,10 @@
+import os
+import numpy as np
+import weka.core.jvm as jvm
 import Codigos.Caracteristicas as carac
 import Codigos.Herramientas as hrm
 import Codigos.Weka as wek
-import weka.core.jvm as jvm
-import numpy as np
 import Codigos.ArffManager as am
-import os
 
 
 # zonas = np.array(['ojoizq', 'ojoder', 'boca', 'nariz'])
@@ -35,7 +35,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
         cant_met_seleccion = len(met_seleccion)
 
     vec_predicciones = np.array([])
-    lista_metodos = np.empty((0))
+    lista_metodos = np.empty(0)
 
     print('Clasificación en progreso')
     for i in range(0, cant_met_seleccion):
@@ -57,6 +57,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
 
     resultados = hrm.resumoPredicciones(vec_predicciones, lista_metodos)
     return resultados
+
 
 def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False):
     jvm.start()
@@ -88,7 +89,7 @@ def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_selecci
 
     vec_predicciones_v = np.array([])
     vec_predicciones_a = np.array([])
-    lista_metodos = np.empty((0))
+    lista_metodos = np.empty(0)
 
     print('Clasificación en progreso')
     for i in range(0, cant_met_seleccion):
