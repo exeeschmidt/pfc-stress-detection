@@ -1,3 +1,4 @@
+import os
 import csv
 import numpy as np
 import cv2 as cv
@@ -122,11 +123,14 @@ def leeHOG(ruta_archivo):
     return hog, inds
 
 
-def leeCSV(ruta_archivo):
+def leeCSV(path_archivo):
     """
     Devuelve una lista con los datos a partir de un csv.
     """
-    archivo = open(ruta_archivo)
+    if not os.path.exists(path_archivo):
+        print("Ruta de archivo incorrecta o no válida")
+        return
+    archivo = open(path_archivo)
     leido = csv.reader(archivo, delimiter=',', skipinitialspace=True)
     leido = list(leido)
     return leido

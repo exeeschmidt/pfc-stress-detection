@@ -9,7 +9,7 @@ PATH_CARACTERISTICAS = os.path.join(ROOT_PATH, 'Caracteristicas')
 PATH_CODIGOS = os.path.join(ROOT_PATH, 'Codigos')
 PATH_LIBRERIAS = os.path.join(ROOT_PATH, 'Librerias')
 PATH_PROCESADO = os.path.join(ROOT_PATH, 'Procesado')
-
+PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 PATH_OPENFACE = os.path.join(PATH_LIBRERIAS, 'openface')
 PATH_OPENSMILE = os.path.join(PATH_LIBRERIAS, 'opensmile')
 PATH_FFMPEG = os.path.join(PATH_LIBRERIAS, 'ffmpeg', 'bin')

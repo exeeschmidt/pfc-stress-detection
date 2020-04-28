@@ -11,7 +11,7 @@ import Codigos.Datos as datos
 # ======================================================= VIDEO ========================================================
 
 class Video:
-    def __init__(self, binarizar_etiquetas, zonas, metodos):
+    def __init__(self, zonas, metodos, binarizar_etiquetas=True):
         self.binarizar_etiquetas = binarizar_etiquetas
 
         # Defino las zonas donde quiero calcular lbp y hop, las opciones son las de abajo
@@ -54,7 +54,7 @@ class Video:
         op_fa = met.OpenFace(cara=False, hog=True, landmarks=True, aus=True)
 
         # Cargo el archivo con las etiquetas
-        arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
+        arch_etiquetas = hrm.leeCSV(datos.PATH_ETIQUETAS)
         if etapa == 1:
             partes = 7
         else:
@@ -254,7 +254,7 @@ class Audio:
         ffmpeg = met.FFMPEG()
         open_smile = met.OpenSmile(salida_csv=False, ventaneo=True, config_file='IS09_emotion.conf')
         eli_silencios = met.EliminaSilencios(plotear=False)
-        arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
+        arch_etiquetas = hrm.leeCSV(datos.PATH_ETIQUETAS)
 
         # Según la etapa, distinta cantidad de partes
         if etapa == 1:

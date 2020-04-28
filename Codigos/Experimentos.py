@@ -20,7 +20,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
         selecciono_caracteristicas = True
 
     print('Extracción de caracteristicas en progreso')
-    features = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
+    features = carac.Video(zonas, met_caracteristicas, binarizo_etiquetas)
     for i in personas:
         for j in etapas:
             features(i, j, completo=True)
@@ -63,17 +63,18 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
 def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
                        binarizo_etiquetas=False, elimino_silencios=False):
     jvm.start(packages=True)
-    selecciono_caracteristicas = False
     if len(met_seleccion) > 0:
         selecciono_caracteristicas = True
+    else:
+        selecciono_caracteristicas = False
 
     print('Extracción de caracteristicas en progreso')
-    features_v = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
+    features_v = carac.Video(zonas, met_caracteristicas, binarizo_etiquetas)
     features_a = carac.Audio(binarizo_etiquetas)
-    for i in personas:
-        for j in etapas:
-            rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
-            features_v(i, j, completo=False, rangos_audibles=rang_audibles)
+    for persona in personas:
+        for etapa in etapas:
+            rang_audibles = features_a(persona, etapa, eliminar_silencios=elimino_silencios)
+            features_v(persona, etapa, completo=False, rangos_audibles=rang_audibles)
             print('...')
     print('Completada extraccion de caracteristicas')
 
