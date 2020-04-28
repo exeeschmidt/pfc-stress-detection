@@ -130,7 +130,7 @@ class OpenSmile:
     def __call__(self, nombre_archivo, paso_ventaneo='0.125', shift_ini_ventaneo='0'):
         # Comando base de OpenSmile
         comando = ['SMILExtract_Release', '-C', os.path.join('config', self._config_file), '-I',
-                   os.path.join(datos.PATH_PROCESADO, nombre_archivo + '.wav')]
+                   os.path.join(datos.PATH_PROCESADO, nombre_archivo)]
 
         # Según las banderas se le agregan parámetros al comando
         if self._salida_csv:

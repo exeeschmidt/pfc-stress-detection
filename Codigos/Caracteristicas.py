@@ -11,8 +11,9 @@ import Codigos.Datos as datos
 # ======================================================= VIDEO ========================================================
 
 class Video:
-    def __init__(self, binarizar_etiquetas, zonas, metodos):
+    def __init__(self, binarizar_etiquetas, zonas, metodos, tiempo_micro=0.25):
         self.binarizar_etiquetas = binarizar_etiquetas
+        self.tiempo_micro = tiempo_micro
 
         # Defino las zonas donde quiero calcular lbp y hop, las opciones son las de abajo
         # cejas, cejaizq, cejader, ojos, ojoizq, ojoder, cara, nariz, boca
@@ -34,17 +35,17 @@ class Video:
         for i in metodos:
             self.bool_metodos[switcher.get(i)] = True
 
-    def __call__(self, persona, etapa, completo=False, rangos_audibles=None):
+    def __call__(self, persona, etapa, completo=False, rangos_audibles=list()):
         start = time.time()
 
-        if rangos_audibles is None:
+        if len(rangos_audibles) == 0:
             elimina_silencio = False
         else:
             elimina_silencio = True
 
         # Defino los nombres de la clase según si se binariza o no
         if self.binarizar_etiquetas:
-            clases = np.array(['Estresado', 'No-Estresado'])
+            clases = np.array(['N', 'E'])
         else:
             clases = np.array(['N', 'B', 'M', 'A'])
 
@@ -55,7 +56,7 @@ class Video:
 
         # Cargo el archivo con las etiquetas
         arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
-        if etapa == 1:
+        if int(etapa) == 1:
             partes = 7
         else:
             partes = 6
@@ -93,13 +94,16 @@ class Video:
 
             video = cv.VideoCapture(path)
             frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+            fps = int(video.get(cv.CAP_PROP_FPS))
+            duracion_cuadro = 1/fps
 
             # Se toman los porcentajes de los segmentos audibles ya que al multiplicarlos por el número de frames
-            # totales, se obtiene la traducción al rango de cuadros
+            # totales, se obtiene la equivalencia al rango de cuadros
             if elimina_silencio:
                 rangos_cuadros = rangos_audibles[j] * frames_totales
                 rangos_cuadros = rangos_cuadros.astype(int)
                 cuadros_audibles = list()
+                # Convierto los rangos en una lista de cuadros
                 for i in rangos_cuadros:
                     cuadros_audibles.extend(range(i[0], i[1] + 1))
 
@@ -110,10 +114,20 @@ class Video:
                 tiempos = np.zeros(partes)
                 for i in range(0, partes):
                     tiempos[i] = hrm.leeTiemposRespuesta(arch_etiquetas, persona, etapa, str(i+1))
-                # Obtengo los fps para que al multiplicarlos por los tiempos sepa en que cuadro voy del video
-                fps = frames_totales / tiempos[partes - 1]
                 # Permite saber en que respuesta voy para saber cuando cambiar la etiqueta
                 nro_intervalo = 1
+            else:
+                # Si es por respuesta necesito segmentar por el tiempo de las micro expresiones, en el completo el
+                # análisis se hace por cuadro
+
+                # Acumulador para indicar cuanto tiempo transcurre desde que empece a contar los frames para un segmento
+                acu_tiempos = 0
+                # Vector para acumular las caracteristicas y luego promediarlas
+                vec_prom = np.empty((0))
+                # Vector para guardar las etiquetas y aplicar voto
+                vec_etiquetas = list()
+                # Cuadros por segmento
+                cps = 0
 
             archivo = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
 
@@ -139,10 +153,8 @@ class Video:
             # respuesta en el caso
             etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
             if self.binarizar_etiquetas:
-                if etiqueta == 'N':
+                if etiqueta != 'N':
                     etiqueta = clases[1]
-                else:
-                    etiqueta = clases[0]
 
             # Número de cuadro que va recorriendo
             nro_frame = 1
@@ -204,8 +216,19 @@ class Video:
                         # Obtengo las intensidades de las AUs de OpenFace
                         AUs = archivo[nro_frame][LimIntAUs1:LimIntAUs2]
 
-                    # Para definir intervalo de etiqueta
+                    # Concateno todas las caracteristicas en un solo vector
+                    vec_caracteristicas = np.concatenate([lbp_hist, hop_hist, hog_hist, AUs], axis=0)
+                    vec_caracteristicas = vec_caracteristicas.astype('float64')
+
+                    # Agrego la cabecera del archivo arff en el caso de ser el primer frame
+                    if primer_frame:
+                        am.CabeceraArff(nombre, lbp_range, hop_range, hog_range, len(AUs), clases, self.zonas)
+                        primer_frame = False
+
+                    # Si es completo analisis por cuadro, sino por periodos de tiempo
                     if completo:
+                        # Para definir intervalo de etiqueta
+
                         # Si paso el tiempo donde termina la respuesta, leo la siguiente etiqueta
                         # Me fijo también si el nro de intervalo no es el último, en ese caso debe etiquetarse hasta el
                         # final. Por esa razón no debe cambiar más de etiqueta. Esta verificación está por si hay error
@@ -222,31 +245,66 @@ class Video:
                             if nro_intervalo == partes:
                                 nro_intervalo = -1
                             if self.binarizar_etiquetas:
-                                if etiqueta == 'N':
+                                if etiqueta != 'N':
                                     etiqueta = clases[1]
-                                else:
-                                    etiqueta = clases[0]
 
-                    # Agrego la cabecera en el caso de ser el primer frame, luego agrego la fila al archivo arff
-                    if primer_frame:
-                        am.CabeceraArff(nombre, lbp_range, hop_range, hog_range, len(AUs), clases, self.zonas)
-                    am.FilaArff(nombre, lbp_hist, hop_hist, hog_hist, AUs, etiqueta)
-                    if primer_frame:
-                        primer_frame = False
+                        # Agrego las caracteristicas y la etiqueta al arff
+                        am.FilaArffv2(nombre, vec_caracteristicas, etiqueta)
+                    else:
+                        # Al acumulador le agrego el tiempo del cuadro
+                        acu_tiempos = acu_tiempos + duracion_cuadro
+
+                        if acu_tiempos <= self.tiempo_micro:
+                            # Si es menor o igual debo agregar las caracteristicas al vector que luego se promedia, la etiqueta
+                            # a la lista para luego hacer voto, y el contador de cuadros por segmento
+                            if vec_prom.size == 0:
+                                vec_prom = vec_caracteristicas
+                            else:
+                                vec_prom = vec_prom + vec_caracteristicas
+                            vec_etiquetas.append(etiqueta)
+                            cps = cps + 1
+
+                        if acu_tiempos >= self.tiempo_micro:
+                            # NOTA: estamos promediando tambien la intensidad de las AUs, esto podemos volver a analizarlo
+                            # Si es mayor o igual ya el segmento termino por lo que debo promediar y agregar al arff
+                            vec_prom = vec_prom / cps
+                            am.FilaArffv2(nombre, vec_caracteristicas, self._voto(vec_etiquetas, clases))
+                            if acu_tiempos > self.tiempo_micro:
+                                # A su vez si es mayor es porque un cuadro se "corto" por lo que sus caracteristicas van a
+                                # formar parte tambien del promediado del proximo segmento
+                                acu_tiempos = acu_tiempos - self.tiempo_micro
+                                vec_prom = vec_caracteristicas
+                                vec_etiquetas = list(etiqueta)
+                                cps = 1
+                            else:
+                                # Si el segmento corta justo con el cuadro reinicio todo
+                                acu_tiempos = 0
+                                vec_prom = np.empty((0))
+                                vec_etiquetas = list()
+                                cps = 0
                 # print(nro_frame)
                 nro_frame = nro_frame + 1
+
+    @staticmethod
+    def _voto(etiquetas, clases):
+        # Simple algoritmo de votacion que devuelve la clase con mas etiquetas presentes
+        votos = np.zeros(clases.shape)
+        for i in range(0, clases.size):
+            votos[i] = etiquetas.count(clases[i])
+        return clases[votos.argmax()]
 
 
 # ======================================================= AUDIO ========================================================
 
 class Audio:
-    def __init__(self, binarizar_etiquetas):
+    def __init__(self, binarizar_etiquetas, tiempo_micro=0.25):
         self.binarizar_etiquetas = binarizar_etiquetas
+        self.tiempo_micro = tiempo_micro
 
     def __call__(self, persona, etapa, eliminar_silencios=False):
         # Defino los nombres de la clase según si binarizo o no
         if self.binarizar_etiquetas:
-            clases = np.array(['Estresado', 'No-Estresado'])
+            clases = np.array(['N', 'E'])
         else:
             clases = np.array(['N', 'B', 'M', 'A'])
 
@@ -257,7 +315,7 @@ class Audio:
         arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
 
         # Según la etapa, distinta cantidad de partes
-        if etapa == 1:
+        if int(etapa) == 1:
             partes = 7
         else:
             partes = 6
@@ -276,28 +334,26 @@ class Audio:
             # Leo la etiqueta correspondiente
             etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
             if self.binarizar_etiquetas:
-                if etiqueta == 'N':
+                if etiqueta != 'N':
                     etiqueta = clases[1]
-                else:
-                    etiqueta = clases[0]
 
             # Ejecuto los métodos para extraer el wav del video y luego el extractor de características
             ffmpeg(persona, etapa, str(j+1))
 
             if eliminar_silencios:
                 # Obtengo los rangos donde hay segmentos audibles
-                rango = eli_silencios(os.path.join(datos.PATH_PROCESADO, nombre + '.wav'))
+                rango = eli_silencios(os.path.join(datos.PATH_PROCESADO, nombre + '.wav'), tam_ventana=self.tiempo_micro)
                 # Utilizo la cantidad de segmentos para saber cuantos archivos se generaron
                 for i in range(0, rango.shape[0]):
-                    nombre_archivo = nombre + '_' + str(i + 1)
-                    open_smile(nombre_archivo, paso_ventaneo='0.3')
+                    nombre_archivo = nombre + '_' + str(i + 1) + '.wav'
+                    open_smile(nombre_archivo, paso_ventaneo=str(self.tiempo_micro))
                     # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
                     am.AgregaEtiqueta(nombre_archivo, clases, etiqueta)
                 # Lo agrego a la lista con los rangos de segmentos de cada respuesta
                 rangos_silencios.append(rango)
             else:
-                open_smile(nombre, paso_ventaneo='0.3')
+                open_smile(nombre + '.wav', paso_ventaneo=str(self.tiempo_micro))
                 # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                am.AgregaEtiqueta(nombre, clases, etiqueta)
+                am.AgregaEtiqueta(nombre + '.wav', clases, etiqueta)
 
         return rangos_silencios

@@ -30,8 +30,8 @@ import Codigos.Datos as datos
 
 def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zonas):
     """
-    Se ingresa el largo de cada característica (las columnas).
-    Tiene en cuenta dos clases: Estresado y No-Estresado.
+    A partir de los largos de los vectores de caracteristicas por separado crea lo nombres de los atributos del arff
+    A estos atributos los divide por zonas y agrega las clases
     """
 
     # Crea el archivo si no existe, en modo escritura
@@ -71,11 +71,11 @@ def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zona
 
     file.write(linea_clase)
     file.write('@data' + os.linesep)
-
+    file.close()
 
 def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     """
-    Se ingresan las características extraídas de un cuadro y la etiqueta de clase (Estresado o No-Estresado).
+    A partir de varios vectores de caracteristicas, los va agregando a una fila de un arff
     """
 
     # Abro el archivo con cabecera, la bandera 'a' permite anexar el texto
@@ -88,7 +88,6 @@ def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     lbp_range = np.size(lbp_feat)
     hop_range = np.size(hop_feat)
     hog_range = np.size(hog_feat)
-    # hog_range = np.size(hog_feat)[0]
     au_range = np.size(au_feat)
 
     # Concateno cada vector a la misma fila
@@ -107,10 +106,28 @@ def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     fila = fila + etiqueta
 
     file.write(fila + '\n')
+    file.close()
 
+def FilaArffv2(nombre, feat, etiqueta):
+    """
+    Escribe el vector de caracteristicas en una fila del arff, a diferencia de la v1 este recibe un solo vector
+    """
+    # Abro el archivo con cabecera, la bandera 'a' permite anexar el texto
+    file = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.arff'), 'a')
+
+    # Fila de características
+    fila = ''
+
+    for i in feat:
+        fila = fila + str(i) + ','
+
+    fila = fila + etiqueta
+    file.write(fila + '\n')
+    file.close()
 
 def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=False, rangos_audibles=None):
     """
+    Algoritmo para unificar en un solo arff los creados por audio o por video para cada persona, respuesta, parte o subparte
     Los primeros dos parametros tienen que ser np.array de números.
     """
 
@@ -185,8 +202,73 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
                     archivo.close()
     salida.close()
 
+def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
+    """
+    Algoritmo para unificar los resultados de audio y video en un solo arff.
+    Ya previamente concatenados por la otra version de concatena
+    """
+
+    # Creo el archivo que va a ser la salida de la concatenación
+    salida = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_salida + '.arff'), 'w')
+
+    # Cargo los archivos que se van a concatenar
+    arch1 = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo1 + '.arff'), 'r')
+    arch2 = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo2 + '.arff'), 'r')
+
+    # Creo manualmente las dos primeras lineas que describen el arff y el salto de linea
+    salida.write('@relation AudiovisualFeatures\n')
+    salida.write('\n')
+
+    # Esta variable me permite guardan las posiciones, en bytes en cada archivo, en donde comienzan los datos
+    pos_data = np.zeros(2)
+    # Leo ambas cabeceras, salteando las dos primeras lineas que traen el relation y una linea en blanco.
+    # Llego hasta data
+
+    for i in range(0, 3):
+        linea = arch1.readline()
+    # Busco hasta que encuentro el atributo de clase, despues salteo esa linea mas un blanco mas data mas otro blanco
+    while linea[0:16] != '@attribute class':
+        salida.write(linea)
+        linea = arch1.readline()
+    arch1.readline()
+    arch1.readline()
+    arch1.readline()
+    pos_data[0] = arch1.tell()
+
+    for i in range(0, 3):
+        linea = arch2.readline()
+    # Busco donde comienza data recien, tomo el atributo clase de aca
+    while linea != '@data\n':
+        salida.write(linea)
+        linea = arch2.readline()
+    arch2.readline()
+    pos_data[1] = arch2.tell()
+    # Cuando termino con la cabecera del ultimo, recien escribo la linea de data y el salto
+    salida.write('@data\n')
+    salida.write('\n')
+
+    # Ahora recorro simultaneamente las lineas de los dos archivos a la vez, estas tienen que unificarse
+    arch1.seek(pos_data[0], 0)
+    arch2.seek(pos_data[1], 0)
+    linea1 = arch1.readline()
+    linea2 = arch2.readline()
+    while linea1 != "" and linea2 != "":
+        # Recorto en cada linea del primer archivo los ultimos digitos correspondiente a la etiqueta
+        nueva_linea = linea1[0:len(linea1) - 2] + linea2
+        salida.write(nueva_linea)
+        linea1 = arch1.readline()
+        linea2 = arch2.readline()
+
+    arch1.close()
+    arch2.close()
+    salida.close()
 
 def AgregaEtiqueta(nombre, clases, etiqueta):
+    """
+    Permite agregar la etiqueta a los arff ya creados por open smile
+    NOTA: se podria tambien eliminar el atributo nombre que lo define como 'unkown' en cada linea, igual weka elimina
+        los atributos que no sean numericos
+    """
     # Abro el archivo para lectura y escritura
     archivo = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.arff'), 'r+')
 
@@ -198,17 +280,23 @@ def AgregaEtiqueta(nombre, clases, etiqueta):
 
     # Recorro todas las líneas del archivo
     lineas = archivo.readlines()
-    ind = 0
+    nuevas_lineas = list()
     for linea in lineas:
-        # Si encuentro la línea donde está definida el atributo clase, la reemplazo por la línea creada antes
-        if linea == '@attribute class numeric\n':
-            lineas[ind] = linea_clases + '\n'
-        # Busco las líneas de datos (no están en blanco y no tienen el '@' de atributo), corto las últimas 3 (?\n)
-        # y agrego la etiqueta más el salto nuevamente
-        elif linea[0] != '\n' and linea[0] != '@':
-            lineas[ind] = linea[0:len(linea)-2] + etiqueta + '\n'
-        ind = ind + 1
-    # Llevo el puntero al principio y escribo las líneas ya modificadas
+        # Elimino la linea con el atributo string innecesario
+        if linea != '@attribute name string\n':
+            # Si encuentro la línea donde está definida el atributo clase, la reemplazo por la línea creada antes
+            if linea == '@attribute class numeric\n':
+                aux = linea_clases + '\n'
+            # Busco las líneas de datos (no están en blanco y no tienen el '@' de atributo), corto las últimas 3 (?\n)
+            # y agrego la etiqueta más el salto nuevamente
+            # Empiezo en la posicion 10 para saltear el primer atributo
+            elif linea[0] != '\n' and linea[0] != '@':
+                aux = linea[10:len(linea) - 2] + etiqueta + '\n'
+            else:
+                aux = linea
+            nuevas_lineas.append(aux)
+    # Borro, llevo el puntero al principio y escribo las líneas ya modificadas
+    archivo.truncate(0)
     archivo.seek(0)
-    archivo.writelines(lineas)
+    archivo.writelines(nuevas_lineas)
     archivo.close()
