@@ -36,7 +36,8 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
         cant_met_seleccion = len(met_seleccion)
 
     vec_predicciones = np.array([])
-    lista_metodos = np.empty(0)
+    lista_metodos = list()
+    lista_errores = list()
 
     print('Clasificación en progreso')
     for i in range(0, cant_met_seleccion):
@@ -48,15 +49,16 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
         train, test = wek.ParticionaDatos(data)
         print('..')
         for j in range(0, len(met_clasificacion)):
-            lista_metodos = np.append(lista_metodos, np.array([metodo_actual + met_clasificacion[j]]))
-            predicciones = wek.Clasificacion(train, test, met_clasificacion[j])
+            lista_metodos.append(metodo_actual + met_clasificacion[j])
+            predicciones, error = wek.Clasificacion(train, test, met_clasificacion[j])
+            lista_errores.append(error)
             if len(vec_predicciones) == 0:
                 vec_predicciones = np.array([hrm.prediccionCSVtoArray(predicciones)])
             else:
                 vec_predicciones = np.concatenate([vec_predicciones, np.array([hrm.prediccionCSVtoArray(predicciones)])])
             print('...')
 
-    resultados = hrm.resumoPredicciones(vec_predicciones, lista_metodos)
+    resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_errores)
     return resultados
 
 
@@ -91,7 +93,9 @@ def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_s
 
     vec_predicciones_v = np.array([])
     vec_predicciones_a = np.array([])
-    lista_metodos = np.empty(0)
+    lista_metodos = list()
+    lista_errores_v = list()
+    lista_errores_a = list()
 
     print('Clasificación en progreso')
     for i in range(0, cant_met_seleccion):
@@ -105,9 +109,11 @@ def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_s
         train_a, test_a = wek.ParticionaDatos(data_a)
         print('..')
         for j in range(0, len(met_clasificacion)):
-            lista_metodos = np.append(lista_metodos, np.array([metodo_actual + met_clasificacion[j]]))
-            predicciones_v = wek.Clasificacion(train_v, test_v, met_clasificacion[j])
-            predicciones_a = wek.Clasificacion(train_a, test_a, met_clasificacion[j])
+            lista_metodos.append(metodo_actual + met_clasificacion[j])
+            predicciones_v, error = wek.Clasificacion(train_v, test_v, met_clasificacion[j])
+            lista_errores_v.append(error)
+            predicciones_a, error = wek.Clasificacion(train_a, test_a, met_clasificacion[j])
+            lista_errores_a.append(error)
             if len(vec_predicciones_v) == 0 or len(vec_predicciones_a) == 0:
                 vec_predicciones_v = np.array([hrm.prediccionCSVtoArray(predicciones_v)])
                 vec_predicciones_a = np.array([hrm.prediccionCSVtoArray(predicciones_a)])
@@ -118,9 +124,9 @@ def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_s
                     [vec_predicciones_a, np.array([hrm.prediccionCSVtoArray(predicciones_a)])])
             print('...')
 
-    resultados_v = hrm.resumoPredicciones(vec_predicciones_v, lista_metodos)
-    resultados_a = hrm.resumoPredicciones(vec_predicciones_a, lista_metodos)
-    resultados = hrm.segmentaResumen(resultados_v, resultados_a)
+    resultados_v = hrm.resumePredicciones(vec_predicciones_v, lista_metodos, lista_errores_v)
+    resultados_a = hrm.resumePredicciones(vec_predicciones_a, lista_metodos, lista_errores_a)
+    resultados = hrm.uneResumenes(resultados_v, resultados_a)
     return resultados
 
 def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
@@ -153,7 +159,8 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
         cant_met_seleccion = len(met_seleccion)
 
     vec_predicciones = np.array([])
-    lista_metodos = np.empty(0)
+    lista_metodos = list()
+    lista_errores = list()
 
     print('Clasificación en progreso')
     for i in range(0, cant_met_seleccion):
@@ -165,8 +172,9 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
         train, test = wek.ParticionaDatos(data)
         print('..')
         for j in range(0, len(met_clasificacion)):
-            lista_metodos = np.append(lista_metodos, np.array([metodo_actual + met_clasificacion[j]]))
-            predicciones = wek.Clasificacion(train, test, met_clasificacion[j])
+            lista_metodos.append(metodo_actual + met_clasificacion[j])
+            predicciones, error = wek.Clasificacion(train, test, met_clasificacion[j])
+            lista_errores.append(error)
             if len(vec_predicciones) == 0:
                 vec_predicciones = np.array([hrm.prediccionCSVtoArray(predicciones)])
             else:
@@ -174,6 +182,6 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
                     [vec_predicciones, np.array([hrm.prediccionCSVtoArray(predicciones)])])
             print('...')
 
-    resultados = hrm.resumoPredicciones(vec_predicciones, lista_metodos)
+    resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_errores)
     return resultados
 

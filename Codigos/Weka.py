@@ -83,7 +83,7 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
         print(evl.summary())
     # Las columnas de predicciones (5) indican: número de segmento, etiqueta real, etiqueta predicha, error (indica con
     # un } '+' donde se presentan), y el porcentaje de confianza o algo asi
-    return pout.buffer_content()
+    return pout.buffer_content(), evl.mean_absolute_error
 
 
 def ParticionaDatos(data, porcentaje=66.0):

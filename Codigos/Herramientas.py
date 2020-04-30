@@ -344,8 +344,22 @@ def segmentaResumen(resu_1, resu_2):
             porc_2 = tam_segmento_2
     return new_resu
 
+def uneResumenes(resu1, resu2):
+    """
+    A partir de los dos resumenes de predicciones los une en uno solo cortando al tamaño del menor
+    """
+    filas1 = resu1.shape[0]
+    filas2 = resu2.shape[0]
 
-def resumoPredicciones(predi, metodos):
+    if filas1 < filas2:
+        corte = filas1
+    else:
+        corte = filas2
+
+    new_resu = np.concatenate([resu1[0:corte, :], resu2[0:corte, 1:]], axis=1)
+    return new_resu
+
+def resumePredicciones(predi, metodos, errores):
     """
     El primer parámetro representa el vector de matrices con las predicciones, el segundo un vector con el nombre de los
     métodos usados. Por ejemplo, para la predicción en la posicion 0 se utilizó 'PCA + SVM'. Con esto creo la cabecera.
@@ -357,9 +371,9 @@ def resumoPredicciones(predi, metodos):
     # Cantidad de segmentos de cada modalidad
     tam_pre = predi.shape[1]
 
-    new_predi = np.empty((tam_pre + 1, 0))
+    new_predi = np.empty((tam_pre + 2, 0))
     # Del primer método además de obtener la predicción saco la columna con las etiquetas (iguales en todos los métodos)
-    new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta']), predi[0, :, 1])]).T, axis=1)
+    new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta', 'Error %']), predi[0, :, 1])]).T, axis=1)
     for i in range(0, num_metodos):
-        new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i]]), predi[i, :, 2])]).T, axis=1)
+        new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i], errores[i]*100]), predi[i, :, 2])]).T, axis=1)
     return new_predi

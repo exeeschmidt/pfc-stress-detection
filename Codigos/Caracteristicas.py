@@ -238,9 +238,9 @@ class Video:
                         if (nro_frame >= tiempos[nro_intervalo - 1] * fps) and (nro_intervalo != -1):
                             nro_intervalo = nro_intervalo + 1
                             etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, nro_intervalo)
-                            print(etiqueta)
+                            # print(etiqueta)
                             # print(nro_frame)
-                            print("Tiempo: ", time.time() - start)
+                            # print("Tiempo: ", time.time() - start)
                             # Paso a usar nro_intervalo como bandera por si es la última etiqueta de la última parte
                             if nro_intervalo == partes:
                                 nro_intervalo = -1
