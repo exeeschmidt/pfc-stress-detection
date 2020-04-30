@@ -1,4 +1,7 @@
+import os
 import numpy as np
+import cv2 as cv
+import weka.core.jvm as jvm
 import Codigos.Datos as datos
 import Codigos.Herramientas as herramientas
 import Codigos.Metodos as metodos
@@ -32,6 +35,7 @@ metodos_video = np.array(['LBP', 'HOP', 'HOG', 'AU'])
 binarizar_etiquetas = False
 completo = False
 rangos_audibles = None
+
+jvm.start(packages=True)
 feat_video = caracteristicas.Video(zonas, metodos_video, binarizar_etiquetas)  # init
 feat_video(persona, etapa, completo, rangos_audibles)                          # call
-

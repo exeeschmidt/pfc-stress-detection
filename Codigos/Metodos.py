@@ -39,9 +39,7 @@ class OpenFace:
         self._landmarks = landmarks
         self._aus = aus
 
-    def __call__(self, persona, etapa, parte=-1):
-        nombre_video = datos.buildVideoName(persona, etapa, parte)
-        path_video = datos.buildPathVideo(persona, etapa, nombre_video)
+    def __call__(self, path_video):
         path_save = datos.PATH_PROCESADO
 
         # Comando base para ejecutar OpenFace
@@ -129,7 +127,8 @@ class OpenSmile:
 
     def __call__(self, nombre_archivo, paso_ventaneo='0.125', shift_ini_ventaneo='0'):
         # Comando base de OpenSmile
-        comando = ['SMILExtract_Release', '-C', os.path.join('config', self._config_file), '-I',
+        comando = [os.path.join('bin', 'Win32', 'SMILExtract_Release.exe'), '-C',
+                   os.path.join('config', self._config_file), '-I',
                    os.path.join(datos.PATH_PROCESADO, nombre_archivo + '.wav')]
 
         # Según las banderas se le agregan parámetros al comando

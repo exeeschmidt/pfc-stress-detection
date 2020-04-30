@@ -6,7 +6,7 @@ from weka.core.converters import Loader
 from weka.filters import Filter
 
 
-def CargaYFiltrado(path):
+def cargaYFiltrado(path):
     # Cargo los datos
     loader = Loader("weka.core.converters.ArffLoader")
     data = loader.load_file(path)
@@ -21,7 +21,7 @@ def CargaYFiltrado(path):
     return data
 
 
-def SeleccionCaracteristicas(data, metodo_seleccion, sumario=False):
+def seleccionCaracteristicas(data, metodo_seleccion, sumario=False):
     # opciones: 'PSO' , 'PCA', 'Firsts'
     if metodo_seleccion == 'PCA':
         met_eval = 'weka.attributeSelection.PrincipalComponents'
@@ -57,7 +57,7 @@ def SeleccionCaracteristicas(data, metodo_seleccion, sumario=False):
     return data
 
 
-def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
+def clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
     # Opciones, metodo = 'J48', 'RForest', 'RTree', 'SVM', 'LR', 'MLP'
     switcher = {
         'J48': 'weka.classifiers.trees.J48',
@@ -86,6 +86,6 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
     return pout.buffer_content()
 
 
-def ParticionaDatos(data, porcentaje=66.0):
+def particionaDatos(data, porcentaje=66.0):
     train, test = data.train_test_split(porcentaje, Random(1))
     return train, test

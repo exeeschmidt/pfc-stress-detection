@@ -12,7 +12,7 @@ met_seleccion = np.array(['PSO', 'PCA'])
 met_clasificacion = np.array(['RForest', 'J48', 'SVM'])
 
 # resultados = exp.Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion)
-resultados = exp.MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
+resultados = exp.multimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
                                     elimino_silencios=True)
 
 headers = resultados[0, :]

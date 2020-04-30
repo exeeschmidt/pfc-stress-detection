@@ -28,7 +28,7 @@ import Codigos.Datos as datos
 #   am.CrearCabeceraArff('Prueba', n_lbp, n_hop, n_au, clases)
 #   am.AgregarFilaArff('Prueba', lbp, hop, au, 'Estresado')
 
-def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zonas):
+def cabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zonas):
     """
     Se ingresa el largo de cada característica (las columnas).
     Tiene en cuenta dos clases: Estresado y No-Estresado.
@@ -73,7 +73,7 @@ def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zona
     file.write('@data' + os.linesep)
 
 
-def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
+def filaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     """
     Se ingresan las características extraídas de un cuadro y la etiqueta de clase (Estresado o No-Estresado).
     """
@@ -109,7 +109,7 @@ def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     file.write(fila + '\n')
 
 
-def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=False, rangos_audibles=None):
+def concatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=False, rangos_audibles=None):
     """
     Los primeros dos parametros tienen que ser np.array de números.
     """
@@ -186,7 +186,7 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
     salida.close()
 
 
-def AgregaEtiqueta(nombre, clases, etiqueta):
+def agregaEtiqueta(nombre, clases, etiqueta):
     # Abro el archivo para lectura y escritura
     archivo = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.arff'), 'r+')
 

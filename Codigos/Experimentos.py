@@ -13,7 +13,7 @@ import Codigos.Datos as datos
 # met_seleccion = np.array(['Firsts', 'PCA'])
 # met_clasificacion = np.array(['RForest', 'J48', 'SVM', 'MLP'])
 
-def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False):
+def unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False):
     jvm.start(packages=True)
     selecciono_caracteristicas = False
     if len(met_seleccion) > 0:
@@ -27,9 +27,9 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
             print('...')
     print('Completada extraccion de caracteristicas')
 
-    am.ConcatenaArff('Resultado Video', personas, etapas, bool_partes=False)
+    am.concatenaArff('Resultado Video', personas, etapas, bool_partes=False)
     path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
-    data = wek.CargaYFiltrado(path)
+    data = wek.cargaYFiltrado(path)
 
     cant_met_seleccion = 1
     if selecciono_caracteristicas:
@@ -42,14 +42,14 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
     for i in range(0, cant_met_seleccion):
         if selecciono_caracteristicas:
             metodo_actual = met_seleccion[i] + ' + '
-            data = wek.SeleccionCaracteristicas(data, met_seleccion[i])
+            data = wek.seleccionCaracteristicas(data, met_seleccion[i])
         else:
             metodo_actual = ''
-        train, test = wek.ParticionaDatos(data)
+        train, test = wek.particionaDatos(data)
         print('..')
         for j in range(0, len(met_clasificacion)):
             lista_metodos = np.append(lista_metodos, np.array([metodo_actual + met_clasificacion[j]]))
-            predicciones = wek.Clasificacion(train, test, met_clasificacion[j])
+            predicciones = wek.clasificacion(train, test, met_clasificacion[j])
             if len(vec_predicciones) == 0:
                 vec_predicciones = np.array([hrm.prediccionCSVtoArray(predicciones)])
             else:
@@ -60,7 +60,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
     return resultados
 
 
-def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
+def multimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
                        binarizo_etiquetas=False, elimino_silencios=False):
     jvm.start(packages=True)
     if len(met_seleccion) > 0:
@@ -78,13 +78,13 @@ def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_selecci
             print('...')
     print('Completada extraccion de caracteristicas')
 
-    am.ConcatenaArff('Resultado Video', personas, etapas)
-    am.ConcatenaArff('Resultado Audio', personas, etapas, bool_audio=True)
+    am.concatenaArff('Resultado Video', personas, etapas)
+    am.concatenaArff('Resultado Audio', personas, etapas, bool_audio=True)
     path_v = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
     path_a = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Audio.arff')
 
-    data_v = wek.CargaYFiltrado(path_v)
-    data_a = wek.CargaYFiltrado(path_a)
+    data_v = wek.cargaYFiltrado(path_v)
+    data_a = wek.cargaYFiltrado(path_a)
 
     cant_met_seleccion = 1
     if selecciono_caracteristicas:
@@ -98,17 +98,17 @@ def MultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_selecci
     for i in range(0, cant_met_seleccion):
         if selecciono_caracteristicas:
             metodo_actual = met_seleccion[i] + ' + '
-            data_v = wek.SeleccionCaracteristicas(data_v, met_seleccion[i])
-            data_a = wek.SeleccionCaracteristicas(data_a, met_seleccion[i])
+            data_v = wek.seleccionCaracteristicas(data_v, met_seleccion[i])
+            data_a = wek.seleccionCaracteristicas(data_a, met_seleccion[i])
         else:
             metodo_actual = ''
-        train_v, test_v = wek.ParticionaDatos(data_v)
-        train_a, test_a = wek.ParticionaDatos(data_a)
+        train_v, test_v = wek.particionaDatos(data_v)
+        train_a, test_a = wek.particionaDatos(data_a)
         print('..')
         for j in range(0, len(met_clasificacion)):
             lista_metodos = np.append(lista_metodos, np.array([metodo_actual + met_clasificacion[j]]))
-            predicciones_v = wek.Clasificacion(train_v, test_v, met_clasificacion[j])
-            predicciones_a = wek.Clasificacion(train_a, test_a, met_clasificacion[j])
+            predicciones_v = wek.clasificacion(train_v, test_v, met_clasificacion[j])
+            predicciones_a = wek.clasificacion(train_a, test_a, met_clasificacion[j])
             if len(vec_predicciones_v) == 0 or len(vec_predicciones_a) == 0:
                 vec_predicciones_v = np.array([hrm.prediccionCSVtoArray(predicciones_v)])
                 vec_predicciones_a = np.array([hrm.prediccionCSVtoArray(predicciones_a)])

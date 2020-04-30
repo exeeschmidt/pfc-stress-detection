@@ -54,8 +54,8 @@ class Video:
         op_fa = met.OpenFace(cara=False, hog=True, landmarks=True, aus=True)
 
         # Cargo el archivo con las etiquetas
-        arch_etiquetas = hrm.leeCSV(datos.PATH_ETIQUETAS)
-        if etapa == 1:
+        arch_etiquetas = hrm.readCSV(datos.PATH_ETIQUETAS)
+        if int(etapa) == 1:
             partes = 7
         else:
             partes = 6
@@ -77,19 +77,20 @@ class Video:
         hog = cv.HOGDescriptor(winSize, blockSize, blockStride, cellSize, nbins)
 
         for j in range(0, rango):
-            # Diferencias en los nombres de archivo y llamada a open face
+            # Diferencias en los nombres de archivo
             if completo:
                 nombre = datos.buildVideoName(persona, etapa)
-                op_fa(persona, etapa)
             else:
                 nombre = datos.buildVideoName(persona, etapa, str(j+1))
-                op_fa(persona, etapa, str(j+1))
 
+            # Armo el path del archivo y verifico si existe o es válido
             path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
-
             if not os.path.exists(path):
                 print("Ruta de archivo incorrecta o no válida")
                 return
+
+            # Llamada a open face
+            op_fa(path)
 
             video = cv.VideoCapture(path)
             frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
@@ -109,13 +110,13 @@ class Video:
                 # esto está en segundos
                 tiempos = np.zeros(partes)
                 for i in range(0, partes):
-                    tiempos[i] = hrm.leeTiemposRespuesta(arch_etiquetas, persona, etapa, str(i+1))
+                    tiempos[i] = hrm.readTiemposRespuesta(arch_etiquetas, persona, etapa, str(i+1))
                 # Obtengo los fps para que al multiplicarlos por los tiempos sepa en que cuadro voy del video
                 fps = frames_totales / tiempos[partes - 1]
                 # Permite saber en que respuesta voy para saber cuando cambiar la etiqueta
                 nro_intervalo = 1
 
-            archivo = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
+            archivo = hrm.readCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
 
             # Del 0 al 67 son los landmarks, guardo los índices de inicio y fin de cada coordenada de estos
             LimLandmarksX1 = archivo[0].index('x_0')
@@ -137,7 +138,7 @@ class Video:
 
             # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
             # respuesta en el caso
-            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
+            etiqueta = hrm.readEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
             if self.binarizar_etiquetas:
                 if etiqueta == 'N':
                     etiqueta = clases[1]
@@ -156,7 +157,7 @@ class Video:
 
                 # Si no está eliminando silencios o encuentra que el frame se encuentra de los frames audibles, se
                 # extraen las características
-                if (not elimina_silencio) or cuadros_audibles.count(nro_frame) > 0:
+                if (not elimina_silencio) or (cuadros_audibles.count(nro_frame) > 0):
                     # Obtengo los landmarks del archivo
                     lm_x = archivo[nro_frame][LimLandmarksX1:LimLandmarksX1 + dif_landmarks]
                     lm_y = archivo[nro_frame][LimLandmarksY1:LimLandmarksY1 + dif_landmarks]
@@ -170,18 +171,18 @@ class Video:
                     for i in range(0, nro_zonas):
                         # Recorto las roi, las expando y aplico un resize para que tengan tamaño constante en todos
                         # los frames
-                        roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i], expandir=True, resize=True)
+                        roi = hrm.getROI(frame, lm_x, lm_y, self.zonas[i], expandir=True, resize=True)
 
                         if self.bool_metodos[0]:
                             # Obtengo los patrones locales binarios y sus histogramas
-                            aux_lbp = np.array(hrm.Histograma(lbp(roi)))
+                            aux_lbp = np.array(hrm.getHistograma(lbp(roi)))
                             if primer_frame:
                                 # A partir del anterior, le voy sumando el tamaño de este
                                 lbp_range.append(lbp_range[len(lbp_range) - 1] + len(aux_lbp))
                             lbp_hist = np.concatenate([lbp_hist, aux_lbp])
 
                         if self.bool_metodos[1]:
-                            # Obtengo los histogramas de fase, ravel lo uso para que quede en una sola fila
+                            # Obtengo los histogramas de fase (ravel se usa para que quede en una sola fila)
                             # DATASO: Al agregar más regiones para analizar con HOP, aunque estas impliquen menor tamaño
                             # que tomar una región más grande, demora más
                             # start2 = time.time()
@@ -214,7 +215,7 @@ class Video:
                         # no existe
                         if (nro_frame >= tiempos[nro_intervalo - 1] * fps) and (nro_intervalo != -1):
                             nro_intervalo = nro_intervalo + 1
-                            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, nro_intervalo)
+                            etiqueta = hrm.readEtiqueta(arch_etiquetas, persona, etapa, nro_intervalo)
                             print(etiqueta)
                             # print(nro_frame)
                             print("Tiempo: ", time.time() - start)
@@ -229,8 +230,8 @@ class Video:
 
                     # Agrego la cabecera en el caso de ser el primer frame, luego agrego la fila al archivo arff
                     if primer_frame:
-                        am.CabeceraArff(nombre, lbp_range, hop_range, hog_range, len(AUs), clases, self.zonas)
-                    am.FilaArff(nombre, lbp_hist, hop_hist, hog_hist, AUs, etiqueta)
+                        am.cabeceraArff(nombre, lbp_range, hop_range, hog_range, len(AUs), clases, self.zonas)
+                    am.filaArff(nombre, lbp_hist, hop_hist, hog_hist, AUs, etiqueta)
                     if primer_frame:
                         primer_frame = False
                 # print(nro_frame)
@@ -254,7 +255,7 @@ class Audio:
         ffmpeg = met.FFMPEG()
         open_smile = met.OpenSmile(salida_csv=False, ventaneo=True, config_file='IS09_emotion.conf')
         eli_silencios = met.EliminaSilencios(plotear=False)
-        arch_etiquetas = hrm.leeCSV(datos.PATH_ETIQUETAS)
+        arch_etiquetas = hrm.readCSV(datos.PATH_ETIQUETAS)
 
         # Según la etapa, distinta cantidad de partes
         if etapa == 1:
@@ -274,7 +275,7 @@ class Audio:
                 return
 
             # Leo la etiqueta correspondiente
-            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
+            etiqueta = hrm.readEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
             if self.binarizar_etiquetas:
                 if etiqueta == 'N':
                     etiqueta = clases[1]
@@ -292,12 +293,12 @@ class Audio:
                     nombre_archivo = nombre + '_' + str(i + 1)
                     open_smile(nombre_archivo, paso_ventaneo='0.3')
                     # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                    am.AgregaEtiqueta(nombre_archivo, clases, etiqueta)
+                    am.agregaEtiqueta(nombre_archivo, clases, etiqueta)
                 # Lo agrego a la lista con los rangos de segmentos de cada respuesta
                 rangos_silencios.append(rango)
             else:
                 open_smile(nombre, paso_ventaneo='0.3')
                 # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                am.AgregaEtiqueta(nombre, clases, etiqueta)
+                am.agregaEtiqueta(nombre, clases, etiqueta)
 
         return rangos_silencios
