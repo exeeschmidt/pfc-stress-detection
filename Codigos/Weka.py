@@ -4,7 +4,7 @@ from weka.classifiers import Classifier, Evaluation, PredictionOutput
 from weka.core.classes import Random
 from weka.core.converters import Loader
 from weka.filters import Filter
-
+from weka.core.dataset import Instances
 
 def CargaYFiltrado(path):
     # Cargo los datos
@@ -21,8 +21,10 @@ def CargaYFiltrado(path):
     return data
 
 
-def SeleccionCaracteristicas(data, metodo_seleccion, sumario=False):
+def SeleccionCaracteristicas(data2, metodo_seleccion, sumario=False):
     # opciones: 'PSO' , 'PCA', 'Firsts'
+    data = Instances.copy_instances(data2)
+
     if metodo_seleccion == 'PCA':
         met_eval = 'weka.attributeSelection.PrincipalComponents'
         met_search = 'weka.attributeSelection.Ranker'
@@ -82,7 +84,7 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
     if sumario:
         print(evl.summary())
     # Las columnas de predicciones (5) indican: número de segmento, etiqueta real, etiqueta predicha, error (indica con
-    # un } '+' donde se presentan), y el porcentaje de confianza o algo asi
+    # un '+' donde se presentan), y el porcentaje de confianza o algo asi
     return pout.buffer_content(), evl.mean_absolute_error
 
 

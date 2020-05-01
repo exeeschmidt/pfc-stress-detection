@@ -29,7 +29,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
 
     am.ConcatenaArff('Resultado Video', personas, etapas, bool_partes=False)
     path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
-    data = wek.CargaYFiltrado(path)
+    data_ori = wek.CargaYFiltrado(path)
 
     cant_met_seleccion = 1
     if selecciono_caracteristicas:
@@ -43,9 +43,10 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
     for i in range(0, cant_met_seleccion):
         if selecciono_caracteristicas:
             metodo_actual = met_seleccion[i] + ' + '
-            data = wek.SeleccionCaracteristicas(data, met_seleccion[i])
+            data = wek.SeleccionCaracteristicas(data_ori, met_seleccion[i])
         else:
             metodo_actual = ''
+            data = data_ori
         train, test = wek.ParticionaDatos(data)
         print('..')
         for j in range(0, len(met_clasificacion)):
@@ -84,8 +85,8 @@ def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_s
     path_v = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
     path_a = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Audio.arff')
 
-    data_v = wek.CargaYFiltrado(path_v)
-    data_a = wek.CargaYFiltrado(path_a)
+    data_v_ori = wek.CargaYFiltrado(path_v)
+    data_a_ori = wek.CargaYFiltrado(path_a)
 
     cant_met_seleccion = 1
     if selecciono_caracteristicas:
@@ -101,10 +102,12 @@ def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_s
     for i in range(0, cant_met_seleccion):
         if selecciono_caracteristicas:
             metodo_actual = met_seleccion[i] + ' + '
-            data_v = wek.SeleccionCaracteristicas(data_v, met_seleccion[i])
-            data_a = wek.SeleccionCaracteristicas(data_a, met_seleccion[i])
+            data_v = wek.SeleccionCaracteristicas(data_v_ori, met_seleccion[i])
+            data_a = wek.SeleccionCaracteristicas(data_a_ori, met_seleccion[i])
         else:
             metodo_actual = ''
+            data_v = data_v_ori
+            data_a = data_a_ori
         train_v, test_v = wek.ParticionaDatos(data_v)
         train_a, test_a = wek.ParticionaDatos(data_a)
         print('..')
@@ -150,9 +153,9 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
     am.ConcatenaArff('Resultado Audio', personas, etapas, bool_audio=True)
     am.ConcatenaArffv2('Resultado Audiovisual', 'Resultado Audio', 'Resultado Video')
 
-    path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
+    path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Audiovisual.arff')
 
-    data = wek.CargaYFiltrado(path)
+    data_ori = wek.CargaYFiltrado(path)
 
     cant_met_seleccion = 1
     if selecciono_caracteristicas:
@@ -166,9 +169,10 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
     for i in range(0, cant_met_seleccion):
         if selecciono_caracteristicas:
             metodo_actual = met_seleccion[i] + ' + '
-            data = wek.SeleccionCaracteristicas(data, met_seleccion[i])
+            data = wek.SeleccionCaracteristicas(data_ori, met_seleccion[i])
         else:
             metodo_actual = ''
+            data = data_ori
         train, test = wek.ParticionaDatos(data)
         print('..')
         for j in range(0, len(met_clasificacion)):
