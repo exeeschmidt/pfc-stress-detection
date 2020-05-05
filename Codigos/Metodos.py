@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import scipy.io.wavfile as waves
 from scipy.signal import convolve2d
 import Codigos.Datos as datos
+import Codigos.Herramientas as hrm
 
 # Contiene todos los métodos a utilizar, donde las implementaciones de cada uno comienzan con un bookmark.
 
@@ -182,12 +183,14 @@ AVEC challenge sets):
 -lldarffoutput, -D <filename> Enables LLD frame-wise output to ARFF.
 -appendarfflld <0/1> Set to 1 to append to existing ARFF output file. Default is overwrite (0).
 -timestamparfflld <0/1> Set to 0 to disable timestamp output to ARFF in second column. Default 1.
--lldarfftargetsfile <file> Specify the configuration include, that defines the target fields (classes) Default: shared/arff_targets_conf.inc
+-lldarfftargetsfile <file> Specify the configuration include, that defines the target fields (classes) 
+    Default: shared/arff_targets_conf.inc
 -----------------------------
 -output, -O <filename> The default output option. To ARFF file format, for feature summaries.
 -appendarff <0/1> Set to 0 to not append to existing ARFF output file. Default is append (1).
 -timestamparff <0/1> Set to 1 to enable timestamp output to ARFF in second column. Default 0.
--arfftargetsfile <file> Specify the configuration include, that defines the target fields (classes) Default: shared/arff_targets_conf.inc
+-arfftargetsfile <file> Specify the configuration include, that defines the target fields (classes) 
+    Default: shared/arff_targets_conf.inc
 -----------------------------
 -csvoutput <filename> The default output option. To CSV file format, for feature summaries.
 -appendcsv <0/1> Set to 0 to not append to existing CSV output file. Default is append (1).
@@ -717,10 +720,11 @@ class FFMPEG:
     def __call__(self, persona, etapa, parte):
         # archivo = 'Sujeto 01'
         # parte = '1'
-        nombre_video = datos.buildVideoName(persona, etapa, parte, extension=False)
+        nombre_video = hrm.buildVideoName(persona, etapa, parte, extension=False)
 
         # Comando base
-        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', datos.buildPathVideo(persona, etapa, nombre_video, extension=True),
+        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i',
+                   hrm.buildPathVideo(persona, etapa, nombre_video, extension=True),
                    '-ab', '195k', '-ac', '2', '-ar', '48000', '-vn',
                    os.path.join(datos.PATH_PROCESADO, nombre_video + '.wav')]
         # comando = ['.' + os.sep + 'ffmpeg', '-version']

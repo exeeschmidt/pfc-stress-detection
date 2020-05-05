@@ -20,8 +20,8 @@ etapa = '1'
 parte = '1'
 
 """ DATOS """
-nombre_video = datos.buildVideoName(persona, etapa, parte, extension=False)
-path_video = datos.buildPathVideo(persona, etapa, nombre_video, extension=True)
+nombre_video = herramientas.buildVideoName(persona, etapa, parte, extension=False)
+path_video = herramientas.buildPathVideo(persona, etapa, nombre_video, extension=True)
 
 # METODOS
 """OpenFace"""

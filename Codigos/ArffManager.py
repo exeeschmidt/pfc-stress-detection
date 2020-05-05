@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import Codigos.Datos as datos
+import Codigos.Herramientas as hrm
 
 
 # Ejemplo:
@@ -130,8 +131,8 @@ def filaArffv2(nombre, feat, etiqueta):
 
 def concatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=False, rangos_audibles=None):
     """
-    Algoritmo para unificar en un solo arff los creados por audio o por video para cada persona, respuesta, parte o subparte
-    Los primeros dos parametros tienen que ser np.array de números.
+    Algoritmo para unificar en un solo arff los creados por audio o por video para cada persona, respuesta, parte o
+    subparte. Los primeros dos parametros tienen que ser np.array de números.
     """
 
     if rangos_audibles is None:
@@ -149,9 +150,9 @@ def concatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
 
     # Cambio la ruta del primer archivo a leer según si considero o no las partes
     if bool_partes:
-        path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0]), str(1)))
+        path = os.path.join(datos.PATH_CARACTERISTICAS, hrm.buildVideoName(str(sujetos[0]), str(etapas[0]), str(1)))
     else:
-        path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0])))
+        path = os.path.join(datos.PATH_CARACTERISTICAS, hrm.buildVideoName(str(sujetos[0]), str(etapas[0])))
 
     # Tomo el primer archivo para crear la cabecera
     archivo = open(path + extension, 'r')
@@ -181,7 +182,7 @@ def concatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
 
             for k in range(0, partes):
                 # print('Concatenando parte: ', k)
-                base = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(i), str(j)))
+                base = os.path.join(datos.PATH_CARACTERISTICAS, hrm.buildVideoName(str(i), str(j)))
 
                 if bool_audible:
                     subpartes = rangos_audibles[k].shape[0]

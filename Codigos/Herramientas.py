@@ -3,6 +3,7 @@ import csv
 import numpy as np
 import cv2 as cv
 import read_hog_file
+import Codigos.Datos as datos
 
 
 def getHistograma(imagen):
@@ -382,5 +383,22 @@ def resumePredicciones(predi, metodos, errores):
     # Del primer método además de obtener la predicción saco la columna con las etiquetas (iguales en todos los métodos)
     new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta', 'Error %']), predi[0, :, 1])]).T, axis=1)
     for i in range(0, num_metodos):
-        new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i], errores[i]*100]), predi[i, :, 2])]).T, axis=1)
+        new_predi = np.append(new_predi,
+                              np.array([np.append(np.array([metodos[i], errores[i]*100]), predi[i, :, 2])]).T, axis=1)
     return new_predi
+
+
+def buildVideoName(persona, etapa, parte=-1, extension=False):
+    video_name = 'Sujeto_' + persona + '_' + etapa
+    if parte != -1:
+        video_name += '_r' + parte
+    if extension:
+        video_name += '.mp4'
+    return video_name
+
+
+def buildPathVideo(persona, etapa, nombre_video, extension=True):
+    path_video = os.path.join(datos.PATH_BD, 'Sujeto ' + persona, 'Etapa ' + etapa, nombre_video)
+    if extension:
+        path_video += '.mp4'
+    return path_video

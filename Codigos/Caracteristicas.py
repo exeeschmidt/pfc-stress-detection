@@ -1,7 +1,6 @@
 import os
 import cv2 as cv
 import numpy as np
-import time
 import Codigos.ArffManager as am
 import Codigos.Metodos as met
 import Codigos.Herramientas as hrm
@@ -36,8 +35,6 @@ class Video:
             self.bool_metodos[switcher.get(i)] = True
 
     def __call__(self, persona, etapa, completo=False, rangos_audibles=None):
-        start = time.time()
-
         if rangos_audibles is None:
             rangos_audibles = list()
 
@@ -83,12 +80,12 @@ class Video:
         for j in range(0, rango):
             # Diferencias en los nombres de archivo
             if completo:
-                nombre = datos.buildVideoName(persona, etapa)
+                nombre = hrm.buildVideoName(persona, etapa)
             else:
-                nombre = datos.buildVideoName(persona, etapa, str(j+1))
+                nombre = hrm.buildVideoName(persona, etapa, str(j+1))
 
             # Armo el path del archivo y verifico si existe o es válido
-            path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+            path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
             if not os.path.exists(path):
                 print("Ruta de archivo incorrecta o no válida")
                 return
@@ -259,8 +256,8 @@ class Video:
                         acu_tiempos = acu_tiempos + duracion_cuadro
 
                         if acu_tiempos <= self.tiempo_micro:
-                            # Si es menor o igual debo agregar las caracteristicas al vector que luego se promedia, la etiqueta
-                            # a la lista para luego hacer voto, y el contador de cuadros por segmento
+                            # Si es menor o igual debo agregar las caracteristicas al vector que luego se promedia, la
+                            # etiqueta a la lista para luego hacer voto, y el contador de cuadros por segmento
                             if vec_prom.size == 0:
                                 vec_prom = vec_caracteristicas
                             else:
@@ -269,13 +266,14 @@ class Video:
                             cps = cps + 1
 
                         if acu_tiempos >= self.tiempo_micro:
-                            # NOTA: estamos promediando tambien la intensidad de las AUs, esto podemos volver a analizarlo
+                            # NOTA: estamos promediando tambien la intensidad de las AUs, esto podemos volver a
+                            # analizarlo
                             # Si es mayor o igual ya el segmento termino por lo que debo promediar y agregar al arff
                             vec_prom = vec_prom / cps
                             am.filaArffv2(nombre, vec_prom, self._voto(vec_etiquetas, clases))
                             if acu_tiempos > self.tiempo_micro:
-                                # A su vez si es mayor es porque un cuadro se "corto" por lo que sus caracteristicas van a
-                                # formar parte tambien del promediado del proximo segmento
+                                # A su vez si es mayor es porque un cuadro se "corto" por lo que sus caracteristicas van
+                                # a formar parte tambien del promediado del proximo segmento
                                 acu_tiempos = acu_tiempos - self.tiempo_micro
                                 vec_prom = vec_caracteristicas
                                 vec_etiquetas = list(etiqueta)
@@ -329,8 +327,8 @@ class Audio:
 
         for j in range(0, partes):
             # Me fijo si existe el archivo
-            nombre = datos.buildVideoName(persona, etapa, str(j+1))
-            path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+            nombre = hrm.buildVideoName(persona, etapa, str(j+1))
+            path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
             if not os.path.exists(path):
                 print("Ruta de archivo incorrecta o no válida")
                 return
@@ -346,7 +344,8 @@ class Audio:
 
             if eliminar_silencios:
                 # Obtengo los rangos donde hay segmentos audibles
-                rango = eli_silencios(os.path.join(datos.PATH_PROCESADO, nombre + '.wav'), tam_ventana=self.tiempo_micro)
+                rango = eli_silencios(os.path.join(datos.PATH_PROCESADO, nombre + '.wav'),
+                                      tam_ventana=self.tiempo_micro)
                 # Utilizo la cantidad de segmentos para saber cuantos archivos se generaron
                 for i in range(0, rango.shape[0]):
                     nombre_archivo = nombre + '_' + str(i + 1) + '.wav'
