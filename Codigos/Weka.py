@@ -22,7 +22,7 @@ def cargaYFiltrado(path):
     return data
 
 
-def SeleccionCaracteristicas(data2, metodo_seleccion, sumario=False):
+def seleccionCaracteristicas(data2, metodo_seleccion, sumario=False):
     # opciones: 'PSO' , 'PCA', 'Firsts'
     data = Instances.copy_instances(data2)
 

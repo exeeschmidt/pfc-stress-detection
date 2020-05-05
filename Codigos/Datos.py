@@ -23,6 +23,7 @@ def buildVideoName(persona, etapa, parte=-1, extension=False):
         video_name += '.mp4'
     return video_name
 
+
 def buildPathVideo(persona, etapa, nombre_video, extension=True):
     path_video = os.path.join(PATH_BD, 'Sujeto ' + persona, 'Etapa ' + etapa, nombre_video)
     if extension:

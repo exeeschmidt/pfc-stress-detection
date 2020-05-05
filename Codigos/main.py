@@ -12,9 +12,9 @@ met_seleccion = np.array(['PSO', 'PCA'])
 # met_seleccion = np.array([])
 met_clasificacion = np.array(['RForest', 'J48', 'SVM'])
 
-resultados = exp.Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion)
-# resultados = exp.PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, elimino_silencios=False)
-# resultados = exp.SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion)
+# resultados = exp.unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion)
+resultados = exp.primerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, elimino_silencios=True)
+# resultados = exp.segundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion)
 headers = resultados[0, :]
 table = tabulate(resultados[1:, :], headers, tablefmt="fancy_grid")
 print(table)

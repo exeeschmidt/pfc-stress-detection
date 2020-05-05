@@ -129,7 +129,7 @@ class OpenSmile:
         # Comando base de OpenSmile
         comando = [os.path.join('bin', 'Win32', 'SMILExtract_Release.exe'), '-C',
                    os.path.join('config', self._config_file), '-I',
-                   os.path.join(datos.PATH_PROCESADO, nombre_archivo + '.wav')]
+                   os.path.join(datos.PATH_PROCESADO, nombre_archivo)]
 
         # Según las banderas se le agregan parámetros al comando
         if self._salida_csv:
@@ -640,8 +640,8 @@ class EliminaSilencios:
         """ 
         El método se basa en calcular un puntaje con todas las características para cada muestra y compararlo con un
         umbral. En caso de ser mayor que el umbral se descarta. Los puntajes por muestra se calculan en base a la
-        energía y los cruces por cero. Al tener múltiples canales para cada numero de muestra se promedia el puntaje de
-        todos los canales en ese número de muestra. 
+        energía y los cruces por cero. Al tener múltiples canales para cada número de muestra se promedia el puntaje de
+        todos los canales en ese número de muestra.
         """
 
         nro_iteraciones = int(nro_muestras / (tam_ventana * muestreo))

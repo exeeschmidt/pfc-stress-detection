@@ -11,7 +11,7 @@ import Codigos.Datos as datos
 # ======================================================= VIDEO ========================================================
 
 class Video:
-    def __init__(self, zonas, metodos, binarizar_etiquetas=True):
+    def __init__(self, zonas, metodos, binarizar_etiquetas=True, tiempo_micro=0.25):
         self.binarizar_etiquetas = binarizar_etiquetas
         self.tiempo_micro = tiempo_micro
 
@@ -35,8 +35,11 @@ class Video:
         for i in metodos:
             self.bool_metodos[switcher.get(i)] = True
 
-    def __call__(self, persona, etapa, completo=False, rangos_audibles=list()):
+    def __call__(self, persona, etapa, completo=False, rangos_audibles=None):
         start = time.time()
+
+        if rangos_audibles is None:
+            rangos_audibles = list()
 
         if len(rangos_audibles) == 0:
             elimina_silencio = False
@@ -124,7 +127,7 @@ class Video:
                 # Acumulador para indicar cuanto tiempo transcurre desde que empece a contar los frames para un segmento
                 acu_tiempos = 0
                 # Vector para acumular las caracteristicas y luego promediarlas
-                vec_prom = np.empty((0))
+                vec_prom = np.empty(0)
                 # Vector para guardar las etiquetas y aplicar voto
                 vec_etiquetas = list()
                 # Cuadros por segmento
@@ -223,7 +226,7 @@ class Video:
 
                     # Agrego la cabecera del archivo arff en el caso de ser el primer frame
                     if primer_frame:
-                        am.CabeceraArff(nombre, lbp_range, hop_range, hog_range, len(AUs), clases, self.zonas)
+                        am.cabeceraArff(nombre, lbp_range, hop_range, hog_range, len(AUs), clases, self.zonas)
                         primer_frame = False
 
                     # Si es completo analisis por cuadro, sino por periodos de tiempo
@@ -250,7 +253,7 @@ class Video:
                                     etiqueta = clases[1]
 
                         # Agrego las caracteristicas y la etiqueta al arff
-                        am.FilaArffv2(nombre, vec_caracteristicas, etiqueta)
+                        am.filaArffv2(nombre, vec_caracteristicas, etiqueta)
                     else:
                         # Al acumulador le agrego el tiempo del cuadro
                         acu_tiempos = acu_tiempos + duracion_cuadro
@@ -269,7 +272,7 @@ class Video:
                             # NOTA: estamos promediando tambien la intensidad de las AUs, esto podemos volver a analizarlo
                             # Si es mayor o igual ya el segmento termino por lo que debo promediar y agregar al arff
                             vec_prom = vec_prom / cps
-                            am.FilaArffv2(nombre, vec_caracteristicas, self._voto(vec_etiquetas, clases))
+                            am.filaArffv2(nombre, vec_prom, self._voto(vec_etiquetas, clases))
                             if acu_tiempos > self.tiempo_micro:
                                 # A su vez si es mayor es porque un cuadro se "corto" por lo que sus caracteristicas van a
                                 # formar parte tambien del promediado del proximo segmento
@@ -278,9 +281,9 @@ class Video:
                                 vec_etiquetas = list(etiqueta)
                                 cps = 1
                             else:
-                                # Si el segmento corta justo con el cuadro reinicio todo
+                                # Si el segmento corta justo con el cuadro reinicio all
                                 acu_tiempos = 0
-                                vec_prom = np.empty((0))
+                                vec_prom = np.empty(0)
                                 vec_etiquetas = list()
                                 cps = 0
                 # print(nro_frame)
@@ -355,6 +358,6 @@ class Audio:
             else:
                 open_smile(nombre + '.wav', paso_ventaneo=str(self.tiempo_micro))
                 # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                am.AgregaEtiqueta(nombre + '.wav', clases, etiqueta)
+                am.agregaEtiqueta(nombre + '.wav', clases, etiqueta)
 
         return rangos_silencios

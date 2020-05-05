@@ -20,22 +20,22 @@ etapa = '1'
 parte = '1'
 
 """ DATOS """
-# nombre_video = datos.buildVideoName(persona, etapa, parte, extension=False)
-# path_video = datos.buildPathVideo(persona, etapa, nombre_video, extension=True)
+nombre_video = datos.buildVideoName(persona, etapa, parte, extension=False)
+path_video = datos.buildPathVideo(persona, etapa, nombre_video, extension=True)
 
 # METODOS
 """OpenFace"""
-# open_face = metodos.OpenFace(cara=True, hog=True, landmarks=True, aus=True)
-# open_face(persona, etapa, parte)
+open_face = metodos.OpenFace(cara=True, hog=True, landmarks=True, aus=True)
+open_face(path_video)
 
 # CARACTERISTICAS
 # Video
-zonas = np.array(['cejaizq', 'cejader', 'ojoizq', 'ojoder', 'boca'])
-metodos_video = np.array(['LBP', 'HOP', 'HOG', 'AU'])
-binarizar_etiquetas = False
-completo = False
-rangos_audibles = None
-
-jvm.start(packages=True)
-feat_video = caracteristicas.Video(zonas, metodos_video, binarizar_etiquetas)  # init
-feat_video(persona, etapa, completo, rangos_audibles)                          # call
+# zonas = np.array(['cejaizq', 'cejader', 'ojoizq', 'ojoder', 'boca'])
+# metodos_video = np.array(['LBP', 'HOP', 'HOG', 'AU'])
+# binarizar_etiquetas = False
+# completo = False
+# rangos_audibles = None
+#
+# jvm.start(packages=True)
+# feat_video = caracteristicas.Video(zonas, metodos_video, binarizar_etiquetas)  # init
+# feat_video(persona, etapa, completo, rangos_audibles)                          # call

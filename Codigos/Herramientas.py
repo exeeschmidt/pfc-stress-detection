@@ -349,6 +349,7 @@ def segmentaResumen(resu_1, resu_2):
             porc_2 = tam_segmento_2
     return new_resu
 
+
 def uneResumenes(resu1, resu2):
     """
     A partir de los dos resumenes de predicciones los une en uno solo cortando al tamaño del menor
@@ -363,6 +364,7 @@ def uneResumenes(resu1, resu2):
 
     new_resu = np.concatenate([resu1[0:corte, :], resu2[0:corte, 1:]], axis=1)
     return new_resu
+
 
 def resumePredicciones(predi, metodos, errores):
     """

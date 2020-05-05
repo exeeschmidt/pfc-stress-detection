@@ -109,7 +109,8 @@ def filaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     file.write(fila + '\n')
     file.close()
 
-def FilaArffv2(nombre, feat, etiqueta):
+
+def filaArffv2(nombre, feat, etiqueta):
     """
     Escribe el vector de caracteristicas en una fila del arff, a diferencia de la v1 este recibe un solo vector
     """
@@ -125,6 +126,7 @@ def FilaArffv2(nombre, feat, etiqueta):
     fila = fila + etiqueta
     file.write(fila + '\n')
     file.close()
+
 
 def concatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=False, rangos_audibles=None):
     """
@@ -203,7 +205,8 @@ def concatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
                     archivo.close()
     salida.close()
 
-def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
+
+def concatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
     """
     Algoritmo para unificar los resultados de audio y video en un solo arff.
     Ya previamente concatenados por la otra version de concatena
@@ -264,7 +267,8 @@ def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
     arch2.close()
     salida.close()
 
-def AgregaEtiqueta(nombre, clases, etiqueta):
+
+def agregaEtiqueta(nombre, clases, etiqueta):
     """
     Permite agregar la etiqueta a los arff ya creados por open smile
     NOTA: se podria tambien eliminar el atributo nombre que lo define como 'unkown' en cada linea, igual weka elimina
