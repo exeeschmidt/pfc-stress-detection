@@ -265,243 +265,6 @@ class OriginalLBP(LocalDescriptor):
         return "OriginalLBP (neighbors=%s)" % self._neighbors
 
 
-class ExtendedLBP(LocalDescriptor):
-    def __init__(self, radius=1, neighbors=8):
-        LocalDescriptor.__init__(self, neighbors=neighbors)
-        self._radius = radius
-
-    def __call__(self, X):
-        X = np.asanyarray(X)
-        ysize, xsize = X.shape
-        # define circle
-        angles = 2 * np.pi / self._neighbors
-        theta = np.arange(0, 2 * np.pi, angles)
-        # calculate sample points on circle with radius
-        sample_points = np.array([-np.sin(theta), np.cos(theta)]).T
-        sample_points *= self._radius
-        # find boundaries of the sample points
-        miny = min(sample_points[:, 0])
-        maxy = max(sample_points[:, 0])
-        minx = min(sample_points[:, 1])
-        maxx = max(sample_points[:, 1])
-        # calculate block size, each LBP code is computed within a block of size bsizey*bsizex
-        blocksizey = np.ceil(max(maxy, 0)) - np.floor(min(miny, 0)) + 1
-        blocksizex = np.ceil(max(maxx, 0)) - np.floor(min(minx, 0)) + 1
-        # coordinates of origin (0,0) in the block
-        origy = int(0 - np.floor(min(miny, 0)))
-        origx = int(0 - np.floor(min(minx, 0)))
-        # calculate output image size
-        dx = int(xsize - blocksizex + 1)
-        dy = int(ysize - blocksizey + 1)
-        # get center points
-        C = np.asarray(X[origy:origy + dy, origx:origx + dx], dtype=np.uint8)
-        result = np.zeros((dy, dx), dtype=np.uint32)
-        for i, p in enumerate(sample_points):
-            # get coordinate in the block
-            y, x = p + (origy, origx)
-            # Calculate floors, ceils and rounds for the x and y.
-            fx = int(np.floor(x))
-            fy = int(np.floor(y))
-            cx = int(np.ceil(x))
-            cy = int(np.ceil(y))
-            # calculate fractional part
-            ty = y - fy
-            tx = x - fx
-            # calculate interpolation weights
-            w1 = (1 - tx) * (1 - ty)
-            w2 = tx * (1 - ty)
-            w3 = (1 - tx) * ty
-            w4 = tx * ty
-            # calculate interpolated image
-            N = w1 * X[fy:fy + dy, fx:fx + dx]
-            np.add(N, w2 * X[fy:fy + dy, cx:cx + dx], out=N, casting="unsafe")
-            np.add(N, w3 * X[cy:cy + dy, fx:fx + dx], out=N, casting="unsafe")
-            np.add(N, w4 * X[cy:cy + dy, cx:cx + dx], out=N, casting="unsafe")
-            # update LBP codes
-            D = N >= C
-            np.add(result, (1 << i) * D, out=result, casting="unsafe")
-        return result
-
-    @property
-    def radius(self):
-        return self._radius
-
-    def __repr__(self):
-        return "ExtendedLBP (neighbors=%s, radius=%s)" % (self._neighbors, self._radius)
-
-
-class VarLBP(LocalDescriptor):
-    def __init__(self, radius=1, neighbors=8):
-        LocalDescriptor.__init__(self, neighbors=neighbors)
-        self._radius = radius
-
-    def __call__(self, X):
-        X = np.asanyarray(X)
-        ysize, xsize = X.shape
-        # define circle
-        angles = 2 * np.pi / self._neighbors
-        theta = np.arange(0, 2 * np.pi, angles)
-        # calculate sample points on circle with radius
-        sample_points = np.array([-np.sin(theta), np.cos(theta)]).T
-        sample_points *= self._radius
-        # find boundaries of the sample points
-        miny = min(sample_points[:, 0])
-        maxy = max(sample_points[:, 0])
-        minx = min(sample_points[:, 1])
-        maxx = max(sample_points[:, 1])
-        # calculate block size, each LBP code is computed within a block of size bsizey*bsizex
-        blocksizey = np.ceil(max(maxy, 0)) - np.floor(min(miny, 0)) + 1
-        blocksizex = np.ceil(max(maxx, 0)) - np.floor(min(minx, 0)) + 1
-        # coordinates of origin (0,0) in the block
-        origy = 0 - np.floor(min(miny, 0))
-        origx = 0 - np.floor(min(minx, 0))
-        # Calculate output image size:
-        dx = int(xsize - blocksizex + 1)
-        dy = int(ysize - blocksizey + 1)
-        # Allocate memory for online variance calculation:
-        mean = np.zeros((dy, dx), dtype=np.float32)
-        # delta = np.zeros((dy, dx), dtype=np.float32)
-        m2 = np.zeros((dy, dx), dtype=np.float32)
-        # Holds the resulting variance matrix:
-        # result = np.zeros((dy, dx), dtype=np.float32)
-        for i, p in enumerate(sample_points):
-            # Get coordinate in the block:
-            y, x = p + (origy, origx)
-            # Calculate floors, ceils and rounds for the x and y:
-            fx = int(np.floor(x))
-            fy = int(np.floor(y))
-            cx = int(np.ceil(x))
-            cy = int(np.ceil(y))
-            # Calculate fractional part:
-            ty = y - fy
-            tx = x - fx
-            # Calculate interpolation weights:
-            w1 = (1 - tx) * (1 - ty)
-            w2 = tx * (1 - ty)
-            w3 = (1 - tx) * ty
-            w4 = tx * ty
-            # Calculate interpolated image:
-            N = w1 * X[fy:fy + dy, fx:fx + dx]
-            np.add(N, w2 * X[fy:fy + dy, cx:cx + dx], out=N, casting="unsafe")
-            np.add(N, w3 * X[cy:cy + dy, fx:fx + dx], out=N, casting="unsafe")
-            np.add(N, w4 * X[cy:cy + dy, cx:cx + dx], out=N, casting="unsafe")
-            # Update the matrices for Online Variance calculation
-            # (http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#On-line_algorithm):
-            delta = N - mean
-            mean = mean + delta / float(i + 1)
-            m2 = m2 + delta * (N - mean)
-        # Optional estimate for variance is m2/self._neighbors:
-        result = m2 / (self._neighbors - 1)
-        return result
-
-    @property
-    def radius(self):
-        return self._radius
-
-    def __repr__(self):
-        return "VarLBP (neighbors=%s, radius=%s)" % (self._neighbors, self._radius)
-
-
-class LPQ(LocalDescriptor):
-    """ 
-    This implementation of Local Phase Quantization (LPQ) is a 1:1 adaption of the original implementation by Ojansivu 
-    V & Heikkilä J, which is available at: http://www.cse.oulu.fi/CMV/Downloads/LPQMatlab. So all credit goes to them.
-    Reference:
-        Ojansivu V & Heikkilä J (2008) Blur insensitive texture classification
-        using local phase quantization. Proc. Image and Signal Processing
-        (ICISP 2008), Cherbourg-Octeville, France, 5099:236-243.
-        Copyright 2008 by Heikkilä & Ojansivu
-    """
-
-    def __init__(self, radius=3):
-        LocalDescriptor.__init__(self, neighbors=8)
-        self._radius = radius
-
-    @staticmethod
-    def euc_dist(X):
-        Y = X = X.astype(np.float)
-        XX = np.sum(X * X, axis=1)[:, np.newaxis]
-        YY = XX.T
-        distances = np.dot(X, Y.T)
-        distances *= -2
-        distances += XX
-        distances += YY
-        np.maximum(distances, 0, distances)
-        distances.flat[::distances.shape[0] + 1] = 0.0
-        return np.sqrt(distances)
-
-    def __call__(self, X):
-        f = 1.0
-        x = np.arange(-self._radius, self._radius + 1)
-        n = len(x)
-        rho = 0.95
-        [xp, yp] = np.meshgrid(np.arange(1, (n + 1)), np.arange(1, (n + 1)))
-        pp = np.concatenate((xp, yp)).reshape(2, -1)
-        dd = self.euc_dist(pp.T)  # squareform(pdist(...)) would do the job, too...
-        C = np.power(rho, dd)
-
-        w0 = (x * 0.0 + 1.0)
-        w1 = np.exp(-2 * np.pi * 1j * x * f / n)
-        w2 = np.conj(w1)
-
-        q1 = w0.reshape(-1, 1) * w1
-        q2 = w1.reshape(-1, 1) * w0
-        q3 = w1.reshape(-1, 1) * w1
-        q4 = w1.reshape(-1, 1) * w2
-
-        u1 = np.real(q1)
-        u2 = np.imag(q1)
-        u3 = np.real(q2)
-        u4 = np.imag(q2)
-        u5 = np.real(q3)
-        u6 = np.imag(q3)
-        u7 = np.real(q4)
-        u8 = np.imag(q4)
-
-        M = np.array(
-            [u1.flatten(), u2.flatten(), u3.flatten(), u4.flatten(), u5.flatten(), u6.flatten(), u7.flatten(),
-             u8.flatten()])
-
-        D = np.dot(np.dot(M, C), M.T)
-        U, S, V = np.linalg.svd(D)
-
-        Qa = convolve2d(convolve2d(X, w0.reshape(-1, 1), mode='same'), w1.reshape(1, -1), mode='same')
-        Qb = convolve2d(convolve2d(X, w1.reshape(-1, 1), mode='same'), w0.reshape(1, -1), mode='same')
-        Qc = convolve2d(convolve2d(X, w1.reshape(-1, 1), mode='same'), w1.reshape(1, -1), mode='same')
-        Qd = convolve2d(convolve2d(X, w1.reshape(-1, 1), mode='same'), w2.reshape(1, -1), mode='same')
-
-        Fa = np.real(Qa)
-        Ga = np.imag(Qa)
-        Fb = np.real(Qb)
-        Gb = np.imag(Qb)
-        Fc = np.real(Qc)
-        Gc = np.imag(Qc)
-        Fd = np.real(Qd)
-        Gd = np.imag(Qd)
-
-        # REEMPLACE matrix(..) por array(...) y flatten(1) por flatten()
-        F = np.array(
-            [Fa.flatten(), Ga.flatten(), Fb.flatten(), Gb.flatten(), Fc.flatten(), Gc.flatten(), Fd.flatten(),
-             Gd.flatten()])
-        G = np.dot(V.T, F)
-
-        t = 0
-
-        # Calculate the LPQ Patterns:
-        B = (G[0, :] >= t) * 1 + (G[1, :] >= t) * 2 + (G[2, :] >= t) * 4 + (G[3, :] >= t) * 8 + (
-                    G[4, :] >= t) * 16 + (
-                    G[5, :] >= t) * 32 + (G[6, :] >= t) * 64 + (G[7, :] >= t) * 128
-
-        return np.reshape(B, np.shape(Fa))
-
-    @property
-    def radius(self):
-        return self._radius
-
-    def __repr__(self):
-        return "LPQ (neighbors=%s, radius=%s)" % (self._neighbors, self._radius)
-
-
 # ======================================================== HOP =========================================================
 
 class HistogramOfPhase:
@@ -565,27 +328,23 @@ class EliminaSilencios:
         nro_extension = path.index('.wav')
 
         # Lectura, casteo y extracción de características básicas de la señal
+        if not os.path.exists(path):
+            print("Ruta de archivo incorrecta o no válida")
+            return
         muestreo, sonido = waves.read(path)
         sonido = sonido.astype(np.int64)
         nro_muestras = sonido.shape[0]
-        canales = sonido.shape[1]
 
-        # Inicializaciones
-        nro_iteraciones = int(nro_muestras / (tam_ventana * muestreo))
-        energia = np.zeros([nro_iteraciones, canales])
-        cruces = np.zeros([nro_iteraciones, canales])
-
-        # Cálculo de las energías y cruces por cero en todas las ventanas de todos los canales de sonido
-        for i in range(0, canales):
-            energia[:, i], cruces[:, i] = self._calcula_caract(sonido[:, i], nro_muestras, tam_ventana, muestreo)
-
-        # Devolución del vector de booleanos, indicando con verdadero cada porción que sea audible
-        vector_audible = self._metodo1(energia, cruces, umbral, nro_muestras, tam_ventana, muestreo, canales)
+        # Devolución del vector de 0 y 1, indicando con verdadero cada porción que sea audible
+        vector_audible = self._metodo1(self, sonido, umbral, tam_ventana, muestreo)
 
         if self._plotear:
             plt.plot(sonido)
             plt.plot(vector_audible * np.max(sonido), 'r')
             plt.show()
+    
+        # Lo casteo a booleanos
+        vector_audible = vector_audible.astype(np.bool)
 
         # Guardo los rangos donde se encuentran los segmentos audibles como tuplas
         # Aprovecho también para cortar el audio y guardarlos en wavs por separado
@@ -595,25 +354,17 @@ class EliminaSilencios:
         path = path[0:nro_extension]
         for i in range(0, vector_audible.size):
             # Si es audible y no estaba activada la bandera, comienza un tramo
-            if vector_audible[i] is True and activo is False:
+            if vector_audible[i] and not activo:
                 activo = True
                 comienzo = i
             # Si estaba activo el rango y deja de ser audible, o si sigue siendo audible pero llego al final del vector,
             # guardo el comienzo y el fin del rango
-            elif (vector_audible[i] is False and activo is True) or \
-                    (vector_audible[i] is True and i == vector_audible.size - 1):
+            elif (not vector_audible[i] and activo ) or \
+                    (vector_audible[i] and i == vector_audible.size - 1):
                 activo = False
                 rangos_audibles = np.append(rangos_audibles, np.array([np.array([comienzo, i])]), axis=0)
-                # Según la cantidad de canales recorto uno solo o los recorto por separado para luego unirlos
-                if canales == 1:
-                    recortado = sonido[comienzo:i, 0]
-                else:
-                    # aux1 = sonido[comienzo:i, 0]
-                    # aux2 = sonido[comienzo:i, 1]
-                    # recortado = np.empty((0, i-comienzo))
-                    # recortado = np.append(recortado, np.array([aux1]), axis=0)
-                    # recortado = np.append(recortado, np.array([aux2]), axis=0)
-                    recortado = sonido[comienzo:i]
+                # Recorto el sonido segun el rango audible
+                recortado = sonido[comienzo:i]
                 # Guardo el wav
                 recortado = recortado.astype(np.int16)
                 waves.write(path + '_' + str(rangos_audibles.shape[0]) + '.wav', muestreo, recortado)
@@ -623,31 +374,32 @@ class EliminaSilencios:
 
         return rangos_audibles
 
-    def _calcula_caract(self, sonido, nro_muestras, tam_ventana, muestreo):
-        nro_iteraciones = int(nro_muestras / (tam_ventana * muestreo))
-        energia = np.zeros([nro_iteraciones])
-        cruces = np.zeros([nro_iteraciones])
-
-        # Calcula la energía y cruces en todas las ventanas
-        for i in range(0, nro_iteraciones):
-            inicia = int(i * tam_ventana * muestreo)
-            termina = int(inicia + tam_ventana * muestreo)
-            energia[i] = self._energy(sonido[inicia:termina])
-            cruces[i] = self._cruces_por_cero(sonido[inicia:termina])
-        return energia, cruces
-
     @staticmethod
-    def _metodo1(energia, cruces, umbral, nro_muestras, tam_ventana, muestreo, canales):
+    def _metodo1(self, sonido, umbral, tam_ventana, muestreo):
         """ 
         El método se basa en calcular un puntaje con todas las características para cada muestra y compararlo con un
-        umbral. En caso de ser mayor que el umbral se descarta. Los puntajes por muestra se calculan en base a la
-        energía y los cruces por cero. Al tener múltiples canales para cada numero de muestra se promedia el puntaje de
-        todos los canales en ese número de muestra. 
+        umbral. En caso de ser mayor que el umbral se considera audible. Los puntajes por muestra se calculan en base
+        a la energía y los cruces por cero. En caso de tener múltiples canales para cada numero de muestra se promedia
+        el puntaje de todos los canales en ese número de muestra.
         """
 
+        # Inicializaciones
+        nro_muestras = sonido.shape[0]
+        canales = sonido.shape[1]
         nro_iteraciones = int(nro_muestras / (tam_ventana * muestreo))
-        puntajes = np.zeros([nro_iteraciones, canales])
-        vector = np.zeros([nro_muestras])
+        energia = np.zeros((nro_iteraciones, canales))
+        cruces = np.zeros((nro_iteraciones, canales))
+
+        # Calcula la energía y cruces en todas las ventanas y canales
+        for j in range(0, canales):
+            for i in range(0, nro_iteraciones):
+                ini= int(i * tam_ventana * muestreo)
+                fin = int(ini + tam_ventana * muestreo)
+                energia[i, j] = self._energia(sonido[ini:fin, j])
+                cruces[i, j] = self._crucesporcero(sonido[ini:fin, j])
+
+        puntajes = np.zeros((nro_iteraciones, canales))
+        vector_audible = np.zeros(nro_muestras)
 
         for j in range(0, canales):
             # Normaliza los valores de energía y cruces por cero
@@ -667,32 +419,13 @@ class EliminaSilencios:
                 prom = prom + puntajes[i, j]
             prom = prom / (canales + 1)
             if prom > umbral:
-                inicia = int(i * tam_ventana * muestreo)
-                termina = int(inicia + tam_ventana * muestreo)
-                vector[inicia:termina] = np.ones([int(tam_ventana * muestreo)])
-        return vector
+                ini= int(i * tam_ventana * muestreo)
+                fin = int(ini + tam_ventana * muestreo)
+                vector_audible[ini:fin] = np.ones([int(tam_ventana * muestreo)])
+        return vector_audible
 
     @staticmethod
-    def _metodo2(energia, cruces, nro_ref, nro_muestras, tam_ventana, muestreo):
-        """ 
-        Toma las primeras 5 ventanas como silencio para tener números de referencia acerca de los cruces por cero y
-        la energía .
-        """
-        nro_iteraciones = int(nro_muestras / (tam_ventana * muestreo))
-        ref_sil_c = sum(cruces[0:nro_ref]) / nro_ref
-        ref_sil_e = sum(energia[0:nro_ref]) / nro_ref
-        vector = np.zeros([nro_muestras])
-
-        # Para cada ventana compara con los números de referencia y define el vector binario
-        for i in range(0, nro_iteraciones):
-            if energia[i] >= ref_sil_e and cruces[i] < ref_sil_c:
-                inicia = int(i * tam_ventana * muestreo)
-                termina = int(inicia + tam_ventana * muestreo)
-                vector[inicia:termina] = np.ones([int(tam_ventana * muestreo)])
-        return vector
-
-    @staticmethod
-    def _cruces_por_cero(data):
+    def _crucesporcero(data):
         """ 
         Calcula los cruces por cero. Hay voz si la cantidad de cruces por cero son bajas 
         """
@@ -705,7 +438,7 @@ class EliminaSilencios:
         return rate
 
     @staticmethod
-    def _energy(data):
+    def _energia(data):
         return sum(data * data) / len(data)
 
 
@@ -730,41 +463,3 @@ class FFMPEG:
         os.chdir(datos.PATH_FFMPEG)
         subprocess.run(comando, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         os.chdir(datos.PATH_CODIGOS)
-
-
-# class FFMPEG:
-#     def __init__(self):
-#         # Estos dos son la ruta de la base de datos y la ruta del directorio donde esta OpenFace
-#         self._ruta_bd = 'Base de datos'
-#         self._ruta_ffmpeg = 'Librerias' + os.sep + 'ffmpeg' + os.sep + 'bin'
-#         # ruta_ffmpeg = 'D:' + os.sep + 'Descargas' + os.sep + 'ffmpeg' + os.sep + 'bin'
-#         # ruta_bd = 'D:' + os.sep + 'Google Drive' + os.sep + 'Proyecto Final de Carrera' + os.sep + 'Base de datos'
-#
-#     def __call__(self, persona, etapa, parte):
-#         # archivo = 'Sujeto 01'
-#         # parte = '1'
-#         subdir = 'Sujeto ' + persona + os.sep + 'Etapa ' + etapa
-#         persona = 'Sujeto_' + persona + '_' + etapa + '_r' + parte + '.mp4'
-#
-#         # Extraigo la posicion donde esta la extension para despues eliminarla en el nombre del archivo de salida
-#         nro_extension = persona.index('.mp4')
-#
-#         # Estas lineas son para poder extraer la ruta actual del directorio, para brindar el parametro de donde se tiene que guardar la salida
-#         # Tambien da la posibilidad de volver al directorio actual despues de la ejecucion del comando
-#         pipe = subprocess.Popen('echo %cd%', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-#         ret = pipe.communicate()
-#         ret = str(ret[0])
-#         ruta_actual = ret[2:len(ret[0]) - 5]
-#
-#         # Comando base
-#         comando = ['.' + os.sep + 'ffmpeg', '-y', '-i',
-#                    ruta_actual + self._ruta_bd + os.sep + subdir + os.sep + persona, '-ab',
-#                    '195k', '-ac', '2', '-ar', '48000',
-#                    '-vn', ruta_actual + os.sep + 'Procesado' + os.sep + persona[0:nro_extension] + '.wav']
-#         # comando = ['.' + os.sep + 'ffmpeg', '-version']
-#
-#         # Cambio al directorio de OpenFace y se ejecuta el comando
-#         # print(comando)
-#         os.chdir(self._ruta_ffmpeg)
-#         subprocess.run(comando, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-#         os.chdir(ruta_actual)

@@ -6,7 +6,7 @@ import Codigos.Herramientas as hrm
 import Codigos.Weka as wek
 import Codigos.ArffManager as am
 import Codigos.Datos as datos
-
+import time
 
 # zonas = np.array(['ojoizq', 'ojoder', 'boca', 'nariz'])
 # met_caracteristicas = np.array(['LBP', 'AU'])
@@ -14,6 +14,7 @@ import Codigos.Datos as datos
 # met_clasificacion = np.array(['RForest', 'J48', 'SVM', 'MLP'])
 
 def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False):
+    start_total = time.time()
     jvm.start(packages=True)
     selecciono_caracteristicas = False
     if len(met_seleccion) > 0:
@@ -23,11 +24,15 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
     features = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
     for i in personas:
         for j in etapas:
+            start2 = time.time()
+            print(i + ' ' + j)
             features(i, j, completo=True)
-            print('...')
-    print('Completada extraccion de caracteristicas')
+            print(time.time() - start2)
 
-    am.ConcatenaArff('Resultado Video', personas, etapas, bool_partes=False)
+    print('Completada extraccion de caracteristicas')
+    print(time.time() - start_total)
+
+    am.ConcatenaArff('Resultado Video', personas, etapas, partes=-1)
     path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
     data_ori = wek.CargaYFiltrado(path)
 
@@ -48,6 +53,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
             metodo_actual = ''
             data = data_ori
         train, test = wek.ParticionaDatos(data)
+        print(time.time() - start_total)
         print('..')
         for j in range(0, len(met_clasificacion)):
             lista_metodos.append(metodo_actual + met_clasificacion[j])
@@ -57,14 +63,18 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
                 vec_predicciones = np.array([hrm.prediccionCSVtoArray(predicciones)])
             else:
                 vec_predicciones = np.concatenate([vec_predicciones, np.array([hrm.prediccionCSVtoArray(predicciones)])])
+            print(time.time() - start_total)
             print('...')
 
     resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_errores)
+    jvm.stop()
+    print(time.time() - start_total)
     return resultados
 
 
 def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
                        binarizo_etiquetas=False, elimino_silencios=False):
+    start_total = time.time()
     jvm.start(packages=True)
     selecciono_caracteristicas = False
     if len(met_seleccion) > 0:
@@ -75,13 +85,15 @@ def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_s
     features_a = carac.Audio(binarizo_etiquetas)
     for i in personas:
         for j in etapas:
+            start2 = time.time()
+            print(i + ' ' + j)
             rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
             features_v(i, j, completo=False, rangos_audibles=rang_audibles)
-            print('...')
+            print(time.time() - start2)
     print('Completada extraccion de caracteristicas')
 
     am.ConcatenaArff('Resultado Video', personas, etapas)
-    am.ConcatenaArff('Resultado Audio', personas, etapas, bool_audio=True)
+    am.ConcatenaArff('Resultado Audio', personas, etapas, bool_wav=True)
     path_v = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
     path_a = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Audio.arff')
 
@@ -130,10 +142,13 @@ def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_s
     resultados_v = hrm.resumePredicciones(vec_predicciones_v, lista_metodos, lista_errores_v)
     resultados_a = hrm.resumePredicciones(vec_predicciones_a, lista_metodos, lista_errores_a)
     resultados = hrm.uneResumenes(resultados_v, resultados_a)
+    jvm.stop()
+    print(time.time() - start_total)
     return resultados
 
 def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion,
                        binarizo_etiquetas=False):
+    start_total = time.time()
     jvm.start(packages=True)
     selecciono_caracteristicas = False
     if len(met_seleccion) > 0:
@@ -144,13 +159,16 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
     features_a = carac.Audio(binarizo_etiquetas)
     for i in personas:
         for j in etapas:
+            start2 = time.time()
+            print(i + ' ' + j)
             rang_audibles = features_a(i, j, eliminar_silencios=False)
             features_v(i, j, completo=False, rangos_audibles=rang_audibles)
-            print('...')
+            print(time.time() - start2)
+
     print('Completada extraccion de caracteristicas')
 
     am.ConcatenaArff('Resultado Video', personas, etapas)
-    am.ConcatenaArff('Resultado Audio', personas, etapas, bool_audio=True)
+    am.ConcatenaArff('Resultado Audio', personas, etapas, bool_wav=True)
     am.ConcatenaArffv2('Resultado Audiovisual', 'Resultado Audio', 'Resultado Video')
 
     path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Audiovisual.arff')
@@ -187,5 +205,7 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
             print('...')
 
     resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_errores)
+    jvm.stop()
+    print(time.time() - start_total)
     return resultados
 

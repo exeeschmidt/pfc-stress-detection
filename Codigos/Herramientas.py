@@ -19,7 +19,7 @@ def Histograma(imagen):
     return histo
 
 
-def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
+def ROI(img, landmarks_x, landmarks_y, region, expandir=True, resize=True):
     """
     Devuelve el mínimo rectángulo según la región de la cara que se elija. Landmarks debería traer toda la lista de
     puntos faciales de un frame. Por ejemplo desde open face: archivo[nro_frame][....]
@@ -81,7 +81,13 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
         else:
             x2 = x2 + pix_x
 
-    roi = frame[y1:y2, x1:x2]
+    # Si las coordenadas dan ambas nulas es invalido, suplantando la roi con
+    # (en algoritmo de open face al tener landmarks invalidos da puntos fuera del tamaño de la imagen, pero al hacer
+    # la comprobacion anterior la llevamos siempre al limite de la imagen)
+    if (x1 - x2 == 0) or (y1 - y2 == 0):
+        roi = np.zeros(frame.shape, frame.dtype)
+    else:
+        roi = frame[y1:y2, x1:x2]
 
     if resize:
         roi = ResizeZona(roi, region)
@@ -185,164 +191,6 @@ def prediccionCSVtoArray(predi):
             # Concateno el dato a partir de los char
             dato = dato + i
     return vec
-
-
-def segmentaPrediccion(predi_1, predi_2):
-    """
-    Algoritmo para segmentar como en Lefter - Recognizing stress using semantics and modulation of speech and gestures.
-    A partir de dos conjuntos de etiquetas, con distinto tamaño, devuelvo los dos conjuntos con las misma segmentación
-    conservando las etiquetas que se tenían. Esta nueva segmentación cuenta con segmentos de tamaño variable, por lo
-    que de cada segmento se guarda su etiqueta, y el porcentaje del total que representa.
-    Recibe dos vectores de matrices (uno con los resultados de múltiples clasificaciones de video y otro con los de
-    audio). Devuele una matriz por modalidad, donde las filas son los segmentos, la primer columna el porcentaje y luego
-    tiene una columna por las etiquetas de cada método de clasificación.
-    """
-
-    # Número de métodos en cada modalidad
-    num_metodos_1 = predi_1.shape[0]
-    num_metodos_2 = predi_2.shape[0]
-
-    # Cantidad de segmentos de cada modalidad más cabecera
-    tam_pre_1 = predi_1.shape[1]
-    tam_pre_2 = predi_2.shape[1]
-
-    # Saco el porcentaje inicial que representa cada segmento constante en los conjuntos originales
-    tam_segmento_1 = 1 / (tam_pre_1 - 1)
-    tam_segmento_2 = 1 / (tam_pre_2 - 1)
-
-    # Inicializo ambos vectores vacíos con el primer número de fila y las columnas apropiadas (etiqueta y porcentaje)
-    new_predi_1 = np.empty((0, num_metodos_1 + 1))
-    new_predi_2 = np.empty((0, num_metodos_2 + 1))
-
-    # Las porciones que queden de segmento, inicialmente son igual al tamaño entero de segmento
-    porc_1 = tam_segmento_1
-    porc_2 = tam_segmento_2
-
-    if porc_1 < porc_2:
-        avance = porc_1
-    else:
-        avance = porc_2
-
-    # Índices en los conjuntos iniciales
-    ind1 = 0
-    ind2 = 0
-    while ind1 < tam_pre_1 and ind2 < tam_pre_2:
-        # Depende que porción sea más chica, avanzo unicamente esa cantidad
-        # Al avanzar la cantidad más chica tengo que reducir el tamaño de la otra porción ya que estaría cortando un
-        # segmento. Al indicar la porcion más chica es porque termino ese segmento, por lo que tengo que avanzar en el
-        # índice de los conjuntos.
-        # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los índices de los conjuntos.
-
-        # Recorro cada método de cada modalidad y formo una fila por modalidad
-        fila_1 = np.array([avance])
-        for i in range(0, num_metodos_1):
-            fila_1 = np.append(fila_1, predi_1[i, ind1, 2], axis=0)
-
-        fila_2 = np.array([avance])
-        for i in range(0, num_metodos_2):
-            fila_2 = np.append(fila_2, predi_2[i, ind2, 2], axis=0)
-
-        # Agrego cada fila al vector general correspondiente
-        new_predi_1 = np.append(new_predi_1, np.array([fila_1]), axis=0)
-        new_predi_2 = np.append(new_predi_2, np.array([fila_2]), axis=0)
-
-        if porc_1 < porc_2:
-            avance = porc_1
-            ind1 = ind1 + 1
-            porc_2 = porc_2 - avance
-            porc_1 = tam_segmento_1
-        elif porc_2 < porc_1:
-            avance = porc_2
-            ind2 = ind2 + 1
-            porc_1 = porc_1 - avance
-            porc_2 = tam_segmento_2
-        else:
-            avance = porc_1
-            ind1 = ind1 + 1
-            ind2 = ind2 + 1
-            porc_1 = tam_segmento_1
-            porc_2 = tam_segmento_2
-    return new_predi_1, new_predi_2
-
-
-def segmentaResumen(resu_1, resu_2):
-    """
-    Algoritmo para segmentar como en Lefter - Recognizing stress using semantics and modulation of speech and gestures.
-    A partir de dos resumenes de predicciones (suponiendo que pueden ser de distinto tamaño) devuelvo los dos conjuntos
-    en un solo resumen con la misma segmentación, conservando las etiquetas que se tenían. Esta nueva segmentación
-    cuenta con segmentos de tamaño variable, por lo que de cada segmento se guarda su etiqueta y el porcentaje del total
-    que representa.
-    """
-
-    # Número de métodos en cada modalidad
-    num_metodos_1 = resu_1.shape[1] - 1
-    num_metodos_2 = resu_2.shape[1] - 1
-
-    # Cantidad de segmentos de cada modalidad más cabecera
-    tam_pre_1 = resu_1.shape[0]
-    tam_pre_2 = resu_2.shape[0]
-
-    # Saco el porcentaje inicial que representa cada segmento constante en los conjuntos originales
-    tam_segmento_1 = 1 / (tam_pre_1 - 1)
-    tam_segmento_2 = 1 / (tam_pre_2 - 1)
-
-    # Inicializo el nuevo vector que todavía no sabemos el número de segmentos, pero tendrá los métodos aplicados a
-    # audio como a video, más la etiqueta, más una columna con los porcentajes que representan cada segmento
-    new_resu = np.empty((0, num_metodos_1 + num_metodos_2 + 2))
-
-    # Armo la cabecera, extraigo los métodos usados en cada resumen
-    new_resu = np.append(new_resu, np.array([np.append(np.array(['Porcentaje', 'Etiqueta']),
-                                                       np.append(resu_1[0, 1:], resu_2[0, 1:]))]), axis=0)
-
-    # Las porciones que queden de segmento, inicialmente son igual al tamaño entero de segmento
-    porc_1 = tam_segmento_1
-    porc_2 = tam_segmento_2
-
-    if porc_1 < porc_2:
-        avance = porc_1
-    else:
-        avance = porc_2
-
-    # Índices en los conjuntos iniciales
-    ind1 = 1
-    ind2 = 1
-    while ind1 < tam_pre_1 and ind2 < tam_pre_2:
-        # Depende que porción sea más chica, avanzo unicamente esa cantidad
-        # Al avanzar la cantidad más chica tengo que reducir el tamaño de la otra porción ya que estaría cortando un
-        # segmento. Al indicar la porcion más chica es porque termino ese segmento, por lo que tengo que avanzar en el
-        # índice de los conjuntos.
-        # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los índices de los conjuntos.
-
-        # Recorro cada método de cada modalidad y formo una fila por modalidad
-        # De la primera ya agrego el porcentaje y luego del primer método de la primer modalidad la etiqueta
-        fila_1 = np.array([avance, resu_1[ind1, 0]])
-        for i in range(1, num_metodos_1 + 1):
-            fila_1 = np.append(fila_1, np.array([resu_1[ind1, i]]))
-
-        fila_2 = np.empty(0)
-        for i in range(1, num_metodos_2 + 1):
-            fila_2 = np.append(fila_2, np.array([resu_2[ind2, i]]))
-
-        # Agrego cada fila al vector general correspondiente
-        new_resu = np.append(new_resu, np.array([np.concatenate([fila_1, fila_2])]), axis=0)
-
-        if porc_1 < porc_2:
-            avance = porc_1
-            ind1 = ind1 + 1
-            porc_2 = porc_2 - avance
-            porc_1 = tam_segmento_1
-        elif porc_2 < porc_1:
-            avance = porc_2
-            ind2 = ind2 + 1
-            porc_1 = porc_1 - avance
-            porc_2 = tam_segmento_2
-        else:
-            avance = porc_1
-            ind1 = ind1 + 1
-            ind2 = ind2 + 1
-            porc_1 = tam_segmento_1
-            porc_2 = tam_segmento_2
-    return new_resu
 
 def uneResumenes(resu1, resu2):
     """

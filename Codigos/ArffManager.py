@@ -2,32 +2,6 @@ import os
 import numpy as np
 import Codigos.Datos as datos
 
-
-# Ejemplo:
-#   import ArffManager as am
-#   import numpy as np
-#   from random import randrange
-#
-#   n_lbp = 10
-#   n_hop = 5
-#   n_au = 7
-#
-#   lbp = np.zeros(n_lbp)
-#   hop = np.zeros(n_hop)
-#   au = np.zeros(n_au)
-#
-#   for i in range(0, n_lbp):
-#     lbp[i] = randrange(256)
-#   for i in range(0, n_hop):
-#     hop[i] = randrange(100) / 100
-#   for i in range(0, n_au):
-#     au[i] = randrange(5)
-#
-#   clases = np.array(['Estresado','No-Estresado'])
-#
-#   am.CrearCabeceraArff('Prueba', n_lbp, n_hop, n_au, clases)
-#   am.AgregarFilaArff('Prueba', lbp, hop, au, 'Estresado')
-
 def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zonas):
     """
     A partir de los largos de los vectores de caracteristicas por separado crea lo nombres de los atributos del arff
@@ -73,41 +47,6 @@ def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zona
     file.write('@data' + os.linesep)
     file.close()
 
-def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
-    """
-    A partir de varios vectores de caracteristicas, los va agregando a una fila de un arff
-    """
-
-    # Abro el archivo con cabecera, la bandera 'a' permite anexar el texto
-    file = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.arff'), 'a')
-
-    # Fila de características
-    fila = ''
-
-    # Extraigo el largo de cada vector
-    lbp_range = np.size(lbp_feat)
-    hop_range = np.size(hop_feat)
-    hog_range = np.size(hog_feat)
-    au_range = np.size(au_feat)
-
-    # Concateno cada vector a la misma fila
-    for i in range(0, lbp_range):
-        fila = fila + str(lbp_feat[i]) + ','
-
-    for i in range(0, hop_range):
-        fila = fila + str(hop_feat[i]) + ','
-
-    for i in range(0, hog_range):
-        fila = fila + str(hog_feat[i]) + ','
-
-    for i in range(0, au_range):
-        fila = fila + str(au_feat[i]) + ','
-
-    fila = fila + etiqueta
-
-    file.write(fila + '\n')
-    file.close()
-
 def FilaArffv2(nombre, feat, etiqueta):
     """
     Escribe el vector de caracteristicas en una fila del arff, a diferencia de la v1 este recibe un solo vector
@@ -125,33 +64,39 @@ def FilaArffv2(nombre, feat, etiqueta):
     file.write(fila + '\n')
     file.close()
 
-def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=False, rangos_audibles=None):
+def ConcatenaArff(nombre_salida, sujetos, etapas, partes=0, bool_wav=False, rangos_audibles=None):
     """
     Algoritmo para unificar en un solo arff los creados por audio o por video para cada persona, respuesta, parte o subparte
     Los primeros dos parametros tienen que ser np.array de números.
+
+    El parametro partes tiene 3 modos: si es -1 equivale a que no se evaluen las partes, si es 0 se evaluan, y si es
+    un entero mayor a cero se analiza solo esa parte
     """
 
-    if rangos_audibles is None:
-        bool_audible = False
-    else:
+    if partes > 0:
         bool_audible = True
+    else:
+        bool_audible = False
 
     extension = '.arff'
-    if bool_audio:
+    if bool_wav:
         extension = '.wav.arff'
-        bool_partes = True
 
     # Creo el archivo que va a ser la salida de la concatenación
     salida = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_salida + '.arff'), 'w')
 
     # Cambio la ruta del primer archivo a leer según si considero o no las partes
-    if bool_partes:
-        path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0]), str(1)))
+    if partes == 0:
+        path_primero = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0]),
+                                                                                     str(1)))
+    elif partes == -1:
+        path_primero = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0])))
     else:
-        path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0])))
+        path_primero = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(sujetos[0]), str(etapas[0]),
+                                                                                     str(partes))) + '_1'
 
     # Tomo el primer archivo para crear la cabecera
-    archivo = open(path + extension, 'r')
+    archivo = open(path_primero + extension, 'r')
     linea = archivo.readline()
     # Al encontrar @data paro, pero tengo que guardar igual esta línea y otra más en blanco antes de los datos puros
     while linea != '@data\n':
@@ -167,31 +112,40 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
 
     for i in sujetos:
         for j in etapas:
-            # Las partes serían si se dividen en respuestas, las subpartes en caso de eliminar los silencios donde cada
-            # respuesta a su vez se vuelve a segmentar
-            partes = 1
-            subpartes = 1
-            if bool_partes:
-                partes = 7
+            # Las partes serían si se dividen en respuestas
+            if partes == -1:
+                # En caso que no se analicen partes simplemente va de 0 a 1 sin cambiar nada el for
+                fin_partes = 1
+                ini_partes = 0
+            elif partes == 0:
+                # Si se tienen en cuenta las partes, el for empieza desde el principio y segun la etapa recorre las 6
+                # o 7 respuestas que tenga este
+                fin_partes = 8
+                ini_partes = 1
                 if j == '2':
-                    partes = 6
+                    fin_partes = 7
+            else:
+                # En caso de una repuesta en particular el for toma el valor por unica vez de esa parte
+                fin_partes = partes + 1
+                ini_partes = partes
 
-            for k in range(0, partes):
+            for k in range(ini_partes, fin_partes):
                 # print('Concatenando parte: ', k)
-                base = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(i), str(j)))
-
+                base_path = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(str(i), str(j)))
+                # Las subpartes son si eliminas los silencios, donde cada respuesta a su vez se vuelve a segmentar
+                subpartes = 1
                 if bool_audible:
-                    subpartes = rangos_audibles[k].shape[0]
+                    subpartes = rangos_audibles.shape[0]
 
                 for n in range(0, subpartes):
-                    if bool_partes:
-                        parte_path = '_r' + str(k + 1)
+                    if partes >= 0:
+                        parte_path = '_r' + str(k)
                         if bool_audible:
-                            subpartes = rangos_audibles[k].shape[0]
                             parte_path = parte_path + '_' + str(n + 1)
                     else:
                         parte_path = ''
-                    archivo = open(base + parte_path + extension, 'r')
+                    path_final = base_path + parte_path + extension
+                    archivo = open(path_final, 'r')
                     # Salto donde termina la cabecera y comienzan los datos
                     archivo.seek(data_pos, 0)
                     linea = archivo.readline()
@@ -200,6 +154,8 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, bool_partes=True, bool_audio=F
                         salida.write(linea)
                         linea = archivo.readline()
                     archivo.close()
+                    # Borra el archivo luego de usarlo en la concatenacion
+                    os.remove(base_path + parte_path + extension)
     salida.close()
 
 def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
@@ -266,8 +222,6 @@ def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
 def AgregaEtiqueta(nombre, clases, etiqueta):
     """
     Permite agregar la etiqueta a los arff ya creados por open smile
-    NOTA: se podria tambien eliminar el atributo nombre que lo define como 'unkown' en cada linea, igual weka elimina
-        los atributos que no sean numericos
     """
     # Abro el archivo para lectura y escritura
     archivo = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.arff'), 'r+')

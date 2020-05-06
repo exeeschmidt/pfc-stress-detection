@@ -35,10 +35,14 @@ class Video:
         for i in metodos:
             self.bool_metodos[switcher.get(i)] = True
 
-    def __call__(self, persona, etapa, completo=False, rangos_audibles=list()):
+    def __call__(self, persona, etapa, completo=False, rangos_audibles=None):
         start = time.time()
 
-        if len(rangos_audibles) == 0:
+        if rangos_audibles is None:
+            rangos_audibles = list()
+
+        # Si no hay rangos audibles especificados o se analiza el video completo no existe la eliminacion de silencios
+        if len(rangos_audibles) == 0 or completo == True:
             elimina_silencio = False
         else:
             elimina_silencio = True
@@ -100,11 +104,13 @@ class Video:
             # Se toman los porcentajes de los segmentos audibles ya que al multiplicarlos por el número de frames
             # totales, se obtiene la equivalencia al rango de cuadros
             if elimina_silencio:
+                # rangos audibles es una lista que en cada posicion tiene un vector de vectores por respuesta
                 rangos_cuadros = rangos_audibles[j] * frames_totales
                 rangos_cuadros = rangos_cuadros.astype(int)
                 cuadros_audibles = list()
                 # Convierto los rangos en una lista de cuadros
                 for i in rangos_cuadros:
+                    # Al ser rangos cuadros un vector de vectores, i en cada ciclo es un vector de dos componentes
                     cuadros_audibles.extend(range(i[0], i[1] + 1))
 
             # En el completo necesito esto es para definir los intervalos de etiqueta
@@ -123,11 +129,17 @@ class Video:
                 # Acumulador para indicar cuanto tiempo transcurre desde que empece a contar los frames para un segmento
                 acu_tiempos = 0
                 # Vector para acumular las caracteristicas y luego promediarlas
-                vec_prom = np.empty((0))
+                vec_prom = np.empty(0)
+                # Para ir guardando el ultimo vector de promedio valido en caso de tener periodos de tiempo invalidos
+                vec_prom_ant = np.empty(0)
+                # Para guardar la ultima etiqueta valida
+                etiqueta_ant = ''
                 # Vector para guardar las etiquetas y aplicar voto
                 vec_etiquetas = list()
                 # Cuadros por segmento
                 cps = 0
+                # Numero de periodos consecutivos invalidos en caso que se den
+                invalidos = 0
 
             archivo = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
 
@@ -166,9 +178,10 @@ class Video:
                 if ret == 0:
                     break
 
-                # Si no está eliminando silencios o encuentra que el frame se encuentra de los frames audibles, se
-                # extraen las características
-                if (not elimina_silencio) or cuadros_audibles.count(nro_frame) > 0:
+                    # Si no está eliminando silencios o encuentra que el frame se encuentra de los frames audibles
+                    # se extraen las caracteristicas.  Verfico también que la confidencialidad encuentra que se detecto
+                    # una cara en el cuadro segun un umbral interno
+                if (not elimina_silencio or cuadros_audibles.count(nro_frame) > 0) and self._confidencialidad(frame):
                     # Obtengo los landmarks del archivo
                     lm_x = archivo[nro_frame][LimLandmarksX1:LimLandmarksX1 + dif_landmarks]
                     lm_y = archivo[nro_frame][LimLandmarksY1:LimLandmarksY1 + dif_landmarks]
@@ -182,7 +195,9 @@ class Video:
                     for i in range(0, nro_zonas):
                         # Recorto las roi, las expando y aplico un resize para que tengan tamaño constante en todos
                         # los frames
-                        roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i], expandir=True, resize=True)
+                        roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i])
+                        if roi.nonzero()[0].size == 0:
+                            print(nro_frame)
 
                         if self.bool_metodos[0]:
                             # Obtengo los patrones locales binarios y sus histogramas
@@ -225,7 +240,7 @@ class Video:
                         am.CabeceraArff(nombre, lbp_range, hop_range, hog_range, len(AUs), clases, self.zonas)
                         primer_frame = False
 
-                    # Si es completo analisis por cuadro, sino por periodos de tiempo
+                    # Si es completo analisis por cuadro
                     if completo:
                         # Para definir intervalo de etiqueta
 
@@ -250,40 +265,90 @@ class Video:
 
                         # Agrego las caracteristicas y la etiqueta al arff
                         am.FilaArffv2(nombre, vec_caracteristicas, etiqueta)
+                    # Si no es completo analisis por periodos de tiempo
                     else:
-                        # Al acumulador le agrego el tiempo del cuadro
+                        # Agrego las caracteristicas al vector que luego se promedia, la etiqueta
+                        # a la lista para luego hacer voto, y el contador de cuadros por segmento
+                        if vec_prom.size == 0:
+                            vec_prom = vec_caracteristicas
+                        else:
+                            vec_prom = vec_prom + vec_caracteristicas
+                        vec_etiquetas.append(etiqueta)
+                        cps = cps + 1
+                else:
+                    # Si no obtuve caracteristicas doy valores vacios al vector este por el promediado
+                    vec_caracteristicas = np.empty(0)
+
+                # Aunque no se extraigan caracteristicas si se hace análisis por períodos se debe verificar si termina
+                # algun segmento de tiempo y se deba guardar
+                if not completo:
+                    # Solo avanzo en el acumulador de tiempo si no estoy eliminando silencios o el cuadro es audible
+                    # En el caso de eliminar silencios los cuadros silenciosos deberian equivaler a no existir
+                    if not elimina_silencio or cuadros_audibles.count(nro_frame) > 0:
                         acu_tiempos = acu_tiempos + duracion_cuadro
 
-                        if acu_tiempos <= self.tiempo_micro:
-                            # Si es menor o igual debo agregar las caracteristicas al vector que luego se promedia, la etiqueta
-                            # a la lista para luego hacer voto, y el contador de cuadros por segmento
-                            if vec_prom.size == 0:
-                                vec_prom = vec_caracteristicas
-                            else:
-                                vec_prom = vec_prom + vec_caracteristicas
-                            vec_etiquetas.append(etiqueta)
-                            cps = cps + 1
-
-                        if acu_tiempos >= self.tiempo_micro:
-                            # NOTA: estamos promediando tambien la intensidad de las AUs, esto podemos volver a analizarlo
-                            # Si es mayor o igual ya el segmento termino por lo que debo promediar y agregar al arff
+                    # Verifico si termino el periodo, si es asi debo promediar y agregar al arff
+                    if acu_tiempos >= self.tiempo_micro:
+                        if vec_prom.size != 0:
+                            ######## NOTA: estamos promediando tambien la intensidad de las AUs, esto podemos volver a analizarlo
                             vec_prom = vec_prom / cps
-                            am.FilaArffv2(nombre, vec_caracteristicas, self._voto(vec_etiquetas, clases))
-                            if acu_tiempos > self.tiempo_micro:
-                                # A su vez si es mayor es porque un cuadro se "corto" por lo que sus caracteristicas van a
-                                # formar parte tambien del promediado del proximo segmento
-                                acu_tiempos = acu_tiempos - self.tiempo_micro
+                            etiqueta_prom = self._voto(vec_etiquetas, clases)
+
+                            # Si tengo el contador de invalidos hay que completar esas fila promediando el actual valido
+                            # con el ultimo valido que hubo
+                            if invalidos > 0:
+                                if vec_prom_ant.size == 0:
+                                    # En caso de empezar con periodos invalidos simplemente lo igual al primer valido que
+                                    # se encuentre
+                                    vec_aprox = vec_prom
+                                    etiqueta_aprox = etiqueta_prom
+                                else:
+                                    # Creo el vector aproximando promediando
+                                    vec_aprox = (vec_prom + vec_prom_ant) / 2
+                                    etiqueta_aprox = self._voto(list([etiqueta_ant, etiqueta_prom]), clases)
+                                for i in range(0, invalidos):
+                                    am.FilaArffv2(nombre, vec_aprox, etiqueta_aprox)
+                            vec_prom_ant = vec_prom
+                            etiqueta_ant = etiqueta_prom
+                            invalidos = 0
+                            # Recien ahora agrego la fila del periodo actual despues de agregar las anteriores aproximadas
+                            am.FilaArffv2(nombre, vec_prom, etiqueta_prom)
+                        else:
+                            invalidos = invalidos + 1
+                        if acu_tiempos > self.tiempo_micro:
+                            # A su vez si es mayor es porque un cuadro se "corto" por lo que sus caracteristicas van a
+                            # formar parte tambien del promediado del proximo segmento
+                            acu_tiempos = acu_tiempos - self.tiempo_micro
+                            # Verifico que se hayan extraido caracteristicas en el ultimo cuadro, y si se eliminan silencios
+                            # que el proximo cuadro se encuentre dentro de lo audible, sino significaria que cambia de rango
+                            # por lo que no serian cuadros consecutivos y no deberia tenerse en cuenta para el proximo
+                            # segmento
+                            if (vec_caracteristicas.size != 0) or (elimina_silencio and cuadros_audibles.count(nro_frame + 1) == 0):
+                                # Si se extrajeron las tiene en cuenta
                                 vec_prom = vec_caracteristicas
                                 vec_etiquetas = list(etiqueta)
                                 cps = 1
                             else:
-                                # Si el segmento corta justo con el cuadro reinicio todo
-                                acu_tiempos = 0
-                                vec_prom = np.empty((0))
+                                # Si el cuadro era invalido que reinicie todo a cero tambien
+                                vec_prom = np.empty(0)
                                 vec_etiquetas = list()
                                 cps = 0
+                        else:
+                            # Si el segmento corta justo con el cuadro reinicio todo
+                            acu_tiempos = 0
+                            vec_prom = np.empty(0)
+                            vec_etiquetas = list()
+                            cps = 0
+
                 # print(nro_frame)
                 nro_frame = nro_frame + 1
+            # Si termino el video y tengo periodos de tiempo invalidos tengo que igualarlos con el ultimo periodo valido que hubo
+            if not completo and invalidos > 0:
+                for i in range(0, invalidos):
+                    am.FilaArffv2(nombre, vec_prom_ant, etiqueta_ant)
+
+
+
 
     @staticmethod
     def _voto(etiquetas, clases):
@@ -292,6 +357,30 @@ class Video:
         for i in range(0, clases.size):
             votos[i] = etiquetas.count(clases[i])
         return clases[votos.argmax()]
+
+    @staticmethod
+    def _confidencialidad(img):
+        conf_threshold = 0.7
+        frame = np.copy(img)
+        modelFile = os.path.join(datos.ROOT_PATH, 'opencv_face_detector_uint8.pb')
+        configFile = os.path.join(datos.ROOT_PATH, 'opencv_face_detector.pbtxt')
+        net = cv.dnn.readNetFromTensorflow(modelFile, configFile)
+
+        # blobFromImage realiza un pequeño preprocesamiento, el tercer argumento es el nuevo tamaño de imagen,
+        # el cuarto son las medias de cada canal de color para hacer la media - el valor de cada canal en cada pixel
+        # el quinto argumento es si intercambia los canales rojos y azul, el sexto argumento es si recorta
+        blob = cv.dnn.blobFromImage(frame, 1.0, (300, 300), [104, 117, 123], False, False)
+
+        net.setInput(blob)
+        detections = net.forward()
+        # Devuelve muchas detecciones de posibles caras, como solo buscamos una, con que una confidencialidad sea alta
+        # ya consideramos que la cara esta presente
+        for i in range(detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            if confidence > conf_threshold:
+                return True
+        return False
+
 
 
 # ======================================================= AUDIO ========================================================
@@ -343,6 +432,8 @@ class Audio:
             if eliminar_silencios:
                 # Obtengo los rangos donde hay segmentos audibles
                 rango = eli_silencios(os.path.join(datos.PATH_PROCESADO, nombre + '.wav'), tam_ventana=self.tiempo_micro)
+                # rango es un vector de vectores, cada fila tiene un vector de dos componente con el principio y fin
+
                 # Utilizo la cantidad de segmentos para saber cuantos archivos se generaron
                 for i in range(0, rango.shape[0]):
                     nombre_archivo = nombre + '_' + str(i + 1) + '.wav'
@@ -351,9 +442,12 @@ class Audio:
                     am.AgregaEtiqueta(nombre_archivo, clases, etiqueta)
                 # Lo agrego a la lista con los rangos de segmentos de cada respuesta
                 rangos_silencios.append(rango)
+                # Concateno todas las subpartes en un arff por respuesta
+                nombre_salida_respuesta = datos.buildVideoName(persona, etapa, str(j+1)) + '.wav'
+                am.ConcatenaArff(nombre_salida_respuesta, np.array([persona]), np.array([etapa]), partes=(j+1),
+                                 bool_wav=True, rangos_audibles=rango)
             else:
                 open_smile(nombre + '.wav', paso_ventaneo=str(self.tiempo_micro))
                 # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
                 am.AgregaEtiqueta(nombre + '.wav', clases, etiqueta)
-
         return rangos_silencios
