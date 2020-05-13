@@ -99,7 +99,7 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, partes=0, bool_wav=False, rang
     archivo = open(path_primero + extension, 'r')
     linea = archivo.readline()
     # Al encontrar @data paro, pero tengo que guardar igual esta línea y otra más en blanco antes de los datos puros
-    while linea != '@data\n':
+    while linea[0:5] != '@data':
         salida.write(linea)
         linea = archivo.readline()
     salida.write(linea)
@@ -110,6 +110,7 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, partes=0, bool_wav=False, rang
     data_pos = archivo.tell()
     archivo.close()
 
+    instancias = 0
     for i in sujetos:
         for j in etapas:
             # Las partes serían si se dividen en respuestas
@@ -153,10 +154,12 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, partes=0, bool_wav=False, rang
                     while linea != "":
                         salida.write(linea)
                         linea = archivo.readline()
+                        instancias = instancias + 1
                     archivo.close()
                     # Borra el archivo luego de usarlo en la concatenacion
-                    os.remove(base_path + parte_path + extension)
+                    # os.remove(base_path + parte_path + extension)
     salida.close()
+    return instancias
 
 def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
     """
@@ -194,7 +197,7 @@ def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
     for i in range(0, 3):
         linea = arch2.readline()
     # Busco donde comienza data recien, tomo el atributo clase de aca
-    while linea != '@data\n':
+    while linea[0:5] != '@data':
         salida.write(linea)
         linea = arch2.readline()
     arch2.readline()
@@ -208,16 +211,19 @@ def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
     arch2.seek(pos_data[1], 0)
     linea1 = arch1.readline()
     linea2 = arch2.readline()
+    instancias = 0
     while linea1 != "" and linea2 != "":
         # Recorto en cada linea del primer archivo los ultimos digitos correspondiente a la etiqueta
         nueva_linea = linea1[0:len(linea1) - 2] + linea2
         salida.write(nueva_linea)
         linea1 = arch1.readline()
         linea2 = arch2.readline()
+        instancias = instancias + 1
 
     arch1.close()
     arch2.close()
     salida.close()
+    return instancias
 
 def AgregaEtiqueta(nombre, clases, etiqueta):
     """
@@ -254,3 +260,79 @@ def AgregaEtiqueta(nombre, clases, etiqueta):
     archivo.seek(0)
     archivo.writelines(nuevas_lineas)
     archivo.close()
+
+def NormalizaArff(nombre_archivo1, nombre_archivo2):
+    # Cargo los archivos que se van a normalizar
+    arch1 = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo1 + '.arff'), 'r+')
+    arch2 = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo2 + '.arff'), 'r+')
+
+    # Esta variable me permite guardan las posiciones en donde comienzan los datos
+    pos_data = np.ones(2)
+    for j in range(0, 2):
+        if j == 0:
+            arch = arch1
+        else:
+            arch = arch2
+        arch.seek(0)
+        linea = arch.readline()
+        # Busco donde comienza data recien
+        while linea != '@data\n':
+            linea = arch.readline()
+            pos_data[j] = pos_data[j] + 1
+        arch2.readline()
+        pos_data[j] = pos_data[j] + 2
+
+
+    arch1.seek(0)
+    arch2.seek(0)
+    lineas1 = arch1.readlines()
+    lineas2 = arch2.readlines()
+    # Verifico quien tiene mas instancias, en caso de tener mas tiene se recorta
+    if len(lineas1) - pos_data[0] < len(lineas2) - pos_data[1]:
+        instancias = len(lineas1) - pos_data[0] + 1
+        lineas2 = lineas2[0:int(pos_data[1] + instancias - 1)]
+        arch2.truncate(0)
+        arch2.seek(0)
+        arch2.writelines(lineas2)
+    elif len(lineas1) - pos_data[0] > len(lineas2) - pos_data[1]:
+        instancias = len(lineas2) - pos_data[1] + 1
+        lineas1 = lineas1[0:int(pos_data[0] + instancias - 1)]
+        arch1.truncate(0)
+        arch1.seek(0)
+        arch1.writelines(lineas1)
+    arch1.close()
+    arch2.close()
+    return int(instancias)
+
+
+def MezclaInstanciasArff(nombre_archivo, orden):
+    arch = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'), 'r+')
+
+    pos_data = 2
+    linea = arch.readline()
+    # Busco donde comienza data recien
+    while linea[0:5] != '@data':
+        linea = arch.readline()
+        # Esta variable guarda en que numero de linea empiezan los datoa
+        pos_data = pos_data + 1
+    arch.readline()
+
+    arch.seek(0)
+    # Leo todas las lineas para usarlo como vector
+    lineas = arch.readlines()
+    # Extraigo las correspondientes a los datos
+    lineas_datos = np.array(lineas[pos_data:len(lineas)])
+    # A la ultima linea actual, que no tiene salto de carro, le agrego por si deja de quedar ultima
+    # lineas_datos[len(lineas_datos) - 1] = lineas_datos[len(lineas_datos) - 1] + '\n'
+    # Mezclo las lineas
+    lineas_datos = lineas_datos[orden]
+    # Uno al resto de las lineas las nuevas instancias mezcladas
+    lineas = lineas[0:pos_data] + list(lineas_datos)
+    # A la ultima nueva linea le extraigo el salto de carro
+    ultimo_indice = len(lineas)-1
+    lineas[ultimo_indice] = lineas[ultimo_indice][0:len(lineas[ultimo_indice])-1]
+    # Limpio el archivo, voy al inicio y escribo las lineas nuevas
+    arch.truncate(0)
+    arch.seek(0)
+    arch.writelines(lineas)
+    arch.close()

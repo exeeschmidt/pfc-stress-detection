@@ -1,10 +1,10 @@
 import numpy as np
 from weka.attribute_selection import ASSearch, AttributeSelection, ASEvaluation
 from weka.classifiers import Classifier, Evaluation, PredictionOutput
-from weka.core.classes import Random
 from weka.core.converters import Loader
 from weka.filters import Filter
 from weka.core.dataset import Instances
+
 
 def CargaYFiltrado(path):
     # Cargo los datos
@@ -21,9 +21,10 @@ def CargaYFiltrado(path):
     return data
 
 
-def SeleccionCaracteristicas(data2, metodo_seleccion, sumario=False):
+def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion, sumario=False):
     # opciones: 'PSO' , 'PCA', 'Firsts'
-    data = Instances.copy_instances(data2)
+    data = Instances.copy_instances(data_train)
+    data_tt = Instances.copy_instances(data_test)
 
     if metodo_seleccion == 'PCA':
         met_eval = 'weka.attributeSelection.PrincipalComponents'
@@ -55,8 +56,9 @@ def SeleccionCaracteristicas(data2, metodo_seleccion, sumario=False):
         # Tengo en cuenta también la clase porque el método de selección no lo hace
         if np.where(attsel.selected_attributes == ind)[0].size == 0 and data.class_index != ind:
             data.delete_attribute(ind)
+            data_tt.delete_attribute(ind)
         ind = ind - 1
-    return data
+    return data, data_tt
 
 
 def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
@@ -85,9 +87,10 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
         print(evl.summary())
     # Las columnas de predicciones (5) indican: número de segmento, etiqueta real, etiqueta predicha, error (indica con
     # un '+' donde se presentan), y el porcentaje de confianza o algo asi
-    return pout.buffer_content(), evl.mean_absolute_error
+    return pout.buffer_content(), evl.error_rate
 
 
 def ParticionaDatos(data, porcentaje=66.0):
-    train, test = data.train_test_split(porcentaje, Random(1))
+    #El rnd None permite que no los mezcle ni desordene al dividirlo
+    train, test = data.train_test_split(porcentaje, rnd=None)
     return train, test

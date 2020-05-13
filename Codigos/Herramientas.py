@@ -192,20 +192,6 @@ def prediccionCSVtoArray(predi):
             dato = dato + i
     return vec
 
-def uneResumenes(resu1, resu2):
-    """
-    A partir de los dos resumenes de predicciones los une en uno solo cortando al tamaño del menor
-    """
-    filas1 = resu1.shape[0]
-    filas2 = resu2.shape[0]
-
-    if filas1 < filas2:
-        corte = filas1
-    else:
-        corte = filas2
-
-    new_resu = np.concatenate([resu1[0:corte, :], resu2[0:corte, 1:]], axis=1)
-    return new_resu
 
 def resumePredicciones(predi, metodos, errores):
     """
@@ -221,7 +207,115 @@ def resumePredicciones(predi, metodos, errores):
 
     new_predi = np.empty((tam_pre + 2, 0))
     # Del primer método además de obtener la predicción saco la columna con las etiquetas (iguales en todos los métodos)
-    new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta', 'Error %']), predi[0, :, 1])]).T, axis=1)
+    new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta', 'Error medio %']), predi[0, :, 1])]).T, axis=1)
     for i in range(0, num_metodos):
         new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i], errores[i]*100]), predi[i, :, 2])]).T, axis=1)
     return new_predi
+
+
+def uneResumenes(resu1, resu2):
+    """
+    A partir de los dos resumenes de predicciones los une en uno solo cortando al tamaño del menor.
+    Se espera que el primer resumen sea el del video por el hecho de personalizar el nombre de las columnas
+    """
+    filas1 = resu1.shape[0]
+    filas2 = resu2.shape[0]
+
+    if filas1 < filas2:
+        corte = filas1
+    else:
+        corte = filas2
+
+    new_resu = np.concatenate([resu1[0:corte, :], resu2[0:corte, 1:]], axis=1)
+
+    # Al nombre de los metodos les agrego la modalidad a la que refiere, se espera que empiece con los de video
+    for i in range(1, new_resu.shape[1]):
+        if i < resu1.shape[1]:
+            new_resu[0, i] = new_resu[0, i] + '(V)'
+        else:
+            new_resu[0, i] = new_resu[0, i] + '(A)'
+    return new_resu
+
+
+def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
+    """
+    Recibiendo el resumen de todas las predicciones, errores y etiquetas. Utiliza el metodo mencionado para fusionar y
+    los mejores x clasificadores para esto. En caso de que mejores sea -1 utiliza todos
+    """
+    indice_mejores = np.empty(0, dtype=np.int)
+    valores_mejores = np.empty(0)
+
+    # Creo el resumen final
+    resumen_final = np.array([np.array(['Etiqueta', metodo])])
+    # Agrego la fila con el error y el valor 0, despues este se tiene que reemplazar al calcular el error al final
+    resumen_final = np.append(resumen_final, np.array([np.array(['Error medio %', '0'])]), axis=0)
+
+    # Si los mejores son por modalidad, guardo los indices de donde se encuentran cada uno
+    if por_modalidad:
+        modalidad_audio = list()
+        modalidad_video = list()
+        for i in range(1, resumen.shape[1]):
+            # Si encuentro el (V) es video y sino supongo que es audio
+            if resumen[0, i].find('(V)') != -1:
+                modalidad_video.append(i)
+            else:
+                modalidad_audio.append(i)
+
+    if mejores > 0:
+        # Agrego al mejor de que tantos era
+        resumen_final[0, 1] = resumen_final[0, 1] + ' M' + str(mejores)
+
+        if por_modalidad:
+            indice_mejores_video = np.empty(0, dtype=np.int)
+            valores_mejores_video = np.empty(0)
+            indice_mejores_audio = np.empty(0, dtype=np.int)
+            valores_mejores_audio = np.empty(0)
+            # Los primeros los uso como inicializacion
+            for i in range(0, mejores):
+                indice_mejores_video = np.append(indice_mejores_video, modalidad_video[i])
+                valores_mejores_video = np.append(valores_mejores_video, float(resumen[1, modalidad_video[i]]))
+                indice_mejores_audio = np.append(indice_mejores_audio, modalidad_audio[i])
+                valores_mejores_audio = np.append(valores_mejores_audio, float(resumen[1, modalidad_audio[i]]))
+            # Recien ahora recorro el resto
+            for i in range(mejores, int((resumen.shape[1] - 1) / 2)):
+                # Si tiene menor error que reemplace el menor tanto en indice como en valores
+                if float(resumen[1, modalidad_video[i]]) < valores_mejores_video.max():
+                    indice_mejores_video[valores_mejores_video.argmax()] = modalidad_video[i]
+                    valores_mejores_video[valores_mejores_video.argmax()] = float(resumen[1, modalidad_video[i]])
+                if float(resumen[1, modalidad_audio[i]]) < valores_mejores_audio.max():
+                    indice_mejores_audio[valores_mejores_audio.argmax()] = modalidad_audio[i]
+                    valores_mejores_audio[valores_mejores_audio.argmax()] = float(resumen[1, modalidad_audio[i]])
+            indice_mejores = np.concatenate([indice_mejores_audio, indice_mejores_video])
+        else:
+            # Los primeros los uso como inicializacion
+            for i in range(1, mejores + 1):
+                valores_mejores = np.append(valores_mejores, float(resumen[1, i]))
+                indice_mejores = np.append(indice_mejores, i)
+            # Recien ahora recorro el resto
+            for i in range(mejores + 1, resumen.shape[1]):
+                # Si tiene menor error que reemplace el menor tanto en indice como en valores
+                if float(resumen[1, i]) < valores_mejores.max():
+                    indice_mejores[valores_mejores.argmax()] = i
+                    valores_mejores[valores_mejores.argmax()] = float(resumen[1, i])
+    else:
+        indice_mejores = np.array(range(1, resumen.shape[1]))
+
+    cont_errores = 0
+    if metodo == 'Voto':
+        for j in range(2, resumen.shape[0]):
+            votos = list()
+            # Recorro solo las columnas con los mejores clasificadores
+            for i in indice_mejores:
+                # Busco la posicion de la clase que corresponde la etiqueta que predice
+                votos.append(resumen[j, i])
+            # Agrego a la fila del resumen final la etiqueta y la prediccion final despues del voto
+            mas_votado = max(set(votos), key=votos.count)
+            resumen_final = np.append(resumen_final, np.array([np.array([resumen[j, 0], mas_votado])]), axis=0)
+            # Si la prediccion no es igual a la etiqueta que sume uno al contador de errores
+            if mas_votado != resumen[j, 0]:
+                cont_errores = cont_errores + 1
+        # Luego de terminar de realizar la fusion calculo el porcentaje de error medio
+        error = (cont_errores / (resumen.shape[0] - 2)) * 100
+        resumen_final[1, 1] = str(error)
+
+    return resumen_final
