@@ -246,9 +246,9 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
     valores_mejores = np.empty(0)
 
     # Creo el resumen final
-    resumen_final = np.array([np.array(['Etiqueta', metodo])])
+    new_resu = np.array([np.array(['Etiqueta', metodo])])
     # Agrego la fila con el error y el valor 0, despues este se tiene que reemplazar al calcular el error al final
-    resumen_final = np.append(resumen_final, np.array([np.array(['Error medio %', '0'])]), axis=0)
+    new_resu = np.append(new_resu, np.array([np.array(['Error medio %', '0'])]), axis=0)
 
     # Si los mejores son por modalidad, guardo los indices de donde se encuentran cada uno
     if por_modalidad:
@@ -263,7 +263,7 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
 
     if mejores > 0:
         # Agrego al mejor de que tantos era
-        resumen_final[0, 1] = resumen_final[0, 1] + ' M' + str(mejores)
+        new_resu[0, 1] = new_resu[0, 1] + ' M' + str(mejores)
 
         if por_modalidad:
             indice_mejores_video = np.empty(0, dtype=np.int)
@@ -310,12 +310,44 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
                 votos.append(resumen[j, i])
             # Agrego a la fila del resumen final la etiqueta y la prediccion final despues del voto
             mas_votado = max(set(votos), key=votos.count)
-            resumen_final = np.append(resumen_final, np.array([np.array([resumen[j, 0], mas_votado])]), axis=0)
+            new_resu = np.append(new_resu, np.array([np.array([resumen[j, 0], mas_votado])]), axis=0)
             # Si la prediccion no es igual a la etiqueta que sume uno al contador de errores
             if mas_votado != resumen[j, 0]:
                 cont_errores = cont_errores + 1
         # Luego de terminar de realizar la fusion calculo el porcentaje de error medio
         error = (cont_errores / (resumen.shape[0] - 2)) * 100
-        resumen_final[1, 1] = str(error)
+        new_resu[1, 1] = str(error)
 
-    return resumen_final
+    return new_resu
+
+
+def VotoPorSegmento(resumen, cant_intervalos):
+    """
+    Aplica voto a los intervalos de tiempo contiguos, de manera que no se produzan cambios bruscos en las etiquetas por
+    cada intervalo.
+    """
+    new_resu = np.copy(resumen)
+    new_resu[0, 1] = new_resu[0, 1] + '-' + str(cant_intervalos)
+    cont_errores = 0
+    for i in range(2, resumen.shape[0], cant_intervalos):
+        votos = list()
+        for j in range(i, i + cant_intervalos):
+            votos.append(resumen[j, 1])
+        mas_votado = max(set(votos), key=votos.count)
+        for j in range(i, i + cant_intervalos):
+            new_resu[j, 1] = mas_votado
+            if mas_votado != resumen[j, 0]:
+                cont_errores = cont_errores + 1
+    error = (cont_errores / (resumen.shape[0] - 2)) * 100
+    new_resu[1, 1] = str(error)
+
+    return new_resu
+
+def OrdenaInstancias(resumen, orden_instancias):
+    aux = np.empty(0, dtype=int)
+    for i in range(0, orden_instancias.size):
+        ind = np.where(orden_instancias == i)[0]
+        aux = np.append(aux, ind)
+    aux_resumen = resumen[2:]
+    resumen[2:] = aux_resumen[aux]
+    return resumen

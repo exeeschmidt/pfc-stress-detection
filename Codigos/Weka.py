@@ -36,29 +36,19 @@ def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion, sumario=Fa
         else:
             met_search = 'weka.attributeSelection.BestFirst'
 
-    search = ASSearch(classname=met_search)
-    evaluation = ASEvaluation(classname=met_eval)
-    attsel = AttributeSelection()
-    attsel.search(search)
-    attsel.evaluator(evaluation)
-    attsel.select_attributes(data)
+    flter = Filter(classname="weka.filters.supervised.attribute.AttributeSelection")
+    aseval = ASEvaluation(met_eval)
+    assearch = ASSearch(met_search)
+    flter.set_property("evaluator", aseval.jobject)
+    flter.set_property("search", assearch.jobject)
+    flter.inputformat(data)
+    data_filtrada = flter.filter(data)
+    data_tt_filtrada = flter.filter(data_tt)
+    # saver = Saver()
+    # saver.save_file(data_f, "filtrado.arff")
+    # saver.save_file(data_v_f, "filtrado_v.arff")
 
-    if sumario:
-        print("# attributes: " + str(attsel.number_attributes_selected))
-        print("result string:\n" + attsel.results_string)
-
-    # Selecciono los atributos a partir de los resultados del método
-    num_att = data.num_attributes
-    # Empiezo por el final porque sino corro los índices del vector y no me sirven los resultados del método de selección
-    ind = num_att - 1
-    for i in range(num_att, 0, -1):
-        # El where devuelve una tupla con el vector con los índices que contienen la data y el tipo
-        # Tengo en cuenta también la clase porque el método de selección no lo hace
-        if np.where(attsel.selected_attributes == ind)[0].size == 0 and data.class_index != ind:
-            data.delete_attribute(ind)
-            data_tt.delete_attribute(ind)
-        ind = ind - 1
-    return data, data_tt
+    return data_filtrada, data_tt_filtrada
 
 
 def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):

@@ -336,3 +336,27 @@ def MezclaInstanciasArff(nombre_archivo, orden):
     arch.seek(0)
     arch.writelines(lineas)
     arch.close()
+
+def BinarizoEtiquetas(path_archivo):
+    # Abro el archivo para lectura y escritura
+    archivo = open(os.path.join(datos.PATH_CARACTERISTICAS, path_archivo + '.arff'), 'r+')
+
+    # Recorro todas las líneas del archivo
+    lineas = archivo.readlines()
+    nuevas_lineas = list()
+    for linea in lineas:
+        # Si encuentro la línea donde está definida el atributo clase, la reemplazo por la línea creada antes
+        if linea == '@attribute class {N, B, M, A}\n':
+            aux = '@attribute class {N, E}' + '\n'
+        elif linea[0] != '@' and linea[0] != '\n':
+            aux = linea.replace('B', 'E')
+            aux = aux.replace('M', 'E')
+            aux = aux.replace('A', 'E')
+        else:
+            aux = linea
+        nuevas_lineas.append(aux)
+    # Borro, llevo el puntero al principio y escribo las líneas ya modificadas
+    archivo.truncate(0)
+    archivo.seek(0)
+    archivo.writelines(nuevas_lineas)
+    archivo.close()

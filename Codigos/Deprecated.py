@@ -415,6 +415,12 @@ def segmentaPrediccion(predi_1, predi_2):
     return new_predi_1, new_predi_2
 
 
+def BinarizoPorPersonas(sujetos, etapas):
+    for i in sujetos:
+        for j in etapas:
+            path_final = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(sujetos[i], etapas[j]))
+            hrm.BinarizoEtiquetas(path_final)
+
 # ================================================= ArffManager ========================================================
 def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     """

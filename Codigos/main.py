@@ -5,15 +5,18 @@ import Codigos.Experimentos as exp
 def main():
     # personas = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16',
     #                      '17', '18', '19', '20', '21'])
-    personas = np.array(['01', '02', '21'])
-    # personas = np.array(['06'])
-    etapas = np.array(['1', '2'])
+    # personas = np.array(['04', '08', '14'])
+    # personas = np.array(['01', '02', '21'])
+    personas = np.array(['12'])
+    # etapas = np.array(['1', '2'])
+    etapas = np.array(['1'])
     zonas = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])
     # zonas = np.array(['cejaizq', 'cejader', 'boca'])
     met_caracteristicas = np.array(['LBP', 'AU', 'HOG'])
-    met_seleccion = np.array(['', 'PSO', 'PCA'])
+    # met_seleccion = np.array(['', 'PSO', 'PCA'])
+    met_seleccion = np.array(['', 'PSO'])
     # met_seleccion = np.array([''])
-    met_clasificacion = np.array(['RForest', 'SVM', 'J48'])
+    met_clasificacion = np.array(['RForest', 'SVM', 'J48', 'MLP'])
 
     exp.Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, folds=-1)
     #exp.PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion)
@@ -23,3 +26,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

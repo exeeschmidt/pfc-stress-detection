@@ -16,7 +16,7 @@ from tabulate import tabulate
 
 def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False, folds=-1):
     start_total = time.time()
-    jvm.start(max_heap_size="8G", packages=True)
+    jvm.start(max_heap_size="4G", packages=True)
 
     # print('Extracción de caracteristicas en progreso')
     # features = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
@@ -89,22 +89,27 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
                 train = train_ori
                 test = test_ori
             for j in range(0, len(met_clasificacion)):
-                print(met_clasificacion[j])
-                start2 = time.time()
-                lista_metodos.append(metodo_actual + met_clasificacion[j])
-                predicciones, error = wek.Clasificacion(train, test, met_clasificacion[j])
-                lista_errores.append(error)
-                if len(vec_predicciones) == 0:
-                    vec_predicciones = np.array([hrm.prediccionCSVtoArray(predicciones)])
-                else:
-                    vec_predicciones = np.concatenate([vec_predicciones, np.array([hrm.prediccionCSVtoArray(predicciones)])])
-                print(time.time() - start2)
+                # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
+                if metodo_actual != '' or met_clasificacion[j] != 'MLP':
+                    print(met_clasificacion[j])
+                    start2 = time.time()
+                    lista_metodos.append(metodo_actual + met_clasificacion[j])
+                    predicciones, error = wek.Clasificacion(train, test, met_clasificacion[j])
+                    lista_errores.append(error)
+                    if len(vec_predicciones) == 0:
+                        vec_predicciones = np.array([hrm.prediccionCSVtoArray(predicciones)])
+                    else:
+                        vec_predicciones = np.concatenate([vec_predicciones, np.array([hrm.prediccionCSVtoArray(predicciones)])])
+                    print(time.time() - start2)
 
         resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_errores)
-        resumen_final = hrm.Fusion(resultados, 'Voto', mejores=4)
+        resumen_fusionado = hrm.Fusion(resultados, 'Voto', mejores=4)
+        if folds == -1:
+            resumen_fusionado = hrm.OrdenaInstancias(resumen_fusionado, orden_instancias)
+        resumen_final = hrm.VotoPorSegmento(resumen_fusionado, 20)
         if folds != -1:
             resumen_folds = np.append(resumen_folds, resumen_final[1, 1])
-        _mostrar_tabla(resultados, resumen_final)
+        _mostrar_tabla(resultados, resumen_fusionado, resumen_final)
     if folds != -1:
         print(resumen_folds)
     jvm.stop()
@@ -255,10 +260,15 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
     print(time.time() - start_total)
     return resultados, resumen_final
 
-def _mostrar_tabla(resultados, resumen_final):
+def _mostrar_tabla(resultados, resumen_fusionado, resumen_final):
     headers = resultados[0, :]
     table = tabulate(resultados[1:2, :], headers, tablefmt="fancy_grid")
     print(table)
+
+    headers = resumen_fusionado[0, :]
+    table = tabulate(resumen_fusionado[1:2, :], headers, tablefmt="fancy_grid")
+    print(table)
+
     headers = resumen_final[0, :]
     table = tabulate(resumen_final[1:2, :], headers, tablefmt="fancy_grid")
     print(table)
