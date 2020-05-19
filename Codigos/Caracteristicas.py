@@ -2,10 +2,14 @@ import os
 import cv2 as cv
 import numpy as np
 import time
+
+from weka.core.dataset import Instance
+
 import Codigos.ArffManager as am
 import Codigos.Metodos as met
 import Codigos.Herramientas as hrm
 import Codigos.Datos as datos
+import Codigos.Weka as weka
 
 
 # ======================================================= VIDEO ========================================================
@@ -56,7 +60,7 @@ class Video:
         nro_zonas = len(self.zonas)
 
         # Inicializo OpenFace pasando las banderas
-        op_fa = met.OpenFace(cara=False, hog=True, landmarks=True, aus=True)
+        op_fa = met.OpenFace(cara=False, hog=False, landmarks=True, aus=True)
 
         # Cargo el archivo con las etiquetas
         arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
@@ -347,9 +351,6 @@ class Video:
                 for i in range(0, invalidos):
                     am.FilaArffv2(nombre, vec_prom_ant, etiqueta_ant)
 
-
-
-
     @staticmethod
     def _voto(etiquetas, clases):
         # Simple algoritmo de votacion que devuelve la clase con mas etiquetas presentes
@@ -451,3 +452,161 @@ class Audio:
                 # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
                 am.AgregaEtiqueta(nombre + '.wav', clases, etiqueta)
         return rangos_silencios
+
+
+# =========================================== CARACTERISTICSA VIDEO ====================================================
+
+
+class CaracteristicasVideo:
+    def __init__(self, zonas, tiempo_micro=0.25):
+        self.tiempo_micro = tiempo_micro
+
+        # Defino las zonas donde quiero calcular lbp y hop, las opciones son
+        # cejas, cejaizq, cejader, ojos, ojoizq, ojoder, cara, nariz, boca
+        # zonas = np.array(['cejaizq', 'cejader', 'ojoizq', 'ojoder', 'boca'])
+        self.zonas = zonas
+
+    def __call__(self, persona, etapa):
+        nro_zonas = len(self.zonas)
+
+        # Inicializo y ejecuto openface
+        op_fa = met.OpenFace(cara=False, hog=False, landmarks=True, aus=True)
+        op_fa(persona, etapa)
+
+        nombre = datos.buildVideoName(persona, etapa)
+        path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+        if not os.path.exists(path):
+            print("Ruta de archivo incorrecta o no válida")
+            return
+        video = cv.VideoCapture(path)
+
+        archivo = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
+
+        # Del 0 al 67 son los landmarks, guardo los índices de inicio y fin de cada coordenada de estos
+        LimLandmarksX1 = archivo[0].index('x_0')
+        LimLandmarksX2 = archivo[0].index('x_67')
+        LimLandmarksY1 = archivo[0].index('y_0')
+        dif_landmarks = LimLandmarksX2 - LimLandmarksX1
+
+        AUs = np.array([])
+        # Lo mismo con las intensidades de los AUs
+        LimIntAUs1 = archivo[0].index('AU01_r')
+        LimIntAUs2 = archivo[0].index('AU45_r')
+
+        # Inicializo las clases de los métodos de extracción
+        lbp = met.OriginalLBP()
+        hop = met.HistogramOfPhase(plotear=False, resize=False)
+        winSize = (64, 64)
+        blockSize = (8, 8)
+        blockStride = (8, 8)
+        cellSize = (8, 8)
+        nbins = 9
+        hog = cv.HOGDescriptor(winSize, blockSize, blockStride, cellSize, nbins)
+
+        # Inicializo los rangos donde indican el inicio y fin de las características en cada zona según el método
+        # Esto sirve para darles el nombre de zonas al guardar las características en los arff
+        lbp_range = list([0])
+        hop_range = list([0])
+        hog_range = list([0])
+
+        # Número de cuadro que va recorriendo
+        nro_frame = 1
+        # Booleano para saber si es el primer frame que extraigo características
+        primer_frame = True
+        # Comienzo a recorrer el video por cada cuadro
+        while video.isOpened():
+            ret, frame = video.read()
+            if ret == 0:
+                break
+
+            # Extraigo solo si la confidencialidad encuentra que se detecto una cara en el cuadro
+            if self._confidencialidad(frame):
+                # Obtengo los landmarks del archivo
+                lm_x = archivo[nro_frame][LimLandmarksX1:LimLandmarksX1 + dif_landmarks]
+                lm_y = archivo[nro_frame][LimLandmarksY1:LimLandmarksY1 + dif_landmarks]
+
+                # Inicializo los vectores donde se van a ir concatenando las características de todas las zonas
+                lbp_hist = np.array([])
+                hop_hist = np.array([])
+                hog_hist = np.array([])
+
+                # Por cada zona repito
+                for i in range(0, nro_zonas):
+                    # Recorto las roi, las expando y aplico un resize para que tengan tamaño constante en todos
+                    # los frames
+                    roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i])
+
+                    # Obtengo los patrones locales binarios y sus histogramas
+                    aux_lbp = np.array(hrm.Histograma(lbp(roi)))
+                    if primer_frame:
+                        # A partir del anterior, le voy sumando el tamaño de este
+                        lbp_range.append(lbp_range[len(lbp_range) - 1] + len(aux_lbp))
+                    lbp_hist = np.concatenate([lbp_hist, aux_lbp])
+
+                    # Obtengo los histogramas de fase, ravel lo uso para que quede en una sola fila
+                    aux_hop = np.ravel(hop(roi))
+                    if primer_frame:
+                        # A partir del anterior, le voy sumando el tamaño de este
+                        hop_range.append(hop_range[len(hop_range) - 1] + len(aux_hop))
+                    hop_hist = np.concatenate([hop_hist, aux_hop])
+                    # print("Tiempo HOP " + zonas[i] + ' ', time.time() - start2)
+
+                    # Obtengo los histogramas de gradiente
+                    aux_hog = np.ravel(hog.compute(cv.resize(roi, (64, 64))))
+                    if primer_frame:
+                        hog_range.append(hog_range[len(hog_range) - 1] + len(aux_hog))
+                    hog_hist = np.concatenate([hog_hist, aux_hog])
+
+                # Obtengo las intensidades de las AUs de OpenFace
+                AUs = archivo[nro_frame][LimIntAUs1:LimIntAUs2]
+
+                # Agrego la cabecera del archivo arff en el caso de ser el primer frame
+                if primer_frame:
+                    data_lbp = weka.Cabecera('LBP', lbp_range, self.zonas)
+                    data_hop = weka.Cabecera('HOP', hop_range, self.zonas)
+                    data_hog = weka.Cabecera('HOG', hog_range, self.zonas)
+                    aus_range = np.array([0, len(AUs)])
+                    data_aus = weka.Cabecera('AUs', aus_range, self.zonas)
+                    primer_frame = False
+            else:
+                lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * Instance.missing_value()
+                hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * Instance.missing_value()
+                hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * Instance.missing_value()
+                AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * Instance.missing_value()
+
+            # Agrego las caracteristicas y la etiqueta al arff
+            data_lbp = weka.AgregaInstancia(data_lbp, lbp_hist)
+            data_hop = weka.AgregaInstancia(data_hop, hop_hist)
+            data_hog = weka.AgregaInstancia(data_hog, hog_hist)
+            data_aus = weka.AgregaInstancia(data_aus, AUs)
+
+            # print(nro_frame)
+            nro_frame = nro_frame + 1
+
+        weka.Guarda(nombre, 'LBP', data_lbp)
+        weka.Guarda(nombre, 'HOP', data_hop)
+        weka.Guarda(nombre, 'HOG', data_hog)
+        weka.Guarda(nombre, 'AUS', data_aus)
+
+    @staticmethod
+    def _confidencialidad(img):
+        conf_threshold = 0.7
+        frame = np.copy(img)
+        modelFile = os.path.join(datos.ROOT_PATH, 'opencv_face_detector_uint8.pb')
+        configFile = os.path.join(datos.ROOT_PATH, 'opencv_face_detector.pbtxt')
+        net = cv.dnn.readNetFromTensorflow(modelFile, configFile)
+
+        # blobFromImage realiza un pequeño preprocesamiento, el tercer argumento es el nuevo tamaño de imagen,
+        # el cuarto son las medias de cada canal de color para hacer la media - el valor de cada canal en cada pixel
+        # el quinto argumento es si intercambia los canales rojos y azul, el sexto argumento es si recorta
+        blob = cv.dnn.blobFromImage(frame, 1.0, (300, 300), [104, 117, 123], False, False)
+
+        net.setInput(blob)
+        detections = net.forward()
+        # Devuelve muchas detecciones de posibles caras, como solo buscamos una, con que una confidencialidad sea alta
+        # ya consideramos que la cara esta presente
+        for i in range(detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            if confidence > conf_threshold:
+                return True
+        return False

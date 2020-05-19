@@ -260,6 +260,21 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
     print(time.time() - start_total)
     return resultados, resumen_final
 
+def ExtractorDeCaracteristicas(personas, etapas, zonas):
+    start_total = time.time()
+    jvm.start()
+    print('Extracción de caracteristicas en progreso')
+    features = carac.CaracteristicasVideo(zonas)
+    for i in personas:
+        for j in etapas:
+            start2 = time.time()
+            print(i + ' ' + j)
+            features(i, j)
+            print(time.time() - start2)
+    print('Completada extraccion de caracteristicas')
+    print(time.time() - start_total)
+    # jvm.stop()
+
 def _mostrar_tabla(resultados, resumen_fusionado, resumen_final):
     headers = resultados[0, :]
     table = tabulate(resultados[1:2, :], headers, tablefmt="fancy_grid")
