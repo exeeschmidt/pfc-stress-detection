@@ -1,26 +1,8 @@
-import numpy as np
-from weka.attribute_selection import ASSearch, AttributeSelection, ASEvaluation
+from weka.attribute_selection import ASSearch, ASEvaluation
 from weka.classifiers import Classifier, Evaluation, PredictionOutput
-from weka.core.converters import Loader, Saver
 from weka.filters import Filter
-from weka.core.dataset import Instances, Attribute, Instance
-import Codigos.Datos as datos
-import os
+from weka.core.dataset import Instances
 
-
-def CargaYFiltrado(path):
-    # Cargo los datos
-    loader = Loader("weka.core.converters.ArffLoader")
-    data = loader.load_file(path)
-
-    # Creo un filtro para eliminar atributos de tipo string en caso que se presenten
-    remove = Filter(classname="weka.filters.unsupervised.attribute.RemoveType", options=["-T", "string"])
-    remove.inputformat(data)
-    data = remove.filter(data)
-
-    # Indico que la clase es el último atributo
-    data.class_is_last()
-    return data
 
 
 def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion, sumario=False):
@@ -86,25 +68,3 @@ def ParticionaDatos(data, porcentaje=66.0):
     #El rnd None permite que no los mezcle ni desordene al dividirlo
     train, test = data.train_test_split(porcentaje, rnd=None)
     return train, test
-
-def Cabecera(nombre_atrib, range_atrib, zonas):
-    atrib = list()
-    # Recorro dentro de los intervalos pasados por el rango seleccionando la zona correspondiente
-    for j in range(0, len(range_atrib) - 1):
-        cont = 1
-        for i in range(range_atrib[j], range_atrib[j + 1]):
-            atrib.append(Attribute.create_numeric(nombre_atrib + '_' + zonas[j] + '[' + str(cont) + ']'))
-            cont = cont + 1
-
-    data = Instances.create_instances(nombre_atrib + "features", atrib, 0)
-    return data
-
-def AgregaInstancia(data, features):
-    inst = Instance.create_instance(features)
-    data.add_instance(inst)
-    return data
-
-def Guarda(nombre_archivo, atrib, data):
-    path = os.path.join(datos.PATH_CARACTERISTICAS, atrib, nombre_archivo + '_' + atrib + '.arff')
-    saver = Saver()
-    saver.save_file(data, path)

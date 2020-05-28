@@ -115,7 +115,7 @@ class OpenSmile:
         op_sm(persona, parte)
     """
     
-    def __init__(self, salida_csv, ventaneo, config_file):
+    def __init__(self, salida_csv, ventaneo):
         # Bandera para salida como csv, sino sale como arff
         self._salida_csv = salida_csv
 
@@ -123,13 +123,10 @@ class OpenSmile:
         # Si no se llama el ventaneo se define cada 0.5s y el shift inicial en 0
         self._ventaneo = ventaneo
 
-        # Nombre del archivo de configuracion utilizado
-        # config_file = 'IS09_emotion.conf'
-        self._config_file = config_file
 
     def __call__(self, nombre_archivo, paso_ventaneo='0.125', shift_ini_ventaneo='0'):
         # Comando base de OpenSmile
-        comando = ['SMILExtract_Release', '-C', os.path.join('config', self._config_file), '-I',
+        comando = ['SMILExtract_Release', '-C', datos.PATH_CONFIG_FILE, '-I',
                    os.path.join(datos.PATH_PROCESADO, nombre_archivo)]
 
         # Según las banderas se le agregan parámetros al comando

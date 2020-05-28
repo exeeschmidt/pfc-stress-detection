@@ -14,6 +14,8 @@ PATH_OPENFACE = os.path.join(PATH_LIBRERIAS, 'openface')
 PATH_OPENSMILE = os.path.join(PATH_LIBRERIAS, 'opensmile')
 PATH_FFMPEG = os.path.join(PATH_LIBRERIAS, 'ffmpeg', 'bin')
 
+# PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
+PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
 def buildVideoName(persona, etapa, parte=-1, extension=False):
     video_name = 'Sujeto_' + persona + '_' + etapa
@@ -28,3 +30,7 @@ def buildPathVideo(persona, etapa, nombre_video, extension=True):
     if extension:
         path_video += '.mp4'
     return path_video
+
+def buildPathSub(persona, etapa, sub):
+    path = os.path.join(PATH_CARACTERISTICAS, sub, buildVideoName(persona, etapa) + '_' + sub + '.arff')
+    return path
