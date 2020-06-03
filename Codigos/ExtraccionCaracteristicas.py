@@ -1,7 +1,6 @@
 import os
 import cv2 as cv
 import numpy as np
-import time
 from tqdm import tqdm
 from colorama import Fore
 import Codigos.ArffManager as am
@@ -522,11 +521,11 @@ class CaracteristicasVideo:
                     data_hog = am.Cabecera('HOG', hog_range, self.zonas)
                     data_aus = am.Cabecera('AUs', len(AUs), self.zonas)
                     primer_frame = False
-            elif not primer_frame:
-                lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
-                hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
-                hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
-                AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
+                elif not primer_frame:
+                    lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
+                    hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
+                    hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
+                    AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
             else:
                 instancias_invalidas = instancias_invalidas + 1
 
