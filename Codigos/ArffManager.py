@@ -5,6 +5,7 @@ from weka.core.converters import Loader, Saver
 from weka.filters import Filter
 from weka.core.dataset import Instances, Attribute, Instance
 
+
 def CargaYFiltrado(path):
     # Cargo los datos
     loader = Loader("weka.core.converters.ArffLoader")
@@ -75,9 +76,10 @@ def Normaliza(data_vec):
 
     for i in range(0, data_vec.size):
         if instancias[i] > instancias.min():
-           data_vec[i] = Instances.copy_instances(data_vec[i], 0, instancias.min())
+            data_vec[i] = Instances.copy_instances(data_vec[i], 0, instancias.min())
 
     return data_vec
+
 
 def NuevaData(data_raiz):
     # Crea un nuevo dataset apartir de los atributos de otro
@@ -229,8 +231,8 @@ def MezclaInstancias(nombre_archivo, orden):
     # Uno al resto de las lineas las nuevas instancias mezcladas
     lineas = lineas[0:pos_data] + list(lineas_datos)
     # A la ultima nueva linea le extraigo el salto de carro
-    ultimo_indice = len(lineas)-1
-    lineas[ultimo_indice] = lineas[ultimo_indice][0:len(lineas[ultimo_indice])-1]
+    ultimo_indice = len(lineas) - 1
+    lineas[ultimo_indice] = lineas[ultimo_indice][0:len(lineas[ultimo_indice]) - 1]
     # Limpio el archivo, voy al inicio y escribo las lineas nuevas
     arch.truncate(0)
     arch.seek(0)

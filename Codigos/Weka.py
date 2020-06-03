@@ -4,7 +4,6 @@ from weka.filters import Filter
 from weka.core.dataset import Instances
 
 
-
 def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion, sumario=False):
     # opciones: 'PSO' , 'PCA', 'Firsts'
     data = Instances.copy_instances(data_train)
@@ -65,6 +64,6 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
 
 
 def ParticionaDatos(data, porcentaje=66.0):
-    #El rnd None permite que no los mezcle ni desordene al dividirlo
+    # El rnd None permite que no los mezcle ni desordene al dividirlo
     train, test = data.train_test_split(porcentaje, rnd=None)
     return train, test

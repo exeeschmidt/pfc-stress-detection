@@ -1,7 +1,12 @@
+import os
+import numpy as np
+from scipy.signal import convolve2d
+import Codigos.Datos as datos
+import Codigos.Herramientas as hrm
+
 
 # =================================================== Metodos ==========================================================
-#Metodo parte de elimina silencios
-@staticmethod
+# Metodo parte de elimina silencios
 def _metodo2(energia, cruces, nro_ref, nro_muestras, tam_ventana, muestreo):
     """
     Toma las primeras 5 ventanas como silencio para tener números de referencia acerca de los cruces por cero y
@@ -19,6 +24,22 @@ def _metodo2(energia, cruces, nro_ref, nro_muestras, tam_ventana, muestreo):
             termina = int(inicia + tam_ventana * muestreo)
             vector[inicia:termina] = np.ones([int(tam_ventana * muestreo)])
     return vector
+
+
+class LocalDescriptor(object):
+    def __init__(self, neighbors):
+        self._neighbors = neighbors
+
+    def __call__(self, X):
+        raise NotImplementedError("Every LBPOperator must implement the __call__ method.")
+
+    @property
+    def neighbors(self):
+        return self._neighbors
+
+    def __repr__(self):
+        return "LBPOperator (neighbors=%s)" % self._neighbors
+
 
 class ExtendedLBP(LocalDescriptor):
     def __init__(self, radius=1, neighbors=8):
@@ -256,6 +277,7 @@ class LPQ(LocalDescriptor):
     def __repr__(self):
         return "LPQ (neighbors=%s, radius=%s)" % (self._neighbors, self._radius)
 
+
 # ================================================ Herramientas ========================================================
 def segmentaResumen(resu_1, resu_2):
     """
@@ -421,6 +443,7 @@ def BinarizoPorPersonas(sujetos, etapas):
             path_final = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(sujetos[i], etapas[j]))
             hrm.BinarizoEtiquetas(path_final)
 
+
 # ================================================= ArffManager ========================================================
 def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     """
@@ -503,6 +526,7 @@ def CabeceraArff(nombre, lbp_range, hop_range, hog_range, au_range, clases, zona
     file.write('@data' + os.linesep)
     file.close()
 
+
 def FilaArffv2(nombre, feat, etiqueta):
     """
     Escribe el vector de caracteristicas en una fila del arff, a diferencia de la v1 este recibe un solo vector
@@ -519,6 +543,7 @@ def FilaArffv2(nombre, feat, etiqueta):
     fila = fila + etiqueta
     file.write(fila + '\n')
     file.close()
+
 
 def ConcatenaArff(nombre_salida, sujetos, etapas, partes=0, bool_wav=False, rangos_audibles=None):
     """
@@ -617,6 +642,7 @@ def ConcatenaArff(nombre_salida, sujetos, etapas, partes=0, bool_wav=False, rang
     salida.close()
     return instancias
 
+
 def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
     """
     Algoritmo para unificar los resultados de audio y video en un solo arff.
@@ -681,6 +707,7 @@ def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
     salida.close()
     return instancias
 
+
 def AgregaEtiqueta(nombre, clases, etiqueta):
     """
     Permite agregar la etiqueta a los arff ya creados por open smile
@@ -717,6 +744,7 @@ def AgregaEtiqueta(nombre, clases, etiqueta):
     archivo.writelines(nuevas_lineas)
     archivo.close()
 
+
 def NormalizaArff(nombre_archivo1, nombre_archivo2):
     # Cargo los archivos que se van a normalizar
     arch1 = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo1 + '.arff'), 'r+')
@@ -738,7 +766,6 @@ def NormalizaArff(nombre_archivo1, nombre_archivo2):
         arch2.readline()
         pos_data[j] = pos_data[j] + 2
 
-
     arch1.seek(0)
     arch2.seek(0)
     lineas1 = arch1.readlines()
@@ -759,4 +786,3 @@ def NormalizaArff(nombre_archivo1, nombre_archivo2):
     arch1.close()
     arch2.close()
     return int(instancias)
-

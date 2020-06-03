@@ -14,6 +14,7 @@ from tabulate import tabulate
 # met_seleccion = np.array(['Firsts', 'PCA'])
 # met_clasificacion = np.array(['RForest', 'J48', 'SVM', 'MLP'])
 
+
 def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False, folds=-1):
     start_total = time.time()
     jvm.start(max_heap_size="4G", packages=True)
@@ -23,7 +24,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
     for i in personas:
         for j in etapas:
             start2 = time.time()
-            print(i + ' ' + j)
+            print('Persona ' + i + ' -> Etapa ' + j)
             features(i, j, completo=True)
             print(time.time() - start2)
 
@@ -260,6 +261,7 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
     print(time.time() - start_total)
     return resultados, resumen_final
 
+
 def ExtractorDeCaracteristicas(personas, etapas, zonas):
     start_total = time.time()
     jvm.start()
@@ -269,12 +271,13 @@ def ExtractorDeCaracteristicas(personas, etapas, zonas):
         for j in etapas:
             if i != '09' or j != '1':
                 start2 = time.time()
-                print(i + ' ' + j)
+                print('Persona ' + i + ' -> Etapa ' + j)
                 features(i, j)
                 print(time.time() - start2)
     print('Completada extraccion de caracteristicas')
     print(time.time() - start_total)
     # jvm.stop()
+
 
 def _mostrar_tabla(resultados, resumen_fusionado, resumen_final):
     headers = resultados[0, :]

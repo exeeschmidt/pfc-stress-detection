@@ -2,11 +2,13 @@ import os
 import cv2 as cv
 import numpy as np
 import time
-
+from tqdm import tqdm
+from colorama import Fore
 import Codigos.ArffManager as am
 import Codigos.Metodos as met
 import Codigos.Herramientas as hrm
 import Codigos.Datos as datos
+
 
 # ======================================================= VIDEO ========================================================
 
@@ -45,7 +47,7 @@ class Video:
         self.nro_zonas = len(self.zonas)
 
     def __call__(self, persona, etapa, completo=False, rangos_audibles=None):
-        start = time.time()
+        # start = time.time()
         if rangos_audibles is None:
             rangos_audibles = list()
 
@@ -63,7 +65,7 @@ class Video:
         data = am.FiltraZonas(data, self.zonas)
 
         # Cargo el archivo con las etiquetas
-        arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
+        arch_etiquetas = hrm.leeCSV(datos.PATH_ETIQUETAS)
 
         if int(etapa) == 1:
             partes = 7
@@ -77,7 +79,7 @@ class Video:
 
     def VideoCompleto(self, persona, etapa, partes, data, arch_etiquetas):
         # Numero de instancia desde la que recorro
-        instancia_desde = 0
+        # instancia_desde = 0
         # Diferencias en los nombres de archivo y llamada a open face
         nombre = datos.buildVideoName(persona, etapa)
         path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
@@ -135,7 +137,6 @@ class Video:
         am.CambiarRelationName(data, 'VideoFeatures Completos')
         am.Guarda(persona, etapa, 'VCom', data)
         return data
-
 
     def VideoRespuestas(self, persona, etapa, partes, rangos_audibles, data, arch_etiquetas):
         # Si no hay rangos audibles especificados o se analiza el video completo no existe la eliminacion de silencios
@@ -206,11 +207,10 @@ class Video:
             data_actual = am.NuevaData(data)
             data_actual = am.AgregaAtributoClase(data_actual, self.clases)
             for i in range(instancia_desde, instancia_hasta):
-
                 # Si no está eliminando silencios o encuentra que el frame se encuentra de los frames audibles
                 # se extraen las caracteristicas.  Verfico también que la confidencialidad encuentra que se detecto
                 # una cara en el cuadro segun un umbral interno
-                if (not elimina_silencio or cuadros_audibles.count(nro_instancia) > 0):
+                if (not elimina_silencio) or (cuadros_audibles.count(nro_instancia) > 0):
                     # Concateno todas las caracteristicas en un solo vector
                     vec_caracteristicas = am.getValores(data, i)
 
@@ -240,7 +240,7 @@ class Video:
                 # Verifico si termino el periodo, si es asi debo promediar y agregar al arff
                 if acu_tiempos >= self.tiempo_micro:
                     if vec_prom.size != 0:
-                        ######## NOTA: estamos promediando tambien la intensidad de las AUs, esto podemos volver a analizarlo
+                        # NOTA: estamos promediando tambien la intensidad de las AUs, esto podemos volver a analizarlo
                         vec_prom = vec_prom / cps
                         etiqueta_prom = self._voto(vec_etiquetas, self.clases)
 
@@ -256,9 +256,9 @@ class Video:
                                 # Creo el vector aproximando promediando
                                 vec_aprox = (vec_prom + vec_prom_ant) / 2
                                 etiqueta_aprox = self._voto(list([etiqueta_ant, etiqueta_prom]), self.clases)
-                            for i in range(0, invalidos):
+                            for k in range(0, invalidos):
                                 data_actual = am.AgregaInstanciaClase(data_actual, vec_aprox,
-                                                                  np.where(self.clases == etiqueta_aprox)[0][0])
+                                                                      np.where(self.clases == etiqueta_aprox)[0][0])
                         vec_prom_ant = vec_prom
                         etiqueta_ant = etiqueta_prom
                         invalidos = 0
@@ -310,7 +310,6 @@ class Video:
         else:
             am.Guarda(persona, etapa, 'VResp', data_final)
 
-
     @staticmethod
     def _voto(etiquetas, clases):
         # Simple algoritmo de votacion que devuelve la clase con mas etiquetas presentes
@@ -318,6 +317,7 @@ class Video:
         for i in range(0, clases.size):
             votos[i] = etiquetas.count(clases[i])
         return clases[votos.argmax()]
+
 
 # ======================================================= AUDIO ========================================================
 
@@ -337,7 +337,7 @@ class Audio:
         ffmpeg = met.FFMPEG()
         open_smile = met.OpenSmile(salida_csv=False, ventaneo=True)
         eli_silencios = met.EliminaSilencios(plotear=False)
-        arch_etiquetas = hrm.leeCSV('EtiquetadoConTiempo.csv')
+        arch_etiquetas = hrm.leeCSV(datos.PATH_ETIQUETAS)
 
         # Según la etapa, distinta cantidad de partes
         if int(etapa) == 1:
@@ -380,8 +380,8 @@ class Audio:
                     os.remove(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'))
                     # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
                     data_aux = am.AgregaAtributoClase(data_aux, clases)
-                    for i in range(0, am.NroInstancias(data_aux)):
-                        data_aux = am.AgregaEtiqueta(data_aux, i, np.where(clases == etiqueta)[0][0])
+                    for k in range(0, am.NroInstancias(data_aux)):
+                        data_aux = am.AgregaEtiqueta(data_aux, k, np.where(clases == etiqueta)[0][0])
                     data_vec = np.append(data_vec, data_aux)
                 # Lo agrego a la lista con los rangos de segmentos de cada respuesta
                 rangos_silencios.append(rango)
@@ -407,7 +407,6 @@ class Audio:
 
 # =========================================== CARACTERISTICSA VIDEO ====================================================
 
-
 class CaracteristicasVideo:
     def __init__(self, zonas, tiempo_micro=0.25):
         self.tiempo_micro = tiempo_micro
@@ -430,6 +429,7 @@ class CaracteristicasVideo:
             print("Ruta de archivo incorrecta o no válida")
             return
         video = cv.VideoCapture(path)
+        total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT)-1)
 
         arch_openface = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
 
@@ -466,91 +466,95 @@ class CaracteristicasVideo:
         primer_frame = True
         # Comienzo a recorrer el video por cada cuadro
         instancias_invalidas = 0
-        while video.isOpened():
-            ret, frame = video.read()
-            if ret == 0:
-                break
+        bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.GREEN)
+        with tqdm(total=total_frames, unit='frame', desc="Frames", bar_format=bar_format) as progreso_frames:
+            while video.isOpened():
+                ret, frame = video.read()
+                if ret == 0:
+                    break
 
-            # Extraigo solo si la confidencialidad encuentra que se detecto una cara en el cuadro
-            if self._confidencialidad(frame):
-                # Obtengo los landmarks del archivo
-                lm_x = arch_openface[nro_frame][LimLandmarksX1:LimLandmarksX1 + dif_landmarks]
-                lm_y = arch_openface[nro_frame][LimLandmarksY1:LimLandmarksY1 + dif_landmarks]
+                # Extraigo solo si la confidencialidad encuentra que se detecto una cara en el cuadro
+                if self._confidencialidad(frame):
+                    # Obtengo los landmarks del archivo
+                    lm_x = arch_openface[nro_frame][LimLandmarksX1:LimLandmarksX1 + dif_landmarks]
+                    lm_y = arch_openface[nro_frame][LimLandmarksY1:LimLandmarksY1 + dif_landmarks]
 
-                # Inicializo los vectores donde se van a ir concatenando las características de todas las zonas
-                lbp_hist = np.array([])
-                hop_hist = np.array([])
-                hog_hist = np.array([])
+                    # Inicializo los vectores donde se van a ir concatenando las características de todas las zonas
+                    lbp_hist = np.array([])
+                    hop_hist = np.array([])
+                    hog_hist = np.array([])
 
-                # Por cada zona repito
-                for i in range(0, nro_zonas):
-                    # Recorto las roi, las expando y aplico un resize para que tengan tamaño constante en todos
-                    # los frames
-                    roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i])
+                    # Por cada zona repito
+                    for i in range(0, nro_zonas):
+                        # Recorto las roi, las expando y aplico un resize para que tengan tamaño constante en todos
+                        # los frames
+                        roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i])
 
-                    # Obtengo los patrones locales binarios y sus histogramas
-                    aux_lbp = np.array(hrm.Histograma(lbp(roi)))
+                        # Obtengo los patrones locales binarios y sus histogramas
+                        aux_lbp = np.array(hrm.Histograma(lbp(roi)))
+                        if primer_frame:
+                            # A partir del anterior, le voy sumando el tamaño de este
+                            lbp_range.append(lbp_range[len(lbp_range) - 1] + len(aux_lbp))
+                        lbp_hist = np.concatenate([lbp_hist, aux_lbp])
+
+                        # Obtengo los histogramas de fase, ravel lo uso para que quede en una sola fila
+                        aux_hop = np.ravel(hop(roi))
+                        if primer_frame:
+                            # A partir del anterior, le voy sumando el tamaño de este
+                            hop_range.append(hop_range[len(hop_range) - 1] + len(aux_hop))
+                        hop_hist = np.concatenate([hop_hist, aux_hop])
+                        # print("Tiempo HOP " + zonas[i] + ' ', time.time() - start2)
+
+                        # Obtengo los histogramas de gradiente
+                        aux_hog = np.ravel(hog.compute(cv.resize(roi, (64, 64))))
+                        if primer_frame:
+                            # A partir del anterior, le voy sumando el tamaño de este
+                            hog_range.append(hog_range[len(hog_range) - 1] + len(aux_hog))
+                        hog_hist = np.concatenate([hog_hist, aux_hog])
+
+                    # Obtengo las intensidades de las AUs de OpenFace
+                    AUs = arch_openface[nro_frame][LimIntAUs1:LimIntAUs2]
+
+                    # Agrego la cabecera del archivo arff en el caso de ser el primer frame
                     if primer_frame:
-                        # A partir del anterior, le voy sumando el tamaño de este
-                        lbp_range.append(lbp_range[len(lbp_range) - 1] + len(aux_lbp))
-                    lbp_hist = np.concatenate([lbp_hist, aux_lbp])
+                        data_lbp = am.Cabecera('LBP', lbp_range, self.zonas)
+                        data_hop = am.Cabecera('HOP', hop_range, self.zonas)
+                        data_hog = am.Cabecera('HOG', hog_range, self.zonas)
+                        aus_range = np.array([0, len(AUs)])
+                        data_aus = am.Cabecera('AUs', aus_range, self.zonas)
+                        primer_frame = False
+                elif not primer_frame:
+                    lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
+                    hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
+                    hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
+                    AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
+                else:
+                    instancias_invalidas = instancias_invalidas + 1
 
-                    # Obtengo los histogramas de fase, ravel lo uso para que quede en una sola fila
-                    aux_hop = np.ravel(hop(roi))
-                    if primer_frame:
-                        # A partir del anterior, le voy sumando el tamaño de este
-                        hop_range.append(hop_range[len(hop_range) - 1] + len(aux_hop))
-                    hop_hist = np.concatenate([hop_hist, aux_hop])
-                    # print("Tiempo HOP " + zonas[i] + ' ', time.time() - start2)
+                if not primer_frame:
+                    # Al no tener antes el numero de atributos al tener el primer frame ya valido agrego todas las instancias
+                    # que habian sido invalidas al principio
+                    if instancias_invalidas > 0:
+                        lbp_hist_aux = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
+                        hop_hist_aux = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
+                        hog_hist_aux = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
+                        AUs_aux = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
+                        for i in range(0, instancias_invalidas):
+                            # Agrego la instancia con todas las caracteristicas de los frames invalidos
+                            data_lbp = am.AgregaInstancia(data_lbp, lbp_hist_aux)
+                            data_hop = am.AgregaInstancia(data_hop, hop_hist_aux)
+                            data_hog = am.AgregaInstancia(data_hog, hog_hist_aux)
+                            data_aus = am.AgregaInstancia(data_aus, AUs_aux)
+                        instancias_invalidas = 0
+                    # Agrego la instancia con todas las caracteristicas del frame actual
+                    data_lbp = am.AgregaInstancia(data_lbp, lbp_hist)
+                    data_hop = am.AgregaInstancia(data_hop, hop_hist)
+                    data_hog = am.AgregaInstancia(data_hog, hog_hist)
+                    data_aus = am.AgregaInstancia(data_aus, AUs)
 
-                    # Obtengo los histogramas de gradiente
-                    aux_hog = np.ravel(hog.compute(cv.resize(roi, (64, 64))))
-                    if primer_frame:
-                        hog_range.append(hog_range[len(hog_range) - 1] + len(aux_hog))
-                    hog_hist = np.concatenate([hog_hist, aux_hog])
-
-                # Obtengo las intensidades de las AUs de OpenFace
-                AUs = arch_openface[nro_frame][LimIntAUs1:LimIntAUs2]
-
-                # Agrego la cabecera del archivo arff en el caso de ser el primer frame
-                if primer_frame:
-                    data_lbp = am.Cabecera('LBP', lbp_range, self.zonas)
-                    data_hop = am.Cabecera('HOP', hop_range, self.zonas)
-                    data_hog = am.Cabecera('HOG', hog_range, self.zonas)
-                    aus_range = np.array([0, len(AUs)])
-                    data_aus = am.Cabecera('AUs', aus_range, self.zonas)
-                    primer_frame = False
-            elif not primer_frame:
-                lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
-                hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
-                hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
-                AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
-            else:
-                instancias_invalidas = instancias_invalidas + 1
-
-            if not primer_frame:
-                # Al no tener antes el numero de atributos al tener el primer frame ya valido agrego todas las instancias
-                # que habian sido invalidas al principio
-                if instancias_invalidas > 0:
-                    lbp_hist_aux = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
-                    hop_hist_aux = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
-                    hog_hist_aux = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
-                    AUs_aux = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
-                    for i in range(0, instancias_invalidas):
-                        # Agrego la instancia con todas las caracteristicas de los frames invalidos
-                        data_lbp = am.AgregaInstancia(data_lbp, lbp_hist_aux)
-                        data_hop = am.AgregaInstancia(data_hop, hop_hist_aux)
-                        data_hog = am.AgregaInstancia(data_hog, hog_hist_aux)
-                        data_aus = am.AgregaInstancia(data_aus, AUs_aux)
-                    instancias_invalidas = 0
-                # Agrego la instancia con todas las caracteristicas del frame actual
-                data_lbp = am.AgregaInstancia(data_lbp, lbp_hist)
-                data_hop = am.AgregaInstancia(data_hop, hop_hist)
-                data_hog = am.AgregaInstancia(data_hog, hog_hist)
-                data_aus = am.AgregaInstancia(data_aus, AUs)
-
-            # print(nro_frame)
-            nro_frame = nro_frame + 1
+                # print(nro_frame)
+                nro_frame = nro_frame + 1
+                progreso_frames.update(1)
 
         am.Guarda(persona, etapa, 'LBP', data_lbp)
         am.Guarda(persona, etapa, 'HOP', data_hop)

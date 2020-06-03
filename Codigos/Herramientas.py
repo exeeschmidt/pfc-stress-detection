@@ -343,6 +343,7 @@ def VotoPorSegmento(resumen, cant_intervalos):
 
     return new_resu
 
+
 def OrdenaInstancias(resumen, orden_instancias):
     aux = np.empty(0, dtype=int)
     for i in range(0, orden_instancias.size):

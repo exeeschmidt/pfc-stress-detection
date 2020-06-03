@@ -7,7 +7,6 @@ import matlab
 import subprocess
 import matplotlib.pyplot as plt
 import scipy.io.wavfile as waves
-from scipy.signal import convolve2d
 import Codigos.Datos as datos
 
 # Contiene todos los métodos a utilizar, donde las implementaciones de cada uno comienzan con un bookmark.
@@ -122,7 +121,6 @@ class OpenSmile:
         # Bandera para definir si se ventanea. Si es True deben incluirse los parametros adicionales en el __call__
         # Si no se llama el ventaneo se define cada 0.5s y el shift inicial en 0
         self._ventaneo = ventaneo
-
 
     def __call__(self, nombre_archivo, paso_ventaneo='0.125', shift_ini_ventaneo='0'):
         # Comando base de OpenSmile
@@ -356,8 +354,7 @@ class EliminaSilencios:
                 comienzo = i
             # Si estaba activo el rango y deja de ser audible, o si sigue siendo audible pero llego al final del vector,
             # guardo el comienzo y el fin del rango
-            elif (not vector_audible[i] and activo ) or \
-                    (vector_audible[i] and i == vector_audible.size - 1):
+            elif (not vector_audible[i] and activo) or (vector_audible[i] and i == vector_audible.size - 1):
                 activo = False
                 rangos_audibles = np.append(rangos_audibles, np.array([np.array([comienzo, i])]), axis=0)
                 # Recorto el sonido segun el rango audible
@@ -390,7 +387,7 @@ class EliminaSilencios:
         # Calcula la energía y cruces en todas las ventanas y canales
         for j in range(0, canales):
             for i in range(0, nro_iteraciones):
-                ini= int(i * tam_ventana * muestreo)
+                ini = int(i * tam_ventana * muestreo)
                 fin = int(ini + tam_ventana * muestreo)
                 energia[i, j] = self._energia(sonido[ini:fin, j])
                 cruces[i, j] = self._crucesporcero(sonido[ini:fin, j])
@@ -416,7 +413,7 @@ class EliminaSilencios:
                 prom = prom + puntajes[i, j]
             prom = prom / (canales + 1)
             if prom > umbral:
-                ini= int(i * tam_ventana * muestreo)
+                ini = int(i * tam_ventana * muestreo)
                 fin = int(ini + tam_ventana * muestreo)
                 vector_audible[ini:fin] = np.ones([int(tam_ventana * muestreo)])
         return vector_audible
