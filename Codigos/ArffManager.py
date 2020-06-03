@@ -27,6 +27,11 @@ def Guarda(persona, etapa, sub, data):
     saver.save_file(data, path)
 
 
+def Guardav2(path, data):
+    saver = Saver()
+    saver.save_file(data, path)
+
+
 def Une(data_vec):
     # Une varios datasets que pueden tener o no diferentes atributos pero igual numero de instancias
     data = Instances.copy_instances(data_vec[0])
@@ -91,21 +96,17 @@ def Cabecera(nombre_atrib, range_atrib, zonas):
     # Crea la cabecera del arff con los nombres, la cantidad segun cada metodo y las distintas zonas del video
     atrib = list()
     # Recorro dentro de los intervalos pasados por el rango seleccionando la zona correspondiente
-    for j in range(0, len(range_atrib) - 1):
-        cont = 1
-        for i in range(range_atrib[j], range_atrib[j + 1]):
-            atrib.append(Attribute.create_numeric(nombre_atrib + '_' + zonas[j] + '[' + str(cont) + ']'))
-            cont = cont + 1
+    if type(range_atrib) == list:
+        for j in range(0, len(range_atrib) - 1):
+            cont = 1
+            for i in range(range_atrib[j], range_atrib[j + 1]):
+                atrib.append(Attribute.create_numeric(nombre_atrib + '_' + zonas[j] + '[' + str(cont) + ']'))
+                cont = cont + 1
+    else:
+        for j in range(0, range_atrib):
+            atrib.append(Attribute.create_numeric(nombre_atrib + '[' + str(j + 1) + ']'))
 
     data = Instances.create_instances(nombre_atrib + "features", atrib, 0)
-    return data
-
-
-def AgregaAtributoClase(data_t, clases):
-    data = Instances.copy_instances(data_t)
-    atrib_class = Attribute.create_nominal('class', clases)
-    data.insert_attribute(atrib_class, data.num_attributes)
-    data.class_is_last()
     return data
 
 
@@ -157,6 +158,7 @@ def AgregaEtiqueta(data_t, indice, indice_etiqueta):
 
 def FiltraZonas(data_t, zonas):
     # Se le pasa un vector con las zonas, si en el atributo no detecta que pertenezca a ninguna de las zonas, lo elimina
+    zonas = np.append(zonas, 'AUs')
     data = Instances.copy_instances(data_t)
     for i in range(data.num_attributes - 1, -1, -1):
         elimina = True
@@ -207,8 +209,10 @@ def BinarizoEtiquetas(path_archivo):
     archivo.close()
 
 
-def MezclaInstancias(nombre_archivo, orden):
-    arch = open(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'), 'r+')
+def MezclaInstancias(data, orden):
+    path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado' + '.arff')
+    Guardav2(path, data)
+    arch = open(path, 'r+')
 
     pos_data = 2
     linea = arch.readline()
@@ -218,6 +222,7 @@ def MezclaInstancias(nombre_archivo, orden):
         # Esta variable guarda en que numero de linea empiezan los datoa
         pos_data = pos_data + 1
     arch.readline()
+    pos_data = pos_data - 1
 
     arch.seek(0)
     # Leo todas las lineas para usarlo como vector
@@ -238,3 +243,19 @@ def MezclaInstancias(nombre_archivo, orden):
     arch.seek(0)
     arch.writelines(lineas)
     arch.close()
+
+    data_f = CargaYFiltrado(path)
+    return data_f
+
+
+def GeneraOrdenInstancias(data, instancias_intervalos):
+    numero_intervalos = int(NroInstancias(data) / instancias_intervalos)
+    orden_intervalos = np.array(range(0, numero_intervalos))
+    np.random.shuffle(orden_intervalos)
+    orden_instancias = np.empty(0, dtype=np.int)
+    for i in orden_intervalos:
+        for j in range(0, instancias_intervalos):
+            orden_instancias = np.append(orden_instancias, i * instancias_intervalos + j)
+    for i in range(numero_intervalos * instancias_intervalos, NroInstancias(data)):
+        orden_instancias = np.append(orden_instancias, i)
+    return orden_instancias

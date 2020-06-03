@@ -17,102 +17,101 @@ from tabulate import tabulate
 
 def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False, folds=-1):
     start_total = time.time()
-    jvm.start(max_heap_size="4G", packages=True)
+    jvm.start(max_heap_size="9G", packages=True)
 
-    print('Adaptación de caracteristicas en progreso')
-    features = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
-    for i in personas:
-        for j in etapas:
+    # print('Adaptación de caracteristicas en progreso')
+    # features = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
+    # for i in personas:
+    #     for j in etapas:
+    #         start2 = time.time()
+    #         print(i + ' ' + j)
+    #         features(i, j, completo=True)
+    #         print(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+
+    if folds == -1:
+        vueltas = 1
+    else:
+        # Contando que cuando se usa folds siempre se trabaja con toda la bd
+        vueltas = int(21 / folds)
+        resumen_folds = np.empty(0)
+
+    for k in range(0, vueltas):
+        if folds == -1:
+            data = am.Concatena(personas, etapas, 'VCom')
+            orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
+            data_ori = am.MezclaInstancias(data, orden_instancias)
+            train_ori, test_ori = wek.ParticionaDatos(data_ori)
+        else:
+            print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
+            # Defino el conjunto de test. El de entrenamiento se define a partir de lo que no son de test
+            personas_train = np.empty(0, dtype=int)
+            personas_test = k * folds + np.array(range(1, folds + 1), dtype=int)
+            for i in range(1, 22):
+                if np.where(personas_test == i)[0].size == 0:
+                    personas_train = np.append(personas_train, i)
+            # Casteo a string
+            personas_train = personas_train.astype(np.str)
+            personas_test = personas_test.astype(np.str)
+            # Los que son numero de una cifra se les tiene que agregar un 0 a la izquierda
+            for i in range(0, personas_train.size):
+                if int(personas_train[i]) < 10:
+                    personas_train[i] = '0' + personas_train[i]
+            for i in range(0, personas_test.size):
+                if int(personas_test[i]) < 10:
+                    personas_test[i] = '0' + personas_test[i]
+            train_ori = am.Concatena(personas_train, etapas, 'VCom')
+            test_ori = am.Concatena(personas_test, etapas, 'VCom')
+
+        vec_predicciones = np.array([])
+        lista_metodos = list()
+        lista_errores = list()
+
+        print('Seleccion y clasificación en progreso')
+        for i in range(0, len(met_seleccion)):
+            print(met_seleccion[i])
             start2 = time.time()
             print('Persona ' + i + ' -> Etapa ' + j)
             features(i, j, completo=True)
             print(time.time() - start2)
 
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
+            if met_seleccion[i] != '':
+                metodo_actual = met_seleccion[i] + ' + '
+                train, test = wek.SeleccionCaracteristicas(train_ori, test_ori, met_seleccion[i])
+                print(time.time() - start2)
+            else:
+                metodo_actual = ''
+                train = train_ori
+                test = test_ori
+            for j in range(0, len(met_clasificacion)):
+                # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
+                if metodo_actual != '' or (met_clasificacion[j] != 'MLP' and met_clasificacion[j] != 'SVM'):
+                    print(met_clasificacion[j])
+                    start2 = time.time()
+                    lista_metodos.append(metodo_actual + met_clasificacion[j])
+                    predicciones, error = wek.Clasificacion(train, test, met_clasificacion[j])
+                    lista_errores.append(error)
+                    if len(vec_predicciones) == 0:
+                        vec_predicciones = np.array([hrm.prediccionCSVtoArray(predicciones)])
+                    else:
+                        vec_predicciones = np.concatenate([vec_predicciones, np.array([hrm.prediccionCSVtoArray(predicciones)])])
+                    print(time.time() - start2)
 
-    # if folds == -1:
-    #     vueltas = 1
-    # else:
-    #     # Contando que cuando se usa folds siempre se trabaja con toda la bd
-    #     vueltas = int(21 / folds)
-    #     resumen_folds = np.empty(0)
-    #
-    # for k in range(0, vueltas):
-    #     if folds == -1:
-    #         nro_instancias = am.ConcatenaArff('Resultado Video', personas, etapas, partes=-1)
-    #         orden_instancias = np.array(range(0, nro_instancias))
-    #         np.random.shuffle(orden_instancias)
-    #         am.MezclaInstanciasArff('Resultado Video', orden_instancias)
-    #         path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
-    #         data_ori = wek.CargaYFiltrado(path)
-    #         train_ori, test_ori = wek.ParticionaDatos(data_ori)
-    #     else:
-    #         print('Vuelta: ' + str(k + 1) + '/' + str(vueltas + 1))
-    #         # Defino el conjunto de test. El de entrenamiento se define a partir de lo que no son de test
-    #         personas_train = np.empty(0, dtype=int)
-    #         personas_test = k * folds + np.array(range(1, folds + 1), dtype=int)
-    #         for i in range(1, 22):
-    #             if np.where(personas_test == i)[0].size == 0:
-    #                 personas_train = np.append(personas_train, i)
-    #         # Casteo a string
-    #         personas_train = personas_train.astype(np.str)
-    #         personas_test = personas_test.astype(np.str)
-    #         # Los que son numero de una cifra se les tiene que agregar un 0 a la izquierda
-    #         for i in range(0, personas_train.size):
-    #             if int(personas_train[i]) < 10:
-    #                 personas_train[i] = '0' + personas_train[i]
-    #         for i in range(0, personas_test.size):
-    #             if int(personas_test[i]) < 10:
-    #                 personas_test[i] = '0' + personas_test[i]
-    #         am.ConcatenaArff('Data train', personas_train, etapas, partes=-1)
-    #         am.ConcatenaArff('Data test', personas_test, etapas, partes=-1)
-    #         path_train = os.path.join(datos.PATH_CARACTERISTICAS, 'Data train.arff')
-    #         path_test = os.path.join(datos.PATH_CARACTERISTICAS, 'Data test.arff')
-    #         train_ori = wek.CargaYFiltrado(path_train)
-    #         test_ori = wek.CargaYFiltrado(path_test)
-    #
-    #     vec_predicciones = np.array([])
-    #     lista_metodos = list()
-    #     lista_errores = list()
-    #
-    #     print('Seleccion y clasificación en progreso')
-    #     for i in range(0, len(met_seleccion)):
-    #         print(met_seleccion[i])
-    #         start2 = time.time()
-    #
-    #         if met_seleccion[i] != '':
-    #             metodo_actual = met_seleccion[i] + ' + '
-    #             train, test = wek.SeleccionCaracteristicas(train_ori, test_ori, met_seleccion[i])
-    #             print(time.time() - start2)
-    #         else:
-    #             metodo_actual = ''
-    #             train = train_ori
-    #             test = test_ori
-    #         for j in range(0, len(met_clasificacion)):
-    #             # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
-    #             if metodo_actual != '' or met_clasificacion[j] != 'MLP':
-    #                 print(met_clasificacion[j])
-    #                 start2 = time.time()
-    #                 lista_metodos.append(metodo_actual + met_clasificacion[j])
-    #                 predicciones, error = wek.Clasificacion(train, test, met_clasificacion[j])
-    #                 lista_errores.append(error)
-    #                 if len(vec_predicciones) == 0:
-    #                     vec_predicciones = np.array([hrm.prediccionCSVtoArray(predicciones)])
-    #                 else:
-    #                     vec_predicciones = np.concatenate([vec_predicciones, np.array([hrm.prediccionCSVtoArray(predicciones)])])
-    #                 print(time.time() - start2)
-    #
-    #     resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_errores)
-    #     resumen_fusionado = hrm.Fusion(resultados, 'Voto', mejores=4)
-    #     if folds == -1:
-    #         resumen_fusionado = hrm.OrdenaInstancias(resumen_fusionado, orden_instancias)
-    #     resumen_final = hrm.VotoPorSegmento(resumen_fusionado, 20)
-    #     if folds != -1:
-    #         resumen_folds = np.append(resumen_folds, resumen_final[1, 1])
-    #     _mostrar_tabla(resultados, resumen_fusionado, resumen_final)
-    # if folds != -1:
-    #     print(resumen_folds)
+        resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_errores)
+        resumen_fusionado = hrm.Fusion(resultados, 'Voto', mejores=datos.VOTO_MEJORES_X)
+        if folds == -1:
+            resumen_fusionado, desfase = hrm.OrdenaInstancias(resumen_fusionado, orden_instancias)
+            resumen_final = hrm.VotoPorSegmento(resumen_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
+        else:
+            resumen_final = hrm.VotoPorSegmento(resumen_fusionado, datos.INSTANCIAS_POR_PERIODOS)
+        # resumen_final = resumen_fusionado
+        if folds != -1:
+            resumen_folds = np.append(resumen_folds, resumen_final[1, 1])
+        _mostrar_tabla(resultados, resumen_fusionado, resumen_final)
+    if folds != -1:
+        print(resumen_folds)
     jvm.stop()
     print(time.time() - start_total)
 
@@ -134,20 +133,12 @@ def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_s
     print('Completada Adaptación de caracteristicas')
     print(time.time() - start_total)
 
-    # am.ConcatenaArff('Resultado Video', personas, etapas)
-    # am.ConcatenaArff('Resultado Audio', personas, etapas, bool_wav=True)
+    # data_v = am.Concatena(personas, etapas, 'VResp')
+    # data_a = am.Concatena(personas, etapas, 'AResp')
+    # orden_instancias = am.GeneraOrdenInstancias(data_v)
+    # data_v_ori = am.MezclaInstancias(data_v, orden_instancias)
+    # data_a_ori = am.MezclaInstancias(data_a, orden_instancias)
     #
-    # nro_instancias = am.NormalizaArff('Resultado Video', 'Resultado Audio')
-    # orden_instancias = np.array(range(0, nro_instancias))
-    # np.random.shuffle(orden_instancias)
-    # am.MezclaInstanciasArff('Resultado Video', orden_instancias)
-    # am.MezclaInstanciasArff('Resultado Audio', orden_instancias)
-    #
-    # path_v = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Video.arff')
-    # path_a = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Audio.arff')
-    #
-    # data_v_ori = wek.CargaYFiltrado(path_v)
-    # data_a_ori = wek.CargaYFiltrado(path_a)
     # train_v_ori, test_v_ori = wek.ParticionaDatos(data_v_ori)
     # train_a_ori, test_a_ori = wek.ParticionaDatos(data_a_ori)
     #
@@ -215,17 +206,9 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
     # print('Completada Adaptación de caracteristicas')
     # print(time.time() - start_total)
     #
-    # am.ConcatenaArff('Resultado Video', personas, etapas)
-    # am.ConcatenaArff('Resultado Audio', personas, etapas, bool_wav=True)
-    #
-    # nro_instancias = am.ConcatenaArffv2('Resultado Audiovisual', 'Resultado Audio', 'Resultado Video')
-    # orden_instancias = np.array(range(0, nro_instancias))
-    # np.random.shuffle(orden_instancias)
-    # am.MezclaInstanciasArff('Resultado Audiovisual', orden_instancias)
-
-    path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado Audiovisual.arff')
-
-    data_ori = wek.CargaYFiltrado(path)
+    data = am.Concatena(personas, etapas, 'VResp', 'AResp')
+    orden_instancias = am.GeneraOrdenInstancias(data)
+    data_ori = am.MezclaInstancias(data, orden_instancias)
     train_ori, test_ori = wek.ParticionaDatos(data_ori)
 
     vec_predicciones = np.array([])

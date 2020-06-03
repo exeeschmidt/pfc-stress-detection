@@ -18,6 +18,13 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 # PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
+INSTANCIAS_POR_PERIODOS = 20
+VOTO_MEJORES_X = 4
+ATRIBS_PCA = 3000
+ATRIBS_PSO = 500
+ATRIBS_BF = 1000
+ATRIBS_FINALES = 100
+TIEMPO_MICROEXPRESION = 0.25
 
 def buildVideoName(persona, etapa, parte=-1, extension=False):
     video_name = 'Sujeto_' + persona + '_' + etapa

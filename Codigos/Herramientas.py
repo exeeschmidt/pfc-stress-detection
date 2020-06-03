@@ -2,6 +2,7 @@ import csv
 import numpy as np
 import cv2 as cv
 import read_hog_file
+import Codigos.Datos as datos
 
 
 def Histograma(imagen):
@@ -321,20 +322,30 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
     return new_resu
 
 
-def VotoPorSegmento(resumen, cant_intervalos):
+def VotoPorSegmento(resumen, instancias_intervalos, desfase=0):
     """
     Aplica voto a los intervalos de tiempo contiguos, de manera que no se produzan cambios bruscos en las etiquetas por
     cada intervalo.
     """
     new_resu = np.copy(resumen)
-    new_resu[0, 1] = new_resu[0, 1] + '-' + str(cant_intervalos)
+    new_resu[0, 1] = new_resu[0, 1] + '-' + str(instancias_intervalos)
     cont_errores = 0
-    for i in range(2, resumen.shape[0], cant_intervalos):
+    rango = list([2, 2 + desfase])
+    rango.extend(range(desfase + 2 + instancias_intervalos, resumen.shape[0], instancias_intervalos))
+    for i in rango:
         votos = list()
-        for j in range(i, i + cant_intervalos):
+        if desfase == 0:
+            if i + instancias_intervalos < resumen.shape[0]:
+                hasta = i + instancias_intervalos
+            else:
+                hasta = resumen.shape[0] - 1
+        else:
+            hasta = i + desfase
+            desfase = 0
+        for j in range(i, hasta):
             votos.append(resumen[j, 1])
         mas_votado = max(set(votos), key=votos.count)
-        for j in range(i, i + cant_intervalos):
+        for j in range(i, hasta):
             new_resu[j, 1] = mas_votado
             if mas_votado != resumen[j, 0]:
                 cont_errores = cont_errores + 1
@@ -345,10 +356,24 @@ def VotoPorSegmento(resumen, cant_intervalos):
 
 
 def OrdenaInstancias(resumen, orden_instancias):
-    aux = np.empty(0, dtype=int)
+    aux = np.empty(0, dtype=np.int)
     for i in range(0, orden_instancias.size):
         ind = np.where(orden_instancias == i)[0]
-        aux = np.append(aux, ind)
+        if ind >= orden_instancias.size - (resumen.shape[0] - 2):
+            aux = np.append(aux, ind)
+    #Sobre lista de aux buscar el menor y ponerlo en primer indice de una nueva lista y asi
+    maximo = aux.max()
+    ordenado = np.empty(0, dtype=np.int)
+    desfase = 2
+    comienzo = True
+    for i in range(0, aux.size):
+        ordenado = np.append(ordenado, aux.argmin())
+        aux[aux.argmin()] = maximo + 1
+        if comienzo and i > 1:
+            if ordenado[i] - 1 == ordenado[i - 1]:
+                desfase = desfase + 1
+            else:
+                comienzo = False
     aux_resumen = resumen[2:]
-    resumen[2:] = aux_resumen[aux]
-    return resumen
+    resumen[2:] = aux_resumen[ordenado]
+    return resumen, desfase

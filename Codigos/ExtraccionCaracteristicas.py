@@ -13,9 +13,9 @@ import Codigos.Datos as datos
 # ======================================================= VIDEO ========================================================
 
 class Video:
-    def __init__(self, binarizar_etiquetas, zonas, metodos, tiempo_micro=0.25):
+    def __init__(self, binarizar_etiquetas, zonas, metodos, ):
         self.binarizar_etiquetas = binarizar_etiquetas
-        self.tiempo_micro = tiempo_micro
+        self.tiempo_micro = datos.TIEMPO_MICROEXPRESION
 
         # Defino las zonas donde quiero calcular lbp y hop, las opciones son las de abajo
         # cejas, cejaizq, cejader, ojos, ojoizq, ojoder, cara, nariz, boca
@@ -322,9 +322,9 @@ class Video:
 # ======================================================= AUDIO ========================================================
 
 class Audio:
-    def __init__(self, binarizar_etiquetas, tiempo_micro=0.25):
+    def __init__(self, binarizar_etiquetas):
         self.binarizar_etiquetas = binarizar_etiquetas
-        self.tiempo_micro = tiempo_micro
+        self.tiempo_micro = datos.TIEMPO_MICROEXPRESION
 
     def __call__(self, persona, etapa, eliminar_silencios=False):
         # Defino los nombres de la clase según si binarizo o no
@@ -515,21 +515,20 @@ class CaracteristicasVideo:
                     # Obtengo las intensidades de las AUs de OpenFace
                     AUs = arch_openface[nro_frame][LimIntAUs1:LimIntAUs2]
 
-                    # Agrego la cabecera del archivo arff en el caso de ser el primer frame
-                    if primer_frame:
-                        data_lbp = am.Cabecera('LBP', lbp_range, self.zonas)
-                        data_hop = am.Cabecera('HOP', hop_range, self.zonas)
-                        data_hog = am.Cabecera('HOG', hog_range, self.zonas)
-                        aus_range = np.array([0, len(AUs)])
-                        data_aus = am.Cabecera('AUs', aus_range, self.zonas)
-                        primer_frame = False
-                elif not primer_frame:
-                    lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
-                    hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
-                    hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
-                    AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
-                else:
-                    instancias_invalidas = instancias_invalidas + 1
+                # Agrego la cabecera del archivo arff en el caso de ser el primer frame
+                if primer_frame:
+                    data_lbp = am.Cabecera('LBP', lbp_range, self.zonas)
+                    data_hop = am.Cabecera('HOP', hop_range, self.zonas)
+                    data_hog = am.Cabecera('HOG', hog_range, self.zonas)
+                    data_aus = am.Cabecera('AUs', len(AUs), self.zonas)
+                    primer_frame = False
+            elif not primer_frame:
+                lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
+                hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
+                hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
+                AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
+            else:
+                instancias_invalidas = instancias_invalidas + 1
 
                 if not primer_frame:
                     # Al no tener antes el numero de atributos al tener el primer frame ya valido agrego todas las instancias
