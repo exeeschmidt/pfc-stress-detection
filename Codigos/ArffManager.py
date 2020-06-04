@@ -75,13 +75,13 @@ def Concatena(personas, etapas, sub, sub2=''):
 
 def Normaliza(data_vec):
     # Deja todos los dataset presentes en el vector con el numero de instancias del menor
-    instancias = np.empty()
+    instancias = np.empty(0)
     for i in range(0, data_vec.size):
         instancias = np.append(instancias, NroInstancias(data_vec[i]))
 
     for i in range(0, data_vec.size):
-        if instancias[i] > instancias.min():
-            data_vec[i] = Instances.copy_instances(data_vec[i], 0, instancias.min())
+        if instancias[i] > min(instancias):
+            data_vec[i] = Instances.copy_instances(data_vec[i], 0, min(instancias))
 
     return data_vec
 

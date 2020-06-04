@@ -2,7 +2,7 @@ import csv
 import numpy as np
 import cv2 as cv
 import read_hog_file
-import Codigos.Datos as datos
+# import Codigos.Datos as datos
 
 
 def Histograma(imagen):
@@ -252,9 +252,9 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
     new_resu = np.append(new_resu, np.array([np.array(['Error medio %', '0'])]), axis=0)
 
     # Si los mejores son por modalidad, guardo los indices de donde se encuentran cada uno
+    modalidad_audio = list()
+    modalidad_video = list()
     if por_modalidad:
-        modalidad_audio = list()
-        modalidad_video = list()
         for i in range(1, resumen.shape[1]):
             # Si encuentro el (V) es video y sino supongo que es audio
             if resumen[0, i].find('(V)') != -1:
@@ -280,10 +280,10 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
             # Recien ahora recorro el resto
             for i in range(mejores, int((resumen.shape[1] - 1) / 2)):
                 # Si tiene menor error que reemplace el menor tanto en indice como en valores
-                if float(resumen[1, modalidad_video[i]]) < valores_mejores_video.max():
+                if float(resumen[1, modalidad_video[i]]) < max(valores_mejores_video):
                     indice_mejores_video[valores_mejores_video.argmax()] = modalidad_video[i]
                     valores_mejores_video[valores_mejores_video.argmax()] = float(resumen[1, modalidad_video[i]])
-                if float(resumen[1, modalidad_audio[i]]) < valores_mejores_audio.max():
+                if float(resumen[1, modalidad_audio[i]]) < max(valores_mejores_audio):
                     indice_mejores_audio[valores_mejores_audio.argmax()] = modalidad_audio[i]
                     valores_mejores_audio[valores_mejores_audio.argmax()] = float(resumen[1, modalidad_audio[i]])
             indice_mejores = np.concatenate([indice_mejores_audio, indice_mejores_video])
@@ -295,7 +295,7 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
             # Recien ahora recorro el resto
             for i in range(mejores + 1, resumen.shape[1]):
                 # Si tiene menor error que reemplace el menor tanto en indice como en valores
-                if float(resumen[1, i]) < valores_mejores.max():
+                if float(resumen[1, i]) < max(valores_mejores):
                     indice_mejores[valores_mejores.argmax()] = i
                     valores_mejores[valores_mejores.argmax()] = float(resumen[1, i])
     else:
@@ -361,8 +361,8 @@ def OrdenaInstancias(resumen, orden_instancias):
         ind = np.where(orden_instancias == i)[0]
         if ind >= orden_instancias.size - (resumen.shape[0] - 2):
             aux = np.append(aux, ind)
-    #Sobre lista de aux buscar el menor y ponerlo en primer indice de una nueva lista y asi
-    maximo = aux.max()
+    # Sobre lista de aux buscar el menor y ponerlo en primer indice de una nueva lista y asi
+    maximo = max(aux)
     ordenado = np.empty(0, dtype=np.int)
     desfase = 2
     comienzo = True

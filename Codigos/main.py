@@ -11,7 +11,7 @@ def main():
     # personas = np.array(['01', '02', '21'])
     # personas = np.array(['09', '10', '11', '12', '13', '14', '15', '16',
     #                      '17', '18', '19', '20', '21'])
-    # personas = np.array(['01'])
+    personas = np.array(['01'])
     etapas = np.array(['1', '2'])
     # etapas = np.array(['1'])
     zonas = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])

@@ -26,10 +26,11 @@ ATRIBS_BF = 1000
 ATRIBS_FINALES = 100
 TIEMPO_MICROEXPRESION = 0.25
 
+
 def buildVideoName(persona, etapa, parte=-1, extension=False):
     video_name = 'Sujeto_' + persona + '_' + etapa
     if parte != -1:
-        video_name += '_r' + parte
+        video_name += '_r' + str(parte)
     if extension:
         video_name += '.mp4'
     return video_name

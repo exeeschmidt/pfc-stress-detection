@@ -2,7 +2,7 @@ import os
 import numpy as np
 from scipy.signal import convolve2d
 import Codigos.Datos as datos
-import Codigos.Herramientas as hrm
+# import Codigos.Herramientas as hrm
 
 
 # =================================================== Metodos ==========================================================
@@ -437,11 +437,11 @@ def segmentaPrediccion(predi_1, predi_2):
     return new_predi_1, new_predi_2
 
 
-def BinarizoPorPersonas(sujetos, etapas):
-    for i in sujetos:
-        for j in etapas:
-            path_final = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(sujetos[i], etapas[j]))
-            hrm.BinarizoEtiquetas(path_final)
+# def BinarizoPorPersonas(sujetos, etapas):
+#     for i in sujetos:
+#         for j in etapas:
+#             path_final = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(sujetos[i], etapas[j]))
+#             hrm.BinarizoEtiquetas(path_final)
 
 
 # ================================================= ArffManager ========================================================
@@ -665,6 +665,7 @@ def ConcatenaArffv2(nombre_salida, nombre_archivo1, nombre_archivo2):
     # Leo ambas cabeceras, salteando las dos primeras lineas que traen el relation y una linea en blanco.
     # Llego hasta data
 
+    linea = ""
     for i in range(0, 3):
         linea = arch1.readline()
     # Busco hasta que encuentro el atributo de clase, despues salteo esa linea mas un blanco mas data mas otro blanco
@@ -771,6 +772,7 @@ def NormalizaArff(nombre_archivo1, nombre_archivo2):
     lineas1 = arch1.readlines()
     lineas2 = arch2.readlines()
     # Verifico quien tiene mas instancias, en caso de tener mas tiene se recorta
+    instancias = 0
     if len(lineas1) - pos_data[0] < len(lineas2) - pos_data[1]:
         instancias = len(lineas1) - pos_data[0] + 1
         lineas2 = lineas2[0:int(pos_data[1] + instancias - 1)]

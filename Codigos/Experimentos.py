@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import weka.core.jvm as jvm
 import Codigos.ExtraccionCaracteristicas as carac
@@ -38,6 +37,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
         # Contando que cuando se usa folds siempre se trabaja con toda la bd
         vueltas = int(21 / folds)
 
+    orden_instancias = np.empty(0)
     for k in range(0, vueltas):
         if folds == -1:
             data = am.Concatena(personas, etapas, 'VCom')
@@ -204,7 +204,7 @@ def SegundoMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_
     # print(time.time() - start_total)
     #
     data = am.Concatena(personas, etapas, 'VResp', 'AResp')
-    orden_instancias = am.GeneraOrdenInstancias(data)
+    orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
     data_ori = am.MezclaInstancias(data, orden_instancias)
     train_ori, test_ori = wek.ParticionaDatos(data_ori)
 
