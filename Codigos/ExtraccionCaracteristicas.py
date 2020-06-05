@@ -523,8 +523,7 @@ class CaracteristicasVideo:
                         data_lbp = am.Cabecera('LBP', lbp_range, self.zonas)
                         data_hop = am.Cabecera('HOP', hop_range, self.zonas)
                         data_hog = am.Cabecera('HOG', hog_range, self.zonas)
-                        aus_range = np.array([0, len(AUs)])
-                        data_aus = am.Cabecera('AUs', aus_range, self.zonas)
+                        data_aus = am.Cabecera('AUs', len(AUs), self.zonas)
                         primer_frame = False
                 elif not primer_frame:
                     lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()

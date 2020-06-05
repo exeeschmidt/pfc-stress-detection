@@ -18,17 +18,17 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
     start_total = time.time()
     jvm.start(max_heap_size="9G", packages=True)
 
-    print('Adaptación de caracteristicas en progreso')
-    features = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
-    for i in personas:
-        for j in etapas:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            features(i, j, completo=True)
-            print(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # features = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
+    # for i in personas:
+    #     for j in etapas:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         features(i, j, completo=True)
+    #         print(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
 
     resumen_folds = np.empty(0)
     if folds == -1:

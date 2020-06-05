@@ -344,7 +344,8 @@ def VotoPorSegmento(resumen, instancias_intervalos, desfase=0):
             desfase = 0
         for j in range(i, hasta):
             votos.append(resumen[j, 1])
-        mas_votado = max(set(votos), key=votos.count)
+        if votos:
+            mas_votado = max(set(votos), key=votos.count)
         for j in range(i, hasta):
             new_resu[j, 1] = mas_votado
             if mas_votado != resumen[j, 0]:
