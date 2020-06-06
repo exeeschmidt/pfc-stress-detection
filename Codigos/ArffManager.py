@@ -4,6 +4,7 @@ import Codigos.Datos as datos
 from weka.core.converters import Loader, Saver
 from weka.filters import Filter
 from weka.core.dataset import Instances, Attribute, Instance
+import Codigos.Herramientas as hrm
 
 
 def CargaYFiltrado(path):
@@ -22,7 +23,7 @@ def CargaYFiltrado(path):
 
 
 def Guarda(persona, etapa, sub, data):
-    path = datos.buildPathSub(persona, etapa, sub)
+    path = hrm.buildPathSub(persona, etapa, sub)
     saver = Saver()
     saver.save_file(data, path)
 
@@ -56,11 +57,11 @@ def Concatena(personas, etapas, sub, sub2=''):
     data_vec2 = np.empty(0)
     for i in personas:
         for j in etapas:
-            path = datos.buildPathSub(i, j, sub)
+            path = hrm.buildPathSub(i, j, sub)
             data = CargaYFiltrado(path)
             data_vec = np.append(data_vec, data)
             if sub2 != '':
-                path = datos.buildPathSub(i, j, sub2)
+                path = hrm.buildPathSub(i, j, sub2)
                 data = CargaYFiltrado(path)
                 data_vec2 = np.append(data_vec2, data)
     if sub2 != '':

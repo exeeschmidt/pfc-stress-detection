@@ -5,50 +5,63 @@ import Codigos.Herramientas as hrm
 import Codigos.Weka as wek
 import Codigos.ArffManager as am
 import Codigos.Datos as datos
+import Codigos.LogManager as log
 import time
 from tabulate import tabulate
 
-# zonas = np.array(['ojoizq', 'ojoder', 'boca', 'nariz'])
-# met_caracteristicas = np.array(['LBP', 'AU'])
-# met_seleccion = np.array(['Firsts', 'PCA'])
-# met_clasificacion = np.array(['RForest', 'J48', 'SVM', 'MLP'])
 
-
-def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False, folds=-1):
+def Unimodal():
     start_total = time.time()
+
+    personas = datos.PERSONAS
+    etapas = datos.ETAPAS
+    zonas = datos.ZONAS
+    met_extraccion = datos.MET_EXTRACCION
+    met_seleccion = datos.MET_SELECCION
+    met_clasificacion = datos.MET_CLASIFICACION
+    binarizo_etiquetas = datos.BINARIZO_ETIQUETA
+    out = datos.OUT
+
     jvm.start(max_heap_size="9G", packages=True)
 
     # print('Adaptación de caracteristicas en progreso')
-    # features = carac.Video(binarizo_etiquetas, zonas, met_caracteristicas)
+    # log.agrega('Adaptación de caracteristicas en progreso')
+    # features = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
     # for i in personas:
     #     for j in etapas:
     #         start2 = time.time()
     #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         log.agrega('Persona ' + i + ' -> Etapa ' + j)
     #         features(i, j, completo=True)
     #         print(time.time() - start2)
+    #         log.agrega(time.time() - start2)
     #
     # print('Completada adaptación de caracteristicas')
     # print(time.time() - start_total)
+    # log.agrega('Completada adaptación de caracteristicas en progreso')
+    # log.agrega(time.time() - start_total)
 
-    resumen_folds = np.empty(0)
-    if folds == -1:
+    resumen_out = np.empty(0)
+    if out == -1:
         vueltas = 1
     else:
-        # Contando que cuando se usa folds siempre se trabaja con toda la bd
-        vueltas = int(21 / folds)
+        # Contando que cuando se usa out siempre se trabaja con toda la bd
+        vueltas = int(21 / out)
 
     orden_instancias = np.empty(0)
     for k in range(0, vueltas):
-        if folds == -1:
+        datos.defineFoldActual(vueltas + 1)
+        if out == -1:
             data = am.Concatena(personas, etapas, 'VCom')
             orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
             data_ori = am.MezclaInstancias(data, orden_instancias)
             train_ori, test_ori = wek.ParticionaDatos(data_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
+            log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             # Defino el conjunto de test. El de entrenamiento se define a partir de lo que no son de test
             personas_train = np.empty(0, dtype=int)
-            personas_test = k * folds + np.array(range(1, folds + 1), dtype=int)
+            personas_test = k * out + np.array(range(1, out + 1), dtype=int)
             for i in range(1, 22):
                 if np.where(personas_test == i)[0].size == 0:
                     personas_train = np.append(personas_train, i)
@@ -71,14 +84,17 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
 
         print('Seleccion y clasificación en progreso')
         for i in range(0, len(met_seleccion)):
-            print(met_seleccion[i])
             start2 = time.time()
 
             if met_seleccion[i] != '':
+                print(met_seleccion[i])
+                log.agrega(met_seleccion[i])
                 metodo_actual = met_seleccion[i] + ' + '
                 train, test = wek.SeleccionCaracteristicas(train_ori, test_ori, met_seleccion[i])
                 print(time.time() - start2)
+                log.agrega(time.time() - start2)
             else:
+                print('Sin selección de caracteristicas')
                 metodo_actual = ''
                 train = train_ori
                 test = test_ori
@@ -86,6 +102,7 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
                 # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
                 if metodo_actual != '' or (met_clasificacion[j] != 'MLP' and met_clasificacion[j] != 'SVM'):
                     print(met_clasificacion[j])
+                    log.agrega(met_clasificacion[j])
                     start2 = time.time()
                     lista_metodos.append(metodo_actual + met_clasificacion[j])
                     predicciones, error = wek.Clasificacion(train, test, met_clasificacion[j])
@@ -95,22 +112,25 @@ def Unimodal(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_cl
                     else:
                         vec_predicciones = np.concatenate([vec_predicciones, np.array([hrm.prediccionCSVtoArray(predicciones)])])
                     print(time.time() - start2)
+                    log.agrega(time.time() - start2)
 
         resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_errores)
         resumen_fusionado = hrm.Fusion(resultados, 'Voto', mejores=datos.VOTO_MEJORES_X)
-        if folds == -1:
+        if out == -1:
             resumen_fusionado, desfase = hrm.OrdenaInstancias(resumen_fusionado, orden_instancias)
             resumen_final = hrm.VotoPorSegmento(resumen_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
             resumen_final = hrm.VotoPorSegmento(resumen_fusionado, datos.INSTANCIAS_POR_PERIODOS)
         # resumen_final = resumen_fusionado
-        if folds != -1:
-            resumen_folds = np.append(resumen_folds, resumen_final[1, 1])
+        if out != -1:
+            resumen_out = np.append(resumen_out, resumen_final[1, 1])
         _mostrar_tabla(resultados, resumen_fusionado, resumen_final)
-    if folds != -1:
-        print(resumen_folds)
+    if out != -1:
+        print(resumen_out)
     jvm.stop()
     print(time.time() - start_total)
+    log.agrega('Tiempo final')
+    log.agrega(time.time() - start_total)
 
 
 def PrimerMultimodalCompleto(personas, etapas, zonas, met_caracteristicas, met_seleccion, met_clasificacion, binarizo_etiquetas=False, elimino_silencios=False):
@@ -263,11 +283,14 @@ def _mostrar_tabla(resultados, resumen_fusionado, resumen_final):
     headers = resultados[0, :]
     table = tabulate(resultados[1:2, :], headers, tablefmt="fancy_grid")
     print(table)
+    log.agrega(table)
 
     headers = resumen_fusionado[0, :]
     table = tabulate(resumen_fusionado[1:2, :], headers, tablefmt="fancy_grid")
     print(table)
+    log.agrega(table)
 
     headers = resumen_final[0, :]
     table = tabulate(resumen_final[1:2, :], headers, tablefmt="fancy_grid")
     print(table)
+    log.agrega(table)

@@ -2,7 +2,10 @@ from weka.attribute_selection import ASSearch, ASEvaluation
 from weka.classifiers import Classifier, Evaluation, PredictionOutput
 from weka.filters import Filter
 from weka.core.dataset import Instances
+from weka.core import serialization
 import Codigos.Datos as datos
+import Codigos.LogManager as log
+import os
 
 
 def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
@@ -58,6 +61,7 @@ def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
     data_filtrada = flter.filter(data)
     data_tt_filtrada = flter.filter(data_tt)
     print('Atributos ', metodo_seleccion, ' :', data_filtrada.num_attributes, '/', data.num_attributes)
+    log.agrega('Atributos ' + metodo_seleccion + ' :' + str(data_filtrada.num_attributes) + '/' + str(data.num_attributes))
     # saver = Saver()
     # saver.save_file(data_f, "filtrado.arff")
     # saver.save_file(data_v_f, "filtrado_v.arff")
@@ -82,11 +86,13 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
     classifier = Classifier(classname=met_clasificacion)
     classifier.build_classifier(data_train)
 
-    # Validación cruzada
-    # evl.crossvalidate_model(classifier, data, 2, Random(1), pout)
+    serialization.write_all(os.path.join(datos.PATH_LOGS, datos.FOLD_ACTUAL + '_' + metodo_clasificacion + '.model'), [classifier, data_train])
+    # objects = serialization.read_all("....")
+    # classifier = Classifier(jobject=objects[0])
+    # data_load = Instances(jobject=objects[1])
 
     pout = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
-    evl = Evaluation(data_train)
+    evl = Evaluation(data_test)
     evl.test_model(classifier, data_test, output=pout)
 
     if sumario:

@@ -2,7 +2,29 @@ import csv
 import numpy as np
 import cv2 as cv
 import read_hog_file
-# import Codigos.Datos as datos
+import os
+import Codigos.Datos as datos
+
+
+def buildVideoName(persona, etapa, parte=-1, extension=False):
+    video_name = 'Sujeto_' + persona + '_' + etapa
+    if parte != -1:
+        video_name += '_r' + str(parte)
+    if extension:
+        video_name += '.mp4'
+    return video_name
+
+
+def buildPathVideo(persona, etapa, nombre_video, extension=True):
+    path_video = os.path.join(datos.PATH_BD, 'Sujeto ' + persona, 'Etapa ' + etapa, nombre_video)
+    if extension:
+        path_video += '.mp4'
+    return path_video
+
+
+def buildPathSub(persona, etapa, sub):
+    path = os.path.join(datos.PATH_CARACTERISTICAS, sub, buildVideoName(persona, etapa) + '_' + sub + '.arff')
+    return path
 
 
 def Histograma(imagen):

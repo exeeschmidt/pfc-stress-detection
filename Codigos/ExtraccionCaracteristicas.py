@@ -51,13 +51,11 @@ class Video:
             rangos_audibles = list()
 
         # Segun que metodo utilice concateno la data de cada arff que sea necesario
-        nombre_aux = datos.buildVideoName(persona, etapa)
         data_vec = np.empty(0)
         for i in range(0, self.bool_metodos.size):
             if self.bool_metodos[i]:
                 atrib = self.nombres_metodos[i]
-                data_aux = am.CargaYFiltrado(os.path.join(datos.PATH_CARACTERISTICAS,
-                                                          atrib, nombre_aux + '_' + atrib + '.arff'))
+                data_aux = am.CargaYFiltrado(hrm.buildPathSub(persona, etapa, atrib))
                 data_vec = np.append(data_vec, data_aux)
 
         data = am.Une(data_vec)
@@ -80,12 +78,11 @@ class Video:
         # Numero de instancia desde la que recorro
         # instancia_desde = 0
         # Diferencias en los nombres de archivo y llamada a open face
-        nombre = datos.buildVideoName(persona, etapa)
-        path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+        nombre = hrm.buildVideoName(persona, etapa)
+        path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
 
         if not os.path.exists(path):
-            print("Ruta de archivo incorrecta o no válida")
-            return
+            raise Exception("Ruta de archivo incorrecta o no válida")
 
         video = cv.VideoCapture(path)
         frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
@@ -151,13 +148,12 @@ class Video:
         nro_instancia = 1
         for j in range(0, partes):
             # Diferencias en los nombres de archivo y llamada a open face
-            nombre = datos.buildVideoName(persona, etapa, str(j + 1))
+            nombre = hrm.buildVideoName(persona, etapa, str(j + 1))
 
-            path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+            path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
 
             if not os.path.exists(path):
-                print("Ruta de archivo incorrecta o no válida")
-                return
+                raise Exception("Ruta de archivo incorrecta o no válida")
 
             video = cv.VideoCapture(path)
             frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
@@ -350,11 +346,10 @@ class Audio:
         data_vec_general = np.empty(0)
         for j in range(0, partes):
             # Me fijo si existe el archivo
-            nombre = datos.buildVideoName(persona, etapa, str(j+1))
-            path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+            nombre = hrm.buildVideoName(persona, etapa, str(j+1))
+            path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
             if not os.path.exists(path):
-                print("Ruta de archivo incorrecta o no válida")
-                return
+                raise Exception("Ruta de archivo incorrecta o no válida")
 
             # Leo la etiqueta correspondiente
             etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
@@ -422,11 +417,10 @@ class CaracteristicasVideo:
         op_fa = met.OpenFace(cara=False, hog=False, landmarks=True, aus=True)
         op_fa(persona, etapa)
 
-        nombre = datos.buildVideoName(persona, etapa)
-        path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+        nombre = hrm.buildVideoName(persona, etapa)
+        path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
         if not os.path.exists(path):
-            print("Ruta de archivo incorrecta o no válida")
-            return
+            raise Exception("Ruta de archivo incorrecta o no válida")
         video = cv.VideoCapture(path)
 
         arch_openface = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))

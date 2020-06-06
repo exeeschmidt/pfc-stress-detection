@@ -8,6 +8,7 @@ import subprocess
 import matplotlib.pyplot as plt
 import scipy.io.wavfile as waves
 import Codigos.Datos as datos
+import Codigos.Herramientas as hrm
 
 # Contiene todos los métodos a utilizar, donde las implementaciones de cada uno comienzan con un bookmark.
 
@@ -39,8 +40,8 @@ class OpenFace:
         self._aus = aus
 
     def __call__(self, persona, etapa, parte=-1):
-        nombre_video = datos.buildVideoName(persona, etapa, parte)
-        path_video = datos.buildPathVideo(persona, etapa, nombre_video)
+        nombre_video = hrm.buildVideoName(persona, etapa, parte)
+        path_video = hrm.buildPathVideo(persona, etapa, nombre_video)
         path_save = datos.PATH_PROCESADO
 
         # Comando base para ejecutar OpenFace
@@ -324,8 +325,7 @@ class EliminaSilencios:
 
         # Lectura, casteo y extracción de características básicas de la señal
         if not os.path.exists(path):
-            print("Ruta de archivo incorrecta o no válida")
-            return
+            raise Exception("Ruta de archivo incorrecta o no válida")
         muestreo, sonido = waves.read(path)
         sonido = sonido.astype(np.int64)
         nro_muestras = sonido.shape[0]
@@ -445,10 +445,10 @@ class FFMPEG:
     def __call__(self, persona, etapa, parte):
         # archivo = 'Sujeto 01'
         # parte = '1'
-        nombre_video = datos.buildVideoName(persona, etapa, parte, extension=False)
+        nombre_video = hrm.buildVideoName(persona, etapa, parte, extension=False)
 
         # Comando base
-        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', datos.buildPathVideo(persona, etapa, nombre_video, extension=True),
+        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', hrm.buildPathVideo(persona, etapa, nombre_video, extension=True),
                    '-ab', '195k', '-ac', '2', '-ar', '48000', '-vn',
                    os.path.join(datos.PATH_PROCESADO, nombre_video + '.wav')]
         # comando = ['.' + os.sep + 'ffmpeg', '-version']
