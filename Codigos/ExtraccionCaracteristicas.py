@@ -51,13 +51,11 @@ class Video:
             rangos_audibles = list()
 
         # Segun que metodo utilice concateno la data de cada arff que sea necesario
-        nombre_aux = datos.buildVideoName(persona, etapa)
         data_vec = np.empty(0)
         for i in range(0, self.bool_metodos.size):
             if self.bool_metodos[i]:
                 atrib = self.nombres_metodos[i]
-                data_aux = am.CargaYFiltrado(os.path.join(datos.PATH_CARACTERISTICAS,
-                                                           atrib, nombre_aux + '_' + atrib + '.arff'))
+                data_aux = am.CargaYFiltrado(hrm.buildPathSub(persona, etapa, atrib))
                 data_vec = np.append(data_vec, data_aux)
 
         data = am.Une(data_vec)
@@ -80,12 +78,11 @@ class Video:
         # Numero de instancia desde la que recorro
         # instancia_desde = 0
         # Diferencias en los nombres de archivo y llamada a open face
-        nombre = datos.buildVideoName(persona, etapa)
-        path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+        nombre = hrm.buildVideoName(persona, etapa)
+        path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
 
         if not os.path.exists(path):
-            print("Ruta de archivo incorrecta o no válida")
-            return
+            raise Exception("Ruta de archivo incorrecta o no válida")
 
         video = cv.VideoCapture(path)
         frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
@@ -151,13 +148,12 @@ class Video:
         nro_instancia = 1
         for j in range(0, partes):
             # Diferencias en los nombres de archivo y llamada a open face
-            nombre = datos.buildVideoName(persona, etapa, str(j + 1))
+            nombre = hrm.buildVideoName(persona, etapa, str(j + 1))
 
-            path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+            path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
 
             if not os.path.exists(path):
-                print("Ruta de archivo incorrecta o no válida")
-                return
+                raise Exception("Ruta de archivo incorrecta o no válida")
 
             video = cv.VideoCapture(path)
             frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
@@ -263,7 +259,7 @@ class Video:
                         invalidos = 0
                         # Recien ahora agrego la fila del periodo actual despues de agregar las anteriores aproximadas
                         data_actual = am.AgregaInstanciaClase(data_actual, vec_prom,
-                                                               np.where(self.clases == etiqueta_prom)[0][0])
+                                                              np.where(self.clases == etiqueta_prom)[0][0])
                     else:
                         invalidos = invalidos + 1
                     if acu_tiempos > self.tiempo_micro:
@@ -298,7 +294,7 @@ class Video:
             if invalidos > 0:
                 for i in range(0, invalidos):
                     data_actual = am.AgregaInstanciaClase(data_actual, vec_prom_ant,
-                                                           np.where(self.clases == etiqueta_ant)[0][0])
+                                                          np.where(self.clases == etiqueta_ant)[0][0])
             # Actualizo para tomar las instancias equivalentes a la proxima respuesta
             instancia_desde = instancia_hasta
             data_vec_general = np.append(data_vec_general, data_actual)
@@ -350,11 +346,10 @@ class Audio:
         data_vec_general = np.empty(0)
         for j in range(0, partes):
             # Me fijo si existe el archivo
-            nombre = datos.buildVideoName(persona, etapa, str(j+1))
-            path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+            nombre = hrm.buildVideoName(persona, etapa, str(j+1))
+            path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
             if not os.path.exists(path):
-                print("Ruta de archivo incorrecta o no válida")
-                return
+                raise Exception("Ruta de archivo incorrecta o no válida")
 
             # Leo la etiqueta correspondiente
             etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
@@ -422,13 +417,11 @@ class CaracteristicasVideo:
         op_fa = met.OpenFace(cara=False, hog=False, landmarks=True, aus=True)
         op_fa(persona, etapa)
 
-        nombre = datos.buildVideoName(persona, etapa)
-        path = datos.buildPathVideo(persona, etapa, nombre, extension=True)
+        nombre = hrm.buildVideoName(persona, etapa)
+        path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
         if not os.path.exists(path):
-            print("Ruta de archivo incorrecta o no válida")
-            return
+            raise Exception("Ruta de archivo incorrecta o no válida")
         video = cv.VideoCapture(path)
-        total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT)-1)
 
         arch_openface = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
 
@@ -465,8 +458,13 @@ class CaracteristicasVideo:
         primer_frame = True
         # Comienzo a recorrer el video por cada cuadro
         instancias_invalidas = 0
+
+        # Inicialización de la barra de progreso
+        total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
         bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.GREEN)
         with tqdm(total=total_frames, unit='frame', desc="Frames", bar_format=bar_format) as progreso_frames:
+            progreso_frames.update(1)
+
             while video.isOpened():
                 ret, frame = video.read()
                 if ret == 0:
@@ -514,20 +512,20 @@ class CaracteristicasVideo:
                     # Obtengo las intensidades de las AUs de OpenFace
                     AUs = arch_openface[nro_frame][LimIntAUs1:LimIntAUs2]
 
-                # Agrego la cabecera del archivo arff en el caso de ser el primer frame
-                if primer_frame:
-                    data_lbp = am.Cabecera('LBP', lbp_range, self.zonas)
-                    data_hop = am.Cabecera('HOP', hop_range, self.zonas)
-                    data_hog = am.Cabecera('HOG', hog_range, self.zonas)
-                    data_aus = am.Cabecera('AUs', len(AUs), self.zonas)
-                    primer_frame = False
+                    # Agrego la cabecera del archivo arff en el caso de ser el primer frame
+                    if primer_frame:
+                        data_lbp = am.Cabecera('LBP', lbp_range, self.zonas)
+                        data_hop = am.Cabecera('HOP', hop_range, self.zonas)
+                        data_hog = am.Cabecera('HOG', hog_range, self.zonas)
+                        data_aus = am.Cabecera('AUs', len(AUs), self.zonas)
+                        primer_frame = False
                 elif not primer_frame:
                     lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
                     hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
                     hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
                     AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
-            else:
-                instancias_invalidas = instancias_invalidas + 1
+                else:
+                    instancias_invalidas = instancias_invalidas + 1
 
                 if not primer_frame:
                     # Al no tener antes el numero de atributos al tener el primer frame ya valido agrego todas las instancias
