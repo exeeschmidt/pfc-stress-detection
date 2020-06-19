@@ -7,7 +7,6 @@ import Codigos.ArffManager as am
 import Codigos.Datos as datos
 import Codigos.LogManager as log
 import time
-from tabulate import tabulate
 
 
 def Unimodal():
@@ -41,7 +40,10 @@ def Unimodal():
     # log.agrega('Completada adaptación de caracteristicas en progreso')
     # log.agrega(time.time() - start_total)
 
-    resumen_out = np.empty(0)
+    vec_resultados = np.empty((0, 3, met_seleccion.size * met_clasificacion.size + 1))
+    vec_resultados_fusionado = np.empty((0, 3, 2))
+    vec_resultados_fusionado_2 = np.empty((0, 3, 2))
+
     if out == -1:
         vueltas = 1
     else:
@@ -50,7 +52,7 @@ def Unimodal():
 
     orden_instancias = np.empty(0)
     for k in range(0, vueltas):
-        datos.defineFoldActual(vueltas + 1)
+        datos.defineFoldActual(k + 1)
         if out == -1:
             data = am.Concatena(personas, etapas, 'VCom')
             orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
@@ -80,7 +82,8 @@ def Unimodal():
 
         vec_predicciones = np.array([])
         lista_metodos = list()
-        lista_errores = list()
+        lista_acu = list()
+        lista_uar = list()
 
         print('Seleccion y clasificación en progreso')
         for i in range(0, len(met_seleccion)):
@@ -105,28 +108,41 @@ def Unimodal():
                     log.agrega(met_clasificacion[j])
                     start2 = time.time()
                     lista_metodos.append(metodo_actual + met_clasificacion[j])
-                    predicciones, error = wek.Clasificacion(train, test, met_clasificacion[j])
-                    lista_errores.append(error)
+                    predi_csv = wek.Clasificacion(train, test, met_clasificacion[j])
+                    prediccion = hrm.prediccionCSVtoArray(predi_csv)
+                    lista_acu.append(hrm.Accuracy(prediccion[:, 1], prediccion[:, 2]))
+                    lista_uar.append(hrm.UAR(prediccion[:, 1], prediccion[:, 2]))
                     if len(vec_predicciones) == 0:
-                        vec_predicciones = np.array([hrm.prediccionCSVtoArray(predicciones)])
+                        vec_predicciones = np.array([prediccion])
                     else:
-                        vec_predicciones = np.concatenate([vec_predicciones, np.array([hrm.prediccionCSVtoArray(predicciones)])])
+                        vec_predicciones = np.concatenate([vec_predicciones, np.array([prediccion])])
                     print(time.time() - start2)
                     log.agrega(time.time() - start2)
 
-        resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_errores)
-        resumen_fusionado = hrm.Fusion(resultados, 'Voto', mejores=datos.VOTO_MEJORES_X)
+        resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_acu, lista_uar)
+        resultados_fusionado = hrm.Fusion(resultados, 'Voto', mejores=datos.VOTO_MEJORES_X)
+
         if out == -1:
-            resumen_fusionado, desfase = hrm.OrdenaInstancias(resumen_fusionado, orden_instancias)
-            resumen_final = hrm.VotoPorSegmento(resumen_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
+            resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
+            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
-            resumen_final = hrm.VotoPorSegmento(resumen_fusionado, datos.INSTANCIAS_POR_PERIODOS)
-        # resumen_final = resumen_fusionado
-        if out != -1:
-            resumen_out = np.append(resumen_out, resumen_final[1, 1])
-        _mostrar_tabla(resultados, resumen_fusionado, resumen_final)
+            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
+
+        # if vec_resultados.size == 0:
+        #     vec_resultados = np.array([resultados])
+        #     vec_resultados_fusionado = np.array([resultados_fusionado])
+        #     vec_resultados_fusionado_2 = np.array([resultados_fusionado_2])
+        # else:
+        vec_resultados = np.concatenate([vec_resultados,  np.array([resultados[0:3, :]])], axis=0)
+        vec_resultados_fusionado = np.concatenate([vec_resultados_fusionado, np.array([resultados_fusionado[0:3, :]])], axis=0)
+        vec_resultados_fusionado_2 = np.concatenate([vec_resultados_fusionado_2, np.array([resultados_fusionado_2[0:3, :]])], axis=0)
+
+        hrm.muestraTabla(resultados)
+        hrm.muestraTabla(resultados_fusionado)
+        hrm.muestraTabla(resultados_fusionado_2)
     if out != -1:
-        print(resumen_out)
+        resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
+        hrm.muestraTabla(resumen_final)
     jvm.stop()
     print(time.time() - start_total)
     log.agrega('Tiempo final')
@@ -277,20 +293,3 @@ def ExtractorDeCaracteristicas(personas, etapas, zonas):
     print('Completada extraccion de caracteristicas')
     print(time.time() - start_total)
     # jvm.stop()
-
-
-def _mostrar_tabla(resultados, resumen_fusionado, resumen_final):
-    headers = resultados[0, :]
-    table = tabulate(resultados[1:2, :], headers, tablefmt="fancy_grid")
-    print(table)
-    log.agrega(table)
-
-    headers = resumen_fusionado[0, :]
-    table = tabulate(resumen_fusionado[1:2, :], headers, tablefmt="fancy_grid")
-    print(table)
-    log.agrega(table)
-
-    headers = resumen_final[0, :]
-    table = tabulate(resumen_final[1:2, :], headers, tablefmt="fancy_grid")
-    print(table)
-    log.agrega(table)

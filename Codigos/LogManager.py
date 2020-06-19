@@ -28,7 +28,7 @@ def crea():
     archivo.write('Atributos seleccionados PSO: ' + str(datos.ATRIBS_PSO) + '\n')
     archivo.write('Atributos seleccionados BF: ' + str(datos.ATRIBS_BF) + '\n')
     archivo.write('Atributos finales: ' + str(datos.ATRIBS_FINALES) + '\n')
-    archivo.write('Tiempo de microexpresion(ms): ' + str(datos.TIEMPO_MICROEXPRESION) + '\n\n')
+    archivo.write('Tiempo de microexpresion(s): ' + str(datos.TIEMPO_MICROEXPRESION) + '\n\n')
 
     archivo.write('Personas: ' + '\n')
     for i in range(0, datos.PERSONAS.size - 1):

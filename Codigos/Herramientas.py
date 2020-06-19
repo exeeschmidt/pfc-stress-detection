@@ -4,7 +4,9 @@ import cv2 as cv
 import read_hog_file
 import os
 import Codigos.Datos as datos
-
+import Codigos.LogManager as log
+from sklearn.metrics import recall_score, accuracy_score
+from tabulate import tabulate
 
 def buildVideoName(persona, etapa, parte=-1, extension=False):
     video_name = 'Sujeto_' + persona + '_' + etapa
@@ -216,7 +218,7 @@ def prediccionCSVtoArray(predi):
     return vec
 
 
-def resumePredicciones(predi, metodos, errores):
+def resumePredicciones(predi, metodos, accuracy, uar):
     """
     El primer parámetro representa el vector de matrices con las predicciones, el segundo un vector con el nombre de los
     métodos usados. Por ejemplo, para la predicción en la posicion 0 se utilizó 'PCA + SVM'. Con esto creo la cabecera.
@@ -228,11 +230,11 @@ def resumePredicciones(predi, metodos, errores):
     # Cantidad de segmentos de cada modalidad
     tam_pre = predi.shape[1]
 
-    new_predi = np.empty((tam_pre + 2, 0))
+    new_predi = np.empty((tam_pre + 3, 0))
     # Del primer método además de obtener la predicción saco la columna con las etiquetas (iguales en todos los métodos)
-    new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta', 'Error medio %']), predi[0, :, 1])]).T, axis=1)
+    new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta', 'Accuracy', 'UAR']), predi[0, :, 1])]).T, axis=1)
     for i in range(0, num_metodos):
-        new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i], errores[i]*100]), predi[i, :, 2])]).T, axis=1)
+        new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i], accuracy[i], uar[i]]), predi[i, :, 2])]).T, axis=1)
     return new_predi
 
 
@@ -262,7 +264,7 @@ def uneResumenes(resu1, resu2):
 
 def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
     """
-    Recibiendo el resumen de todas las predicciones, errores y etiquetas. Utiliza el metodo mencionado para fusionar y
+    Recibiendo el resumen de todas las predicciones, metricas y etiquetas. Utiliza el metodo mencionado para fusionar y
     los mejores x clasificadores para esto. En caso de que mejores sea -1 utiliza todos
     """
     indice_mejores = np.empty(0, dtype=np.int)
@@ -271,7 +273,8 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
     # Creo el resumen final
     new_resu = np.array([np.array(['Etiqueta', metodo])])
     # Agrego la fila con el error y el valor 0, despues este se tiene que reemplazar al calcular el error al final
-    new_resu = np.append(new_resu, np.array([np.array(['Error medio %', '0'])]), axis=0)
+    new_resu = np.append(new_resu, np.array([np.array(['Accuracy', '0'])]), axis=0)
+    new_resu = np.append(new_resu, np.array([np.array(['UAR', '0'])]), axis=0)
 
     # Si los mejores son por modalidad, guardo los indices de donde se encuentran cada uno
     modalidad_audio = list()
@@ -296,36 +299,35 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
             # Los primeros los uso como inicializacion
             for i in range(0, mejores):
                 indice_mejores_video = np.append(indice_mejores_video, modalidad_video[i])
-                valores_mejores_video = np.append(valores_mejores_video, float(resumen[1, modalidad_video[i]]))
+                valores_mejores_video = np.append(valores_mejores_video, float(resumen[2, modalidad_video[i]]))
                 indice_mejores_audio = np.append(indice_mejores_audio, modalidad_audio[i])
-                valores_mejores_audio = np.append(valores_mejores_audio, float(resumen[1, modalidad_audio[i]]))
+                valores_mejores_audio = np.append(valores_mejores_audio, float(resumen[2, modalidad_audio[i]]))
             # Recien ahora recorro el resto
             for i in range(mejores, int((resumen.shape[1] - 1) / 2)):
-                # Si tiene menor error que reemplace el menor tanto en indice como en valores
-                if float(resumen[1, modalidad_video[i]]) < max(valores_mejores_video):
-                    indice_mejores_video[valores_mejores_video.argmax()] = modalidad_video[i]
-                    valores_mejores_video[valores_mejores_video.argmax()] = float(resumen[1, modalidad_video[i]])
-                if float(resumen[1, modalidad_audio[i]]) < max(valores_mejores_audio):
-                    indice_mejores_audio[valores_mejores_audio.argmax()] = modalidad_audio[i]
-                    valores_mejores_audio[valores_mejores_audio.argmax()] = float(resumen[1, modalidad_audio[i]])
+                # Si tiene mas uar que reemplace el menor tanto en indice como en valores
+                if float(resumen[2, modalidad_video[i]]) > min(valores_mejores_video):
+                    indice_mejores_video[valores_mejores_video.argmin()] = modalidad_video[i]
+                    valores_mejores_video[valores_mejores_video.argmin()] = float(resumen[2, modalidad_video[i]])
+                if float(resumen[2, modalidad_audio[i]]) > min(valores_mejores_audio):
+                    indice_mejores_audio[valores_mejores_audio.argmin()] = modalidad_audio[i]
+                    valores_mejores_audio[valores_mejores_audio.argmin()] = float(resumen[2, modalidad_audio[i]])
             indice_mejores = np.concatenate([indice_mejores_audio, indice_mejores_video])
         else:
             # Los primeros los uso como inicializacion
             for i in range(1, mejores + 1):
-                valores_mejores = np.append(valores_mejores, float(resumen[1, i]))
+                valores_mejores = np.append(valores_mejores, float(resumen[2, i]))
                 indice_mejores = np.append(indice_mejores, i)
             # Recien ahora recorro el resto
             for i in range(mejores + 1, resumen.shape[1]):
-                # Si tiene menor error que reemplace el menor tanto en indice como en valores
-                if float(resumen[1, i]) < max(valores_mejores):
-                    indice_mejores[valores_mejores.argmax()] = i
-                    valores_mejores[valores_mejores.argmax()] = float(resumen[1, i])
+                # Si tiene mayor uar que reemplace el menor tanto en indice como en valores
+                if float(resumen[2, i]) > min(valores_mejores):
+                    indice_mejores[valores_mejores.argmin()] = i
+                    valores_mejores[valores_mejores.argmin()] = float(resumen[2, i])
     else:
         indice_mejores = np.array(range(1, resumen.shape[1]))
 
-    cont_errores = 0
     if metodo == 'Voto':
-        for j in range(2, resumen.shape[0]):
+        for j in range(3, resumen.shape[0]):
             votos = list()
             # Recorro solo las columnas con los mejores clasificadores
             for i in indice_mejores:
@@ -334,12 +336,9 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
             # Agrego a la fila del resumen final la etiqueta y la prediccion final despues del voto
             mas_votado = max(set(votos), key=votos.count)
             new_resu = np.append(new_resu, np.array([np.array([resumen[j, 0], mas_votado])]), axis=0)
-            # Si la prediccion no es igual a la etiqueta que sume uno al contador de errores
-            if mas_votado != resumen[j, 0]:
-                cont_errores = cont_errores + 1
-        # Luego de terminar de realizar la fusion calculo el porcentaje de error medio
-        error = (cont_errores / (resumen.shape[0] - 2)) * 100
-        new_resu[1, 1] = str(error)
+        # Luego de terminar de realizar la fusion calculo la metricas
+        new_resu[1, 1] = str(Accuracy(new_resu[3:, 0], new_resu[3:, 1]))
+        new_resu[2, 1] = str(UAR(new_resu[3:, 0], new_resu[3:, 1]))
 
     return new_resu
 
@@ -351,8 +350,7 @@ def VotoPorSegmento(resumen, instancias_intervalos, desfase=0):
     """
     new_resu = np.copy(resumen)
     new_resu[0, 1] = new_resu[0, 1] + '-' + str(instancias_intervalos)
-    cont_errores = 0
-    rango = list([2, 2 + desfase])
+    rango = list([3, 2 + desfase])
     rango.extend(range(desfase + 2 + instancias_intervalos, resumen.shape[0], instancias_intervalos))
     for i in rango:
         votos = list()
@@ -370,10 +368,8 @@ def VotoPorSegmento(resumen, instancias_intervalos, desfase=0):
             mas_votado = max(set(votos), key=votos.count)
         for j in range(i, hasta):
             new_resu[j, 1] = mas_votado
-            if mas_votado != resumen[j, 0]:
-                cont_errores = cont_errores + 1
-    error = (cont_errores / (resumen.shape[0] - 2)) * 100
-    new_resu[1, 1] = str(error)
+    new_resu[1, 1] = str(Accuracy(new_resu[3:, 0], new_resu[3:, 1]))
+    new_resu[2, 1] = str(UAR(new_resu[3:, 0], new_resu[3:, 1]))
 
     return new_resu
 
@@ -382,7 +378,7 @@ def OrdenaInstancias(resumen, orden_instancias):
     aux = np.empty(0, dtype=np.int)
     for i in range(0, orden_instancias.size):
         ind = np.where(orden_instancias == i)[0]
-        if ind >= orden_instancias.size - (resumen.shape[0] - 2):
+        if ind >= orden_instancias.size - (resumen.shape[0] - 3):
             aux = np.append(aux, ind)
     # Sobre lista de aux buscar el menor y ponerlo en primer indice de una nueva lista y asi
     maximo = max(aux)
@@ -397,6 +393,50 @@ def OrdenaInstancias(resumen, orden_instancias):
                 desfase = desfase + 1
             else:
                 comienzo = False
-    aux_resumen = resumen[2:]
-    resumen[2:] = aux_resumen[ordenado]
+    aux_resumen = resumen[3:]
+    resumen[3:] = aux_resumen[ordenado]
     return resumen, desfase
+
+
+def Accuracy(ground_truth, prediccion):
+    return accuracy_score(ground_truth, prediccion)
+
+
+def UAR(ground_truth, prediccion):
+    # Unweighted average recall
+    return recall_score(ground_truth, prediccion, average='macro')
+
+
+def generaResumenFinal(vec_res, vec_res_fus, vec_res_fus_2):
+    folds = vec_res.shape[0]
+    cant_metodos = vec_res.shape[2] - 1
+    resumen_final = np.empty((3, cant_metodos + 3), dtype='U20')
+    # Creo la cabecera
+    resumen_final[0, 0] = ''
+    resumen_final[1, 0] = 'Accuracy promedio'
+    resumen_final[2, 0] = 'UAR promedio'
+    resumen_final[0, 1] = vec_res_fus[0, 0, 1]
+    resumen_final[0, 2] = vec_res_fus_2[0, 0, 1]
+    resumen_final[0, 3:] = vec_res[0, 0, 1:]
+
+    aux_res = np.empty((2, cant_metodos + 2), dtype=np.float)
+    for i in range(0, folds):
+        for k in range(0, 2):
+            aux_res[k, 0] = aux_res[k, 0] + float(vec_res_fus[i, k + 1, 1])
+            aux_res[k, 1] = aux_res[k, 1] + float(vec_res_fus_2[i, k + 1, 1])
+        for j in range(0, cant_metodos):
+            for k in range(0, 2):
+                aux_res[k, j + 2] = aux_res[k, j + 2] + float(vec_res[i, k + 1, j + 1])
+    aux_res = aux_res / folds
+    for i in range(0, aux_res.shape[0]):
+        for j in range(0, aux_res.shape[1]):
+            resumen_final[i + 1, j + 1] = str(aux_res[i, j])
+    return resumen_final
+
+
+
+def muestraTabla(resultados):
+    headers = resultados[0, :]
+    table = tabulate(resultados[1:3, :], headers, tablefmt="fancy_grid")
+    print(table)
+    log.agrega(table)

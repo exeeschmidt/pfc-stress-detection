@@ -9,7 +9,7 @@ import os
 
 
 def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
-    # opciones: 'PSO' , 'PCA', 'Firsts', 'IG'
+    # opciones: 'PSO' , 'PCA', 'Firsts', 'PC'
     data = Instances.copy_instances(data_train)
     data_tt = Instances.copy_instances(data_test)
 
@@ -20,37 +20,38 @@ def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
     # Segun el metodo elegido realiza una preseleccion de características usando Gain Ratio (GR). Para cada metodo en
     # particular se preseleccionan un numero distinto de atributos. Luego al aplicarse cada metodo, si este tiene mas
     # del numero de atributos finales, se realiza nuevamente una seleccion utilizando GR
-    if metodo_seleccion == 'PCA' or metodo_seleccion == 'GR' or metodo_seleccion == 'GR-pca' or metodo_seleccion == 'GR-pso' or metodo_seleccion == 'GR-bf':
+    if metodo_seleccion == 'PCA' or metodo_seleccion == 'PC' or metodo_seleccion == 'PC-pca' or metodo_seleccion == 'PC-pso' or metodo_seleccion == 'PC-bf':
         met_search = 'weka.attributeSelection.Ranker'
         if metodo_seleccion == 'PCA':
             met_eval = 'weka.attributeSelection.PrincipalComponents'
             options_eval = ['-R', '0.95', '-A', '10']
             options_search = ['-N', str(datos.ATRIBS_FINALES)]
-            data, data_tt = SeleccionCaracteristicas(data, data_tt, 'GR-pca')
+            data, data_tt = SeleccionCaracteristicas(data, data_tt, 'PC-pca')
         else:
-            met_eval = 'weka.attributeSelection.GainRatioAttributeEval'
-        if metodo_seleccion == 'GR':
+            met_eval = 'weka.attributeSelection.CorrelationAttributeEval'
+        if metodo_seleccion == 'PC':
             options_search = ['-N', str(datos.ATRIBS_FINALES)]
-        elif metodo_seleccion == 'GR-pca':
+        elif metodo_seleccion == 'PC-pca':
             options_search = ['-N', str(datos.ATRIBS_PCA)]
             final = False
-        elif metodo_seleccion == 'GR-pso':
+        elif metodo_seleccion == 'PC-pso':
             options_search = ['-N', str(datos.ATRIBS_PSO)]
             final = False
-        elif metodo_seleccion == 'GR-bf':
+        elif metodo_seleccion == 'PC-bf':
             options_search = ['-N', str(datos.ATRIBS_BF)]
             final = False
     else:
         met_eval = 'weka.attributeSelection.CfsSubsetEval'
-        options_eval = ['-P', '4', '-E', '8']
+        # Agregar -Z para activar el precalculo de la matriz de correlacion
+        options_eval = ['-Z', '-P', '4', '-E', '8']
         if metodo_seleccion == 'PSO':
             met_search = 'weka.attributeSelection.PSOSearch'
             options_search = ['-N', '250', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S', '1']
-            data, data_tt = SeleccionCaracteristicas(data, data_tt, 'GR-pso')
+            data, data_tt = SeleccionCaracteristicas(data, data_tt, 'PC-pso')
         else:
             met_search = 'weka.attributeSelection.BestFirst'
             options_search = ['-D', '1', '-N', '5']
-            data, data_tt = SeleccionCaracteristicas(data, data_tt, 'GR-bf')
+            data, data_tt = SeleccionCaracteristicas(data, data_tt, 'PC-bf')
 
     flter = Filter(classname="weka.filters.supervised.attribute.AttributeSelection")
     aseval = ASEvaluation(met_eval, options=options_eval)
@@ -65,8 +66,8 @@ def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
     # saver = Saver()
     # saver.save_file(data_f, "filtrado.arff")
     # saver.save_file(data_v_f, "filtrado_v.arff")
-    if data_filtrada.num_attributes > datos.ATRIBS_FINALES + 1 and final:
-        data_filtrada, data_tt_filtrada = SeleccionCaracteristicas(data_filtrada, data_tt_filtrada, 'GR')
+    # if data_filtrada.num_attributes > datos.ATRIBS_FINALES + 1 and final:
+    #     data_filtrada, data_tt_filtrada = SeleccionCaracteristicas(data_filtrada, data_tt_filtrada, 'PC')
 
     return data_filtrada, data_tt_filtrada
 
@@ -86,7 +87,7 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
     classifier = Classifier(classname=met_clasificacion)
     classifier.build_classifier(data_train)
 
-    serialization.write_all(os.path.join(datos.PATH_LOGS, datos.FOLD_ACTUAL + '_' + metodo_clasificacion + '.model'), [classifier, data_train])
+    serialization.write_all(os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_clasificacion + '.model'), [classifier, data_train])
     # objects = serialization.read_all("....")
     # classifier = Classifier(jobject=objects[0])
     # data_load = Instances(jobject=objects[1])
@@ -99,7 +100,7 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
         print(evl.summary())
     # Las columnas de predicciones (5) indican: número de segmento, etiqueta real, etiqueta predicha, error (indica con
     # un '+' donde se presentan), y el porcentaje de confianza o algo asi
-    return pout.buffer_content(), evl.error_rate
+    return pout.buffer_content()
 
 
 def ParticionaDatos(data, porcentaje=66.0):
