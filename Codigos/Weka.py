@@ -72,7 +72,7 @@ def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
     return data_filtrada, data_tt_filtrada
 
 
-def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
+def Clasificacion(data_train, data_test, metodo_clasificacion, metodo_seleccion, sumario=False):
     # Opciones, metodo = 'J48', 'RForest', 'RTree', 'SVM', 'LR', 'MLP'
     switcher = {
         'J48': 'weka.classifiers.trees.J48',
@@ -87,7 +87,7 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
     classifier = Classifier(classname=met_clasificacion)
     classifier.build_classifier(data_train)
 
-    serialization.write_all(os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_clasificacion + '.model'), [classifier, data_train])
+    serialization.write_all(os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_seleccion + '-' + metodo_clasificacion + '.model'), [classifier, data_train])
     # objects = serialization.read_all("....")
     # classifier = Classifier(jobject=objects[0])
     # data_load = Instances(jobject=objects[1])

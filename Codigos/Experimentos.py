@@ -108,7 +108,7 @@ def Unimodal():
                     log.agrega(met_clasificacion[j])
                     start2 = time.time()
                     lista_metodos.append(metodo_actual + met_clasificacion[j])
-                    predi_csv = wek.Clasificacion(train, test, met_clasificacion[j])
+                    predi_csv = wek.Clasificacion(train, test, met_clasificacion[j], met_seleccion[i])
                     prediccion = hrm.prediccionCSVtoArray(predi_csv)
                     lista_acu.append(hrm.Accuracy(prediccion[:, 1], prediccion[:, 2]))
                     lista_uar.append(hrm.UAR(prediccion[:, 1], prediccion[:, 2]))
@@ -128,11 +128,6 @@ def Unimodal():
         else:
             resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
 
-        # if vec_resultados.size == 0:
-        #     vec_resultados = np.array([resultados])
-        #     vec_resultados_fusionado = np.array([resultados_fusionado])
-        #     vec_resultados_fusionado_2 = np.array([resultados_fusionado_2])
-        # else:
         vec_resultados = np.concatenate([vec_resultados,  np.array([resultados[0:3, :]])], axis=0)
         vec_resultados_fusionado = np.concatenate([vec_resultados_fusionado, np.array([resultados_fusionado[0:3, :]])], axis=0)
         vec_resultados_fusionado_2 = np.concatenate([vec_resultados_fusionado_2, np.array([resultados_fusionado_2[0:3, :]])], axis=0)
