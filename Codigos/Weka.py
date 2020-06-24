@@ -72,7 +72,7 @@ def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
     return data_filtrada, data_tt_filtrada
 
 
-def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
+def Clasificacion(data_train, data_test, metodo_clasificacion, metodo_seleccion, sumario=False):
     # Opciones, metodo = 'J48', 'RForest', 'RTree', 'SVM', 'LR', 'MLP'
     switcher = {
         'J48': 'weka.classifiers.trees.J48',
@@ -87,10 +87,7 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, sumario=False):
     classifier = Classifier(classname=met_clasificacion)
     classifier.build_classifier(data_train)
 
-    serialization.write_all(os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_clasificacion + '.model'), [classifier, data_train])
-    # objects = serialization.read_all("....")
-    # classifier = Classifier(jobject=objects[0])
-    # data_load = Instances(jobject=objects[1])
+    serialization.write_all(os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_seleccion + '-' + metodo_clasificacion + '.model'), [classifier, data_train])
 
     pout = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
     evl = Evaluation(data_test)
@@ -107,3 +104,25 @@ def ParticionaDatos(data, porcentaje=66.0):
     # El rnd None permite que no los mezcle ni desordene al dividirlo
     train, test = data.train_test_split(porcentaje, rnd=None)
     return train, test
+
+
+def LeeModelo(path, data_val):
+    objects = serialization.read_all(path)
+
+    classifier = Classifier(jobject=objects[0])
+    data_load = Instances(jobject=objects[1])
+    print('Data cargada', data_load.num_attributes)
+
+    ind_keep = ""
+    for i in range(0, data_load.num_attributes):
+        attrib = data_val.attribute_by_name(data_load.attribute(i).name)
+    ind_keep = ind_keep + str(attrib.index + 1) + ','
+    ind_keep = ind_keep[0:len(ind_keep) - 1]
+
+    flter = Filter(classname="weka.filters.unsupervised.attribute.Remove")
+    flter.set_property("attributeIndices", ind_keep)
+    flter.set_property("invertSelection", True)
+    flter.inputformat(data_val)
+    data_val_f = flter.filter(data_val)
+    data_val_f.class_is_last()
+    return data_val_f, classifier
