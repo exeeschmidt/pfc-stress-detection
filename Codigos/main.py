@@ -1,39 +1,24 @@
-import traceback
-
-import Codigos.Caracteristicas as carac
-import Codigos.Herramientas as hrm
-import Codigos.Weka as wek
-import weka.core.jvm as jvm
 import numpy as np
-import Codigos.ArffManager as am
-import os
+import Codigos.Experimentos as exp
+import Codigos.Datos as datos
+import Codigos.LogManager as log
 
-# Solamente la arranco, si la detengo a lo ultimo tira una excepcion MATLAB, se ve que la detiene por su cuenta
-jvm.start()
-# features = carac.VideoEntero(False, np.array(['ojoizq', 'ojoder', 'boca']), np.array(['LBP', 'AU']))
-# features('03', '1')
-# features = carac.VideoEnParte(False, np.array(['ojoizq', 'ojoder', 'boca']), np.array(['LBP', 'AU']))
-# features('03', '1')
-# features = carac.Audio(False)
-# features('03', '1')
+# NOTA: si se rompe la maquina virtual de java al usar HOP, no detener la maquina virtual de java dentro de experimentos
 
-# am.ConcatenaArff('Resultado Video', np.array(['03']), np.array(['1']), True, False)
-# am.ConcatenaArff('Resultado Audio', np.array(['03']), np.array(['1']), True, True)
 
-path1 = 'Caracteristicas' + os.sep + 'Resultado Video.arff'
-path2 = 'Caracteristicas' + os.sep + 'Resultado Audio.arff'
+def main():
+    # exp.ExtractorDeCaracteristicas()
 
-carga = wek.CargaYFiltrado()
-clasi = wek.Clasificacion()
+    log.crea()
+    if datos.EXPERIMENTO == 'Unimodal':
+        exp.Unimodal()
+    elif datos.EXPERIMENTO == 'Multimodal completo':
+        exp.PrimerMultimodalCompleto()
+    else:
+        exp.SegundoMultimodalCompleto()
+    print('Fin de ejecucion')
+    log.agrega('Fin de ejecucion')
 
-data = carga(path1)
-predicciones = clasi(data, 'RForest')
-vec_predic1 = hrm.convPrediccion(predicciones)
 
-data = carga(path2)
-predicciones = clasi(data, 'RForest')
-vec_predic2 = hrm.convPrediccion(predicciones)
-
-print(vec_predic1.shape[0], vec_predic2.shape[0])
-[n_pre_1, n_pre_2] = hrm.segmentaPrediccion(vec_predic1, vec_predic2)
-# print(n_pre_1)
+if __name__ == '__main__':
+    main()

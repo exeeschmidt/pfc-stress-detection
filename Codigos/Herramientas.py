@@ -2,10 +2,37 @@ import csv
 import numpy as np
 import cv2 as cv
 import read_hog_file
+import os
+import Codigos.Datos as datos
+import Codigos.LogManager as log
+from sklearn.metrics import recall_score, accuracy_score
+from tabulate import tabulate
+
+def buildVideoName(persona, etapa, parte=-1, extension=False):
+    video_name = 'Sujeto_' + persona + '_' + etapa
+    if parte != -1:
+        video_name += '_r' + str(parte)
+    if extension:
+        video_name += '.mp4'
+    return video_name
+
+
+def buildPathVideo(persona, etapa, nombre_video, extension=True):
+    path_video = os.path.join(datos.PATH_BD, 'Sujeto ' + persona, 'Etapa ' + etapa, nombre_video)
+    if extension:
+        path_video += '.mp4'
+    return path_video
+
+
+def buildPathSub(persona, etapa, sub):
+    path = os.path.join(datos.PATH_CARACTERISTICAS, sub, buildVideoName(persona, etapa) + '_' + sub + '.arff')
+    return path
 
 
 def Histograma(imagen):
-    # Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda)
+    """
+    Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda).
+    """
     img = np.copy(imagen)
     f = img.shape[0]
     c = img.shape[1]
@@ -17,18 +44,18 @@ def Histograma(imagen):
     return histo
 
 
-def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
-    # Devuelve el minimo rectangulo segun la region de la cara que se elija
+def ROI(img, landmarks_x, landmarks_y, region, expandir=True, resize=True):
+    """
+    Devuelve el mínimo rectángulo según la región de la cara que se elija. Landmarks debería traer toda la lista de
+    puntos faciales de un frame. Por ejemplo desde open face: archivo[nro_frame][....]
 
-    # Landmarks deberia traer toda la lista de puntos faciales de un frame
-    # Por ejemplo desde open face archivo[nro_frame][....]
-
-    # LISTA DE NUMEROS DE PUNTOS FACIALES SEGUN LA REGION
-    # Borde de la cara 0 al 16
-    # Cejas 17 al 26 (izquierda 17 a 21 y derecha 22 a 26)
-    # Nariz 27 al 35
-    # Ojos 36 al 47 (izquierdo 36 a 41 y derecha 42 a 47)
-    # Boca 48 al 59
+    LISTA DE NUMEROS DE PUNTOS FACIALES SEGUN LA REGION
+        Borde de la cara 0 al 16
+        Cejas 17 al 26 (izquierda 17 a 21 y derecha 22 a 26)
+        Nariz 27 al 35
+        Ojos 36 al 47 (izquierdo 36 a 41 y derecha 42 a 47)
+        Boca 48 al 59
+    """
 
     switcher = {
         'cara': list(range(0, 27)),
@@ -44,24 +71,21 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
 
     rango = switcher.get(region)
     frame = np.copy(img)
-    landmarks_propios = np.zeros(0)
+    landmarks_propios = np.empty((0, 2), dtype=int)
 
     for i in rango:
         punto = np.array([[int(float(landmarks_x[i])), int(float(landmarks_y[i]))]])
-        # Este if esta por problemas al ir concatenando cuando esta vacio
-        if len(landmarks_propios) == 0:
-            landmarks_propios = punto
-        else:
-            landmarks_propios = np.concatenate((landmarks_propios, punto), axis=0)
+        # Este if esta por problemas al ir concatenando cuando está vacío
+        landmarks_propios = np.append(landmarks_propios, punto, axis=0)
 
     x1, y1, w1, h1 = cv.boundingRect(landmarks_propios)
     x2 = x1 + w1
     y2 = y1 + h1
     if expandir:
-        # Si tomamos un 5% de expansion para cada lado
+        # Si tomamos un 5% de expansión para cada lado
         pix_y = int(w1 / 20)
         pix_x = int(h1 / 20)
-        # Verificacion que no sobrepase los limites de la imagen
+        # Verificación que no sobrepase los límites de la imagen
         if y1 - pix_y < 0:
             y1 = 0
         else:
@@ -82,7 +106,13 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
         else:
             x2 = x2 + pix_x
 
-    roi = frame[y1:y2, x1:x2]
+    # Si las coordenadas dan ambas nulas es invalido, suplantando la roi con
+    # (en algoritmo de open face al tener landmarks invalidos da puntos fuera del tamaño de la imagen, pero al hacer
+    # la comprobacion anterior la llevamos siempre al limite de la imagen)
+    if (x1 - x2 == 0) or (y1 - y2 == 0):
+        roi = np.zeros(frame.shape, frame.dtype)
+    else:
+        roi = frame[y1:y2, x1:x2]
 
     if resize:
         roi = ResizeZona(roi, region)
@@ -91,7 +121,10 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir, resize):
 
 
 def ResizeZona(imagen, region):
-    # Segun la region lo lleva a un tamaño fijo, estos numeros se sacaron manualmente a partir de la observacion de un frame
+    """
+    Según la región lo lleva a un tamaño fijo, estos números se sacaron manualmente a partir de la observación de un
+    frame.
+    """
     switcher = {
         'cara': (200, 200),
         'cejas': (180, 30),
@@ -109,9 +142,11 @@ def ResizeZona(imagen, region):
 
 
 def leeHOG(ruta_archivo):
-    # ruta_archivo = 'Procesado/Sujeto 01a.hog'
-    # Devuelve la matriz con los hog por cuadro
-    # El segundo parametro devuelve si en ese cuadro se extrajo correctamente
+    """
+    Devuelve dos valores. El primero corresponde a la matriz con los hog por cuadro y el segundo devuelve si en ese
+    cuadro se extrajo correctamente.
+    Ejemplo: ruta_archivo = 'Procesado/Sujeto 01a.hog'
+    """
     rhf = read_hog_file.initialize()
     [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
     rhf.terminate()
@@ -119,41 +154,58 @@ def leeHOG(ruta_archivo):
 
 
 def leeCSV(ruta_archivo):
-    # Devuelve del csv una lista con los datos
+    """
+    Devuelve una lista con los datos a partir de un csv.
+    """
     archivo = open(ruta_archivo)
     leido = csv.reader(archivo, delimiter=',', skipinitialspace=True)
     leido = list(leido)
     return leido
 
+
 def leeEtiqueta(archivo, persona, etapa, parte):
-    #Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
-    #El primer 1+ en persona va para saltear la fila donde estan las caratulas
+    """
+    Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
+    saltear la fila donde están las carátulas.
+    """
     ind_persona = 1 + (int(persona) - 1) * 13
     ind_etapa = (int(etapa) - 1) * 7
     ind_parte = int(parte) - 1
     etiqueta = archivo[ind_persona + ind_etapa + ind_parte][5]
     return etiqueta
 
+
 def leeTiemposRespuesta(archivo, persona, etapa, parte):
-    #Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2
-    #El primer 1+ en persona va para saltear la fila donde estan las caratulas
+    """
+    Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
+    saltear la fila donde están las carátulas.
+    """
     ind_persona = 1 + (int(persona) - 1) * 13
     ind_etapa = (int(etapa) - 1) * 7
     ind_parte = int(parte) - 1
     segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa + ind_parte][4])
     return segundos
 
-def convPrediccion(predi):
+
+def prediccionCSVtoArray(predi):
+    """
+    Sirve para convertir los csv de las predicciones en vectores de numpy formato: [ [...,...,...], [....,...,...]...]
+    """
     vec = np.array([])
     fila = np.array([])
     dato = ''
+    # Recorro cada char
     for i in predi:
+        # Si es una coma o salto de línea agrego el dato a la fila y lo reinicio
         if i == ',' or i == '\n':
+            # En caso de dos comas seguidas o datos incompletos que el dato sea un espacio
             if dato == '':
                 dato = ' '
             fila = np.append(fila, dato)
             dato = ''
+            # En caso de ser salto de línea agrego la fila entera al vector y la reinicio
             if i == '\n':
+                # Como no conozco la cantidad de columnas para inicializar un vector vacío, tengo que hacer esto
                 if len(vec) == 0:
                     vec = np.array([fila])
                     fila = np.array([])
@@ -161,71 +213,230 @@ def convPrediccion(predi):
                     vec = np.concatenate([vec, np.array([fila])], axis=0)
                     fila = np.array([])
         else:
+            # Concateno el dato a partir de los char
             dato = dato + i
     return vec
 
-def segmentaPrediccion(predi_1, predi_2):
-    # Algoritmo para segmentar como en Lefter - Recognizing stress using semantics and modulation
-    # of speech and gestures
 
-    # A partir de dos conjuntos de etiquetas, con distinto tamaño, devuelvo los dos conjuntos con las misma segmentacion
-    # conservando las etiquetas que se tenian. Esta nueva segmentacion cuenta con segmentos de tamaño variable, por lo que
-    # de cada segmento se guarda su etiqueta, y el porcentaje del total que representa
-    #
-    # Ejemplo:
-    #   [ ['Estresado', 0.3], ['No-Estresado', 1.3] .... ]
-    #   Esto representaria que el primer segmento representa un 0.3% del total y el siguiente el 1.3%
-    #   Guardar los porcentajes sirve para realizar el pesaje del largo de segmento al hacer majority voting
+def resumePredicciones(predi, metodos, accuracy, uar):
+    """
+    El primer parámetro representa el vector de matrices con las predicciones, el segundo un vector con el nombre de los
+    métodos usados. Por ejemplo, para la predicción en la posicion 0 se utilizó 'PCA + SVM'. Con esto creo la cabecera.
+    """
 
-    tam_pre_1 = predi_1.shape[0]
-    tam_pre_2 = predi_2.shape[0]
+    # Número de métodos
+    num_metodos = predi.shape[0]
 
-    # Saco el porcentaje inicial que representa cada segmento constante en los conjuntos originales
-    tam_segmento_1 = 1 / tam_pre_1
-    tam_segmento_2 = 1 / tam_pre_2
+    # Cantidad de segmentos de cada modalidad
+    tam_pre = predi.shape[1]
 
-    # Busco en la cabecera donde se encuentran las predicciones
-    fila_prediccion = np.where(predi_1[0] == 'predicted')
+    new_predi = np.empty((tam_pre + 3, 0))
+    # Del primer método además de obtener la predicción saco la columna con las etiquetas (iguales en todos los métodos)
+    new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta', 'Accuracy', 'UAR']), predi[0, :, 1])]).T, axis=1)
+    for i in range(0, num_metodos):
+        new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i], accuracy[i], uar[i]]), predi[i, :, 2])]).T, axis=1)
+    return new_predi
 
-    new_predi_1 = np.array([['etiqueta', 'porcentaje']])
-    new_predi_2 = np.array([['etiqueta', 'porcentaje']])
 
-    # Las porciones que queden de segmento, inicialmente son igual al tamaño entero de segmento
-    porc_1 = tam_segmento_1
-    porc_2 = tam_segmento_2
+def uneResumenes(resu1, resu2):
+    """
+    A partir de los dos resumenes de predicciones los une en uno solo cortando al tamaño del menor.
+    Se espera que el primer resumen sea el del video por el hecho de personalizar el nombre de las columnas
+    """
+    filas1 = resu1.shape[0]
+    filas2 = resu2.shape[0]
 
-    if porc_1 < porc_2:
-        avance = porc_1
+    if filas1 < filas2:
+        corte = filas1
     else:
-        avance = porc_2
-    #Indices en los conjuntos iniciales
-    ind1 = 1
-    ind2 = 1
-    while ind1 < tam_pre_1 and ind2 < tam_pre_2:
-        # Depende que porcion mas chica, avanzo unicamente esa cantidad
-        # Al avanzar la cantidad mas chica, tengo que reducir el tamaño de la otra porcion ya que estaria cortando un segmento
-        # Al indicar la porcion mas chica es porque termino ese segmento, por lo que tengo que avanzar en el indice de los
-        # conjuntos
-        # En caso de ser iguales el avance es el mismo tanto en porcentaje como para los indices de los conjuntos
+        corte = filas2
 
-        # print(str(ind1) + '/' + str(predi_1.shape[0]), str(ind2) + '/' + str(predi_2.shape[0]))
-        new_predi_1 = np.concatenate([new_predi_1, np.array([np.append(predi_1[ind1][fila_prediccion], avance)])])
-        new_predi_2 = np.concatenate([new_predi_2, np.array([np.append(predi_2[ind2][fila_prediccion], avance)])])
+    new_resu = np.concatenate([resu1[0:corte, :], resu2[0:corte, 1:]], axis=1)
 
-        if porc_1 < porc_2:
-            avance = porc_1
-            ind1 = ind1 + 1
-            porc_2 = tam_segmento_2 - avance
-            porc_1 = tam_segmento_1
-        elif porc_2 < porc_1:
-            avance = porc_2
-            ind2 = ind2 + 1
-            porc_1 = tam_segmento_1 - avance
-            porc_2 = tam_segmento_2
+    # Al nombre de los metodos les agrego la modalidad a la que refiere, se espera que empiece con los de video
+    for i in range(1, new_resu.shape[1]):
+        if i < resu1.shape[1]:
+            new_resu[0, i] = new_resu[0, i] + '(V)'
         else:
-            avance = porc_1
-            ind1 = ind1 + 1
-            ind2 = ind2 + 1
-            porc_1 = tam_segmento_1
-            porc_2 = tam_segmento_2
-    return new_predi_1, new_predi_2
+            new_resu[0, i] = new_resu[0, i] + '(A)'
+    return new_resu
+
+
+def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
+    """
+    Recibiendo el resumen de todas las predicciones, metricas y etiquetas. Utiliza el metodo mencionado para fusionar y
+    los mejores x clasificadores para esto. En caso de que mejores sea -1 utiliza todos
+    """
+    indice_mejores = np.empty(0, dtype=np.int)
+    valores_mejores = np.empty(0)
+
+    # Creo el resumen final
+    new_resu = np.array([np.array(['Etiqueta', metodo])])
+    # Agrego la fila con el error y el valor 0, despues este se tiene que reemplazar al calcular el error al final
+    new_resu = np.append(new_resu, np.array([np.array(['Accuracy', '0'])]), axis=0)
+    new_resu = np.append(new_resu, np.array([np.array(['UAR', '0'])]), axis=0)
+
+    # Si los mejores son por modalidad, guardo los indices de donde se encuentran cada uno
+    modalidad_audio = list()
+    modalidad_video = list()
+    if por_modalidad:
+        for i in range(1, resumen.shape[1]):
+            # Si encuentro el (V) es video y sino supongo que es audio
+            if resumen[0, i].find('(V)') != -1:
+                modalidad_video.append(i)
+            else:
+                modalidad_audio.append(i)
+
+    if mejores > 0:
+        # Agrego al mejor de que tantos era
+        new_resu[0, 1] = new_resu[0, 1] + ' M' + str(mejores)
+
+        if por_modalidad:
+            indice_mejores_video = np.empty(0, dtype=np.int)
+            valores_mejores_video = np.empty(0)
+            indice_mejores_audio = np.empty(0, dtype=np.int)
+            valores_mejores_audio = np.empty(0)
+            # Los primeros los uso como inicializacion
+            for i in range(0, mejores):
+                indice_mejores_video = np.append(indice_mejores_video, modalidad_video[i])
+                valores_mejores_video = np.append(valores_mejores_video, float(resumen[2, modalidad_video[i]]))
+                indice_mejores_audio = np.append(indice_mejores_audio, modalidad_audio[i])
+                valores_mejores_audio = np.append(valores_mejores_audio, float(resumen[2, modalidad_audio[i]]))
+            # Recien ahora recorro el resto
+            for i in range(mejores, int((resumen.shape[1] - 1) / 2)):
+                # Si tiene mas uar que reemplace el menor tanto en indice como en valores
+                if float(resumen[2, modalidad_video[i]]) > min(valores_mejores_video):
+                    indice_mejores_video[valores_mejores_video.argmin()] = modalidad_video[i]
+                    valores_mejores_video[valores_mejores_video.argmin()] = float(resumen[2, modalidad_video[i]])
+                if float(resumen[2, modalidad_audio[i]]) > min(valores_mejores_audio):
+                    indice_mejores_audio[valores_mejores_audio.argmin()] = modalidad_audio[i]
+                    valores_mejores_audio[valores_mejores_audio.argmin()] = float(resumen[2, modalidad_audio[i]])
+            indice_mejores = np.concatenate([indice_mejores_audio, indice_mejores_video])
+        else:
+            # Los primeros los uso como inicializacion
+            for i in range(1, mejores + 1):
+                valores_mejores = np.append(valores_mejores, float(resumen[2, i]))
+                indice_mejores = np.append(indice_mejores, i)
+            # Recien ahora recorro el resto
+            for i in range(mejores + 1, resumen.shape[1]):
+                # Si tiene mayor uar que reemplace el menor tanto en indice como en valores
+                if float(resumen[2, i]) > min(valores_mejores):
+                    indice_mejores[valores_mejores.argmin()] = i
+                    valores_mejores[valores_mejores.argmin()] = float(resumen[2, i])
+    else:
+        indice_mejores = np.array(range(1, resumen.shape[1]))
+
+    if metodo == 'Voto':
+        for j in range(3, resumen.shape[0]):
+            votos = list()
+            # Recorro solo las columnas con los mejores clasificadores
+            for i in indice_mejores:
+                # Busco la posicion de la clase que corresponde la etiqueta que predice
+                votos.append(resumen[j, i])
+            # Agrego a la fila del resumen final la etiqueta y la prediccion final despues del voto
+            mas_votado = max(set(votos), key=votos.count)
+            new_resu = np.append(new_resu, np.array([np.array([resumen[j, 0], mas_votado])]), axis=0)
+        # Luego de terminar de realizar la fusion calculo la metricas
+        new_resu[1, 1] = str(Accuracy(new_resu[3:, 0], new_resu[3:, 1]))
+        new_resu[2, 1] = str(UAR(new_resu[3:, 0], new_resu[3:, 1]))
+
+    return new_resu
+
+
+def VotoPorSegmento(resumen, instancias_intervalos, desfase=0):
+    """
+    Aplica voto a los intervalos de tiempo contiguos, de manera que no se produzan cambios bruscos en las etiquetas por
+    cada intervalo.
+    """
+    new_resu = np.copy(resumen)
+    new_resu[0, 1] = new_resu[0, 1] + '-' + str(instancias_intervalos)
+    rango = list([3, 2 + desfase])
+    rango.extend(range(desfase + 2 + instancias_intervalos, resumen.shape[0], instancias_intervalos))
+    for i in rango:
+        votos = list()
+        if desfase == 0:
+            if i + instancias_intervalos < resumen.shape[0]:
+                hasta = i + instancias_intervalos
+            else:
+                hasta = resumen.shape[0] - 1
+        else:
+            hasta = i + desfase
+            desfase = 0
+        for j in range(i, hasta):
+            votos.append(resumen[j, 1])
+        if votos:
+            mas_votado = max(set(votos), key=votos.count)
+        for j in range(i, hasta):
+            new_resu[j, 1] = mas_votado
+    new_resu[1, 1] = str(Accuracy(new_resu[3:, 0], new_resu[3:, 1]))
+    new_resu[2, 1] = str(UAR(new_resu[3:, 0], new_resu[3:, 1]))
+
+    return new_resu
+
+
+def OrdenaInstancias(resumen, orden_instancias):
+    aux = np.empty(0, dtype=np.int)
+    for i in range(0, orden_instancias.size):
+        ind = np.where(orden_instancias == i)[0]
+        if ind >= orden_instancias.size - (resumen.shape[0] - 3):
+            aux = np.append(aux, ind)
+    # Sobre lista de aux buscar el menor y ponerlo en primer indice de una nueva lista y asi
+    maximo = max(aux)
+    ordenado = np.empty(0, dtype=np.int)
+    desfase = 2
+    comienzo = True
+    for i in range(0, aux.size):
+        ordenado = np.append(ordenado, aux.argmin())
+        aux[aux.argmin()] = maximo + 1
+        if comienzo and i > 1:
+            if ordenado[i] - 1 == ordenado[i - 1]:
+                desfase = desfase + 1
+            else:
+                comienzo = False
+    aux_resumen = resumen[3:]
+    resumen[3:] = aux_resumen[ordenado]
+    return resumen, desfase
+
+
+def Accuracy(ground_truth, prediccion):
+    return accuracy_score(ground_truth, prediccion)
+
+
+def UAR(ground_truth, prediccion):
+    # Unweighted average recall
+    return recall_score(ground_truth, prediccion, average='macro')
+
+
+def generaResumenFinal(vec_res, vec_res_fus, vec_res_fus_2):
+    folds = vec_res.shape[0]
+    cant_metodos = vec_res.shape[2] - 1
+    resumen_final = np.empty((3, cant_metodos + 3), dtype='U20')
+    # Creo la cabecera
+    resumen_final[0, 0] = ''
+    resumen_final[1, 0] = 'Accuracy promedio'
+    resumen_final[2, 0] = 'UAR promedio'
+    resumen_final[0, 1] = vec_res_fus[0, 0, 1]
+    resumen_final[0, 2] = vec_res_fus_2[0, 0, 1]
+    resumen_final[0, 3:] = vec_res[0, 0, 1:]
+
+    aux_res = np.empty((2, cant_metodos + 2), dtype=np.float)
+    for i in range(0, folds):
+        for k in range(0, 2):
+            aux_res[k, 0] = aux_res[k, 0] + float(vec_res_fus[i, k + 1, 1])
+            aux_res[k, 1] = aux_res[k, 1] + float(vec_res_fus_2[i, k + 1, 1])
+        for j in range(0, cant_metodos):
+            for k in range(0, 2):
+                aux_res[k, j + 2] = aux_res[k, j + 2] + float(vec_res[i, k + 1, j + 1])
+    aux_res = aux_res / folds
+    for i in range(0, aux_res.shape[0]):
+        for j in range(0, aux_res.shape[1]):
+            resumen_final[i + 1, j + 1] = str(aux_res[i, j])
+    return resumen_final
+
+
+
+def muestraTabla(resultados):
+    headers = resultados[0, :]
+    table = tabulate(resultados[1:3, :], headers, tablefmt="fancy_grid")
+    print(table)
+    log.agrega(table)
