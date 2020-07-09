@@ -60,6 +60,7 @@ class Video:
 
         data = am.Une(data_vec)
         data = am.FiltraZonas(data, self.zonas)
+        ini_Aus, fin_Aus = am.RangoAUs(data)
 
         # Cargo el archivo con las etiquetas
         arch_etiquetas = hrm.leeCSV(datos.PATH_ETIQUETAS)
@@ -72,7 +73,7 @@ class Video:
         if completo:
             self.VideoCompleto(persona, etapa, partes, data, arch_etiquetas)
         else:
-            self.VideoRespuestas(persona, etapa, partes, rangos_audibles, data, arch_etiquetas)
+            self.VideoRespuestas(persona, etapa, partes, rangos_audibles, data, arch_etiquetas, ini_Aus, fin_Aus)
 
     def VideoCompleto(self, persona, etapa, partes, data, arch_etiquetas):
         # Numero de instancia desde la que recorro
@@ -134,7 +135,7 @@ class Video:
         am.Guarda(persona, etapa, 'VCom', data)
         return data
 
-    def VideoRespuestas(self, persona, etapa, partes, rangos_audibles, data, arch_etiquetas):
+    def VideoRespuestas(self, persona, etapa, partes, rangos_audibles, data, arch_etiquetas, ini_AUs, fin_AUs):
         # Si no hay rangos audibles especificados o se analiza el video completo no existe la eliminacion de silencios
         if len(rangos_audibles) == 0:
             elimina_silencio = False
@@ -183,6 +184,8 @@ class Video:
             vec_prom = np.empty(0)
             # Para ir guardando el ultimo vector de promedio valido en caso de tener periodos de tiempo invalidos
             vec_prom_ant = np.empty(0)
+            # Va guardando las maximas intensidades de cada AU
+            vec_aus = np.zeros((1, fin_AUs - ini_AUs))
             # Para guardar la ultima etiqueta valida
             etiqueta_ant = ''
             # Vector para guardar las etiquetas y aplicar voto
@@ -214,6 +217,9 @@ class Video:
                     if vec_caracteristicas.size != 0:
                         # Agrego las caracteristicas al vector que luego se promedia, la etiqueta
                         # a la lista para luego hacer voto, y el contador de cuadros por segmento
+                        for k in range(0, fin_AUs - ini_AUs):
+                            if vec_aus[0, k] < vec_caracteristicas[k + ini_AUs]:
+                                vec_aus[0, k] = vec_caracteristicas[k + ini_AUs]
                         if vec_prom.size == 0:
                             vec_prom = vec_caracteristicas
                         else:
@@ -254,6 +260,9 @@ class Video:
                             for k in range(0, invalidos):
                                 data_actual = am.AgregaInstanciaClase(data_actual, vec_aprox,
                                                                       np.where(self.clases == etiqueta_aprox)[0][0])
+                        # Reemplazo las aus promediadas con el maximo de las aus
+                        vec_prom[ini_AUs:fin_AUs] = vec_aus
+                        vec_aus = np.zeros((1, fin_AUs - ini_AUs))
                         vec_prom_ant = vec_prom
                         etiqueta_ant = etiqueta_prom
                         invalidos = 0

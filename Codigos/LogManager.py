@@ -15,10 +15,10 @@ def crea():
     archivo = open(os.path.join(datos.PATH_LOGS, 'log.txt'), 'w', encoding="utf-8")
     archivo.write('Experimento: ' + datos.EXPERIMENTO + '\n\n')
 
-    if datos.OUT == -1:
+    if datos.TEST == -1:
         archivo.write('Leave-X-out inactivo' + '\n')
     else:
-        archivo.write('Leave-' + str(datos.OUT) + ' -out' + '\n')
+        archivo.write('Leave-' + str(datos.TEST) + ' -out' + '\n')
     archivo.write('Binarización de etiquetas: ' + str(datos.BINARIZO_ETIQUETA) + '\n')
     archivo.write('Eliminación de silencios: ' + str(datos.ELIMINA_SILENCIOS) + '\n')
 

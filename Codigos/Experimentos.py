@@ -19,7 +19,8 @@ def Unimodal():
     met_seleccion = datos.MET_SELECCION
     met_clasificacion = datos.MET_CLASIFICACION
     binarizo_etiquetas = datos.BINARIZO_ETIQUETA
-    out = datos.OUT
+    val = datos.VAL
+    test = datos.TEST
 
     jvm.start(max_heap_size="9G", packages=True)
 
@@ -44,16 +45,16 @@ def Unimodal():
     vec_resultados_fusionado = np.empty((0, 3, 2))
     vec_resultados_fusionado_2 = np.empty((0, 3, 2))
 
-    if out == -1:
+    if test == -1:
         vueltas = 1
     else:
-        # Contando que cuando se usa out siempre se trabaja con toda la bd
-        vueltas = int(21 / out)
+        # Contando que cuando se usa test siempre se trabaja con toda la bd
+        vueltas = int(21 / test)
 
     orden_instancias = np.empty(0)
     for k in range(0, vueltas):
         datos.defineFoldActual(k + 1)
-        if out == -1:
+        if test == -1:
             data = am.Concatena(personas, etapas, 'VCom')
             orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
             data_ori = am.MezclaInstancias(data, orden_instancias)
@@ -61,23 +62,9 @@ def Unimodal():
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            # Defino el conjunto de test. El de entrenamiento se define a partir de lo que no son de test
-            personas_train = np.empty(0, dtype=int)
-            personas_test = k * out + np.array(range(1, out + 1), dtype=int)
-            for i in range(1, 22):
-                if np.where(personas_test == i)[0].size == 0:
-                    personas_train = np.append(personas_train, i)
-            # Casteo a string
-            personas_train = personas_train.astype(np.str)
-            personas_test = personas_test.astype(np.str)
-            # Los que son numero de una cifra se les tiene que agregar un 0 a la izquierda
-            for i in range(0, personas_train.size):
-                if int(personas_train[i]) < 10:
-                    personas_train[i] = '0' + personas_train[i]
-            for i in range(0, personas_test.size):
-                if int(personas_test[i]) < 10:
-                    personas_test[i] = '0' + personas_test[i]
+            personas_train, personas_val, personas_test = GeneraConjuntos(k, val, test)
             train_ori = am.Concatena(personas_train, etapas, 'VCom')
+            val_ori = am.Concatena(personas_train, etapas, 'VCom')
             test_ori = am.Concatena(personas_test, etapas, 'VCom')
 
         vec_predicciones = np.array([])
@@ -93,7 +80,7 @@ def Unimodal():
                 print(met_seleccion[i])
                 log.agrega(met_seleccion[i])
                 metodo_actual = met_seleccion[i] + ' + '
-                train, test = wek.SeleccionCaracteristicas(train_ori, test_ori, met_seleccion[i])
+                train, val, test = wek.SeleccionCaracteristicas(train_ori, val_ori, test_ori, met_seleccion[i])
                 print(time.time() - start2)
                 log.agrega(time.time() - start2)
             else:
@@ -122,7 +109,7 @@ def Unimodal():
         resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_acu, lista_uar)
         resultados_fusionado = hrm.Fusion(resultados, 'Voto', mejores=datos.VOTO_MEJORES_X)
 
-        if out == -1:
+        if test == -1:
             resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
             resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
@@ -135,7 +122,7 @@ def Unimodal():
         hrm.muestraTabla(resultados)
         hrm.muestraTabla(resultados_fusionado)
         hrm.muestraTabla(resultados_fusionado_2)
-    if out != -1:
+    if test != -1:
         resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
         hrm.muestraTabla(resumen_final)
     jvm.stop()
@@ -153,7 +140,8 @@ def PrimerMultimodalCompleto(elimino_silencios=False):
     met_seleccion = datos.MET_SELECCION
     met_clasificacion = datos.MET_CLASIFICACION
     binarizo_etiquetas = datos.BINARIZO_ETIQUETA
-    out = datos.OUT
+    val = datos.VAL
+    test = datos.TEST
 
     jvm.start(max_heap_size="9G", packages=True)
 
@@ -180,16 +168,16 @@ def PrimerMultimodalCompleto(elimino_silencios=False):
     vec_resultados_fusionado = np.empty((0, 3, 2))
     vec_resultados_fusionado_2 = np.empty((0, 3, 2))
 
-    if out == -1:
+    if test == -1:
         vueltas = 1
     else:
-        # Contando que cuando se usa out siempre se trabaja con toda la bd
-        vueltas = int(21 / out)
+        # Contando que cuando se usa test siempre se trabaja con toda la bd
+        vueltas = int(21 / test)
 
     orden_instancias = np.empty(0)
     for k in range(0, vueltas):
         datos.defineFoldActual(k + 1)
-        if out == -1:
+        if test == -1:
             data_v = am.Concatena(personas, etapas, 'VResp')
             data_a = am.Concatena(personas, etapas, 'AResp')
             orden_instancias = am.GeneraOrdenInstancias(data_v, datos.INSTACIAS_POR_PERIODOS)
@@ -200,22 +188,7 @@ def PrimerMultimodalCompleto(elimino_silencios=False):
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            # Defino el conjunto de test. El de entrenamiento se define a partir de lo que no son de test
-            personas_train = np.empty(0, dtype=int)
-            personas_test = k * out + np.array(range(1, out + 1), dtype=int)
-            for i in range(1, 22):
-                if np.where(personas_test == i)[0].size == 0:
-                    personas_train = np.append(personas_train, i)
-            # Casteo a string
-            personas_train = personas_train.astype(np.str)
-            personas_test = personas_test.astype(np.str)
-            # Los que son numero de una cifra se les tiene que agregar un 0 a la izquierda
-            for i in range(0, personas_train.size):
-                if int(personas_train[i]) < 10:
-                    personas_train[i] = '0' + personas_train[i]
-            for i in range(0, personas_test.size):
-                if int(personas_test[i]) < 10:
-                    personas_test[i] = '0' + personas_test[i]
+            personas_train, personas_val, personas_test = GeneraConjuntos(k, val, test)
             train_v_ori = am.Concatena(personas_train, etapas, 'VResp')
             test_v_ori = am.Concatena(personas_test, etapas, 'VResp')
             train_a_ori = am.Concatena(personas_train, etapas, 'AResp')
@@ -276,7 +249,7 @@ def PrimerMultimodalCompleto(elimino_silencios=False):
         resultados = hrm.uneResumenes(resultados_v, resultados_a)
         resultados_fusionado = hrm.Fusion(resultados, 'Voto', mejores=datos.VOTO_MEJORES_X, por_modalidad=True)
 
-        if out == -1:
+        if test == -1:
             resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
             resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
@@ -289,7 +262,7 @@ def PrimerMultimodalCompleto(elimino_silencios=False):
         hrm.muestraTabla(resultados)
         hrm.muestraTabla(resultados_fusionado)
         hrm.muestraTabla(resultados_fusionado_2)
-    if out != -1:
+    if test != -1:
         resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
         hrm.muestraTabla(resumen_final)
     jvm.stop()
@@ -307,7 +280,8 @@ def SegundoMultimodalCompleto(elimino_silencios=False):
     met_seleccion = datos.MET_SELECCION
     met_clasificacion = datos.MET_CLASIFICACION
     binarizo_etiquetas = datos.BINARIZO_ETIQUETA
-    out = datos.OUT
+    val = datos.VAL
+    test = datos.TEST
 
     jvm.start(max_heap_size="9G", packages=True)
 
@@ -334,16 +308,16 @@ def SegundoMultimodalCompleto(elimino_silencios=False):
     vec_resultados_fusionado = np.empty((0, 3, 2))
     vec_resultados_fusionado_2 = np.empty((0, 3, 2))
 
-    if out == -1:
+    if test == -1:
         vueltas = 1
     else:
-        # Contando que cuando se usa out siempre se trabaja con toda la bd
-        vueltas = int(21 / out)
+        # Contando que cuando se usa test siempre se trabaja con toda la bd
+        vueltas = int(21 / test)
 
     orden_instancias = np.empty(0)
     for k in range(0, vueltas):
         datos.defineFoldActual(k + 1)
-        if out == -1:
+        if test == -1:
             data = am.Concatena(personas, etapas, 'VResp', 'AResp')
             orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
             data_ori = am.MezclaInstancias(data, orden_instancias)
@@ -351,22 +325,7 @@ def SegundoMultimodalCompleto(elimino_silencios=False):
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            # Defino el conjunto de test. El de entrenamiento se define a partir de lo que no son de test
-            personas_train = np.empty(0, dtype=int)
-            personas_test = k * out + np.array(range(1, out + 1), dtype=int)
-            for i in range(1, 22):
-                if np.where(personas_test == i)[0].size == 0:
-                    personas_train = np.append(personas_train, i)
-            # Casteo a string
-            personas_train = personas_train.astype(np.str)
-            personas_test = personas_test.astype(np.str)
-            # Los que son numero de una cifra se les tiene que agregar un 0 a la izquierda
-            for i in range(0, personas_train.size):
-                if int(personas_train[i]) < 10:
-                    personas_train[i] = '0' + personas_train[i]
-            for i in range(0, personas_test.size):
-                if int(personas_test[i]) < 10:
-                    personas_test[i] = '0' + personas_test[i]
+            personas_train, personas_val, personas_test = GeneraConjuntos(k, val, test)
             train_ori = am.Concatena(personas_train, etapas, 'VResp', 'AResp')
             test_ori = am.Concatena(personas_test, etapas, 'VResp', 'AResp')
 
@@ -412,7 +371,7 @@ def SegundoMultimodalCompleto(elimino_silencios=False):
         resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_acu, lista_uar)
         resultados_fusionado = hrm.Fusion(resultados, 'Voto', mejores=datos.VOTO_MEJORES_X)
 
-        if out == -1:
+        if test == -1:
             resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
             resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
@@ -425,7 +384,7 @@ def SegundoMultimodalCompleto(elimino_silencios=False):
         hrm.muestraTabla(resultados)
         hrm.muestraTabla(resultados_fusionado)
         hrm.muestraTabla(resultados_fusionado_2)
-    if out != -1:
+    if test != -1:
         resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
         hrm.muestraTabla(resumen_final)
     jvm.stop()
@@ -449,3 +408,32 @@ def ExtractorDeCaracteristicas(personas, etapas, zonas):
     print('Completada extraccion de caracteristicas')
     print(time.time() - start_total)
     # jvm.stop()
+
+
+def GeneraConjuntos(vuelta_actual, val, test):
+    personas_train = np.empty(0, dtype=int)
+    personas_val = np.empty(0, dtype=int)
+    personas_test = vuelta_actual * test + np.array(range(1, test + 1), dtype=int)
+    for i in range(0, val):
+        ind_val = personas_test[0] - 1 - i
+        if ind_val < 1:
+            ind_val = 21 - abs(ind_val)
+        personas_val = np.append(personas_val, ind_val)
+    for i in range(1, 22):
+        if np.where(personas_test == i)[0].size == 0 and np.where(personas_val == i)[0].size == 0:
+            personas_train = np.append(personas_train, i)
+    # Casteo a string
+    personas_train = personas_train.astype(np.str)
+    personas_val = personas_val.astype(np.str)
+    personas_test = personas_test.astype(np.str)
+    # Los que son numero de una cifra se les tiene que agregar un 0 a la izquierda
+    for i in range(0, personas_train.size):
+        if int(personas_train[i]) < 10:
+            personas_train[i] = '0' + personas_train[i]
+    for i in range(0, personas_val.size):
+        if int(personas_val[i]) < 10:
+            personas_val[i] = '0' + personas_val[i]
+    for i in range(0, personas_test.size):
+        if int(personas_test[i]) < 10:
+            personas_test[i] = '0' + personas_test[i]
+    return personas_train, personas_val, personas_test

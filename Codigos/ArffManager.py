@@ -171,6 +171,21 @@ def FiltraZonas(data_t, zonas):
     return data
 
 
+def RangoAUs(data):
+    comienzo = 0
+    fin = 0
+    for i in range(0, data.num_attributes):
+        if data.attribute(i).name.find('AUs') != -1:
+            if comienzo == 0:
+                comienzo = i
+        elif comienzo != 0:
+            fin = i - 1
+            break
+    if fin == 0:
+        fin = data.num_attributes - 1
+    return comienzo, fin
+
+
 def CambiarRelationName(data_t, nombre):
     data = Instances.copy_instances(data_t)
     data.relationname = nombre

@@ -8,10 +8,11 @@ import Codigos.LogManager as log
 import os
 
 
-def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
+def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
     # opciones: 'PSO' , 'PCA', 'Firsts', 'PC'
-    data = Instances.copy_instances(data_train)
-    data_tt = Instances.copy_instances(data_test)
+    data_trn = Instances.copy_instances(data_train)
+    data_vld = Instances.copy_instances(data_val)
+    data_tst = Instances.copy_instances(data_test)
 
     options_eval = ''
     options_search = ''
@@ -26,20 +27,17 @@ def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
             met_eval = 'weka.attributeSelection.PrincipalComponents'
             options_eval = ['-R', '0.95', '-A', '10']
             options_search = ['-N', str(datos.ATRIBS_FINALES)]
-            data, data_tt = SeleccionCaracteristicas(data, data_tt, 'PC-pca')
+            data_trn, data_vld, data_tst = SeleccionCaracteristicas(data_trn, data_vld, data_tst, 'PC-pca')
         else:
             met_eval = 'weka.attributeSelection.CorrelationAttributeEval'
         if metodo_seleccion == 'PC':
             options_search = ['-N', str(datos.ATRIBS_FINALES)]
         elif metodo_seleccion == 'PC-pca':
             options_search = ['-N', str(datos.ATRIBS_PCA)]
-            final = False
         elif metodo_seleccion == 'PC-pso':
             options_search = ['-N', str(datos.ATRIBS_PSO)]
-            final = False
         elif metodo_seleccion == 'PC-bf':
             options_search = ['-N', str(datos.ATRIBS_BF)]
-            final = False
     else:
         met_eval = 'weka.attributeSelection.CfsSubsetEval'
         # Agregar -Z para activar el precalculo de la matriz de correlacion
@@ -47,29 +45,28 @@ def SeleccionCaracteristicas(data_train, data_test, metodo_seleccion):
         if metodo_seleccion == 'PSO':
             met_search = 'weka.attributeSelection.PSOSearch'
             options_search = ['-N', '250', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S', '1']
-            data, data_tt = SeleccionCaracteristicas(data, data_tt, 'PC-pso')
+            data_trn, data_vld, data_tst = SeleccionCaracteristicas(data_trn, data_vld, data_tst, 'PC-pso')
         else:
             met_search = 'weka.attributeSelection.BestFirst'
             options_search = ['-D', '1', '-N', '5']
-            data, data_tt = SeleccionCaracteristicas(data, data_tt, 'PC-bf')
+            data_trn, data_vld, data_tst = SeleccionCaracteristicas(data_trn, data_vld, data_tst, 'PC-bf')
 
     flter = Filter(classname="weka.filters.supervised.attribute.AttributeSelection")
     aseval = ASEvaluation(met_eval, options=options_eval)
     assearch = ASSearch(met_search, options=options_search)
     flter.set_property("evaluator", aseval.jobject)
     flter.set_property("search", assearch.jobject)
-    flter.inputformat(data)
-    data_filtrada = flter.filter(data)
-    data_tt_filtrada = flter.filter(data_tt)
-    print('Atributos ', metodo_seleccion, ' :', data_filtrada.num_attributes, '/', data.num_attributes)
-    log.agrega('Atributos ' + metodo_seleccion + ' :' + str(data_filtrada.num_attributes) + '/' + str(data.num_attributes))
+    flter.inputformat(data_trn)
+    data_trn_filtrada = flter.filter(data_trn)
+    data_vld_filtrada = flter.filter(data_vld)
+    data_tst_filtrada = flter.filter(data_tst)
+    print('Atributos ', metodo_seleccion, ' :', data_trn_filtrada.num_attributes, '/', data_trn.num_attributes)
+    log.agrega('Atributos ' + metodo_seleccion + ' :' + str(data_trn_filtrada.num_attributes) + '/' + str(data_trn.num_attributes))
     # saver = Saver()
     # saver.save_file(data_f, "filtrado.arff")
     # saver.save_file(data_v_f, "filtrado_v.arff")
-    # if data_filtrada.num_attributes > datos.ATRIBS_FINALES + 1 and final:
-    #     data_filtrada, data_tt_filtrada = SeleccionCaracteristicas(data_filtrada, data_tt_filtrada, 'PC')
 
-    return data_filtrada, data_tt_filtrada
+    return data_trn_filtrada, data_vld_filtrada, data_tst_filtrada
 
 
 def Clasificacion(data_train, data_test, metodo_clasificacion, metodo_seleccion, sumario=False):

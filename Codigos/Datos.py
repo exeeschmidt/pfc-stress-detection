@@ -20,8 +20,9 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 # PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
-EXPERIMENTO = 'Unimodal'
-OUT = 3
+EXPERIMENTO = 'Primer multimodal'
+TEST = 1
+VAL = 3
 BINARIZO_ETIQUETA = False
 ELIMINA_SILENCIOS = False
 
