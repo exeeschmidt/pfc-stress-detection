@@ -262,19 +262,12 @@ def uneResumenes(resu1, resu2):
     return new_resu
 
 
-def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
+def EleccionFusion(resumen, mejores=-1, por_modalidad=False):
     """
-    Recibiendo el resumen de todas las predicciones, metricas y etiquetas. Utiliza el metodo mencionado para fusionar y
-    los mejores x clasificadores para esto. En caso de que mejores sea -1 utiliza todos
+     A partir del resumen de validacion devuelve los indices de las mejores combinaciones de metodos
     """
     indice_mejores = np.empty(0, dtype=np.int)
     valores_mejores = np.empty(0)
-
-    # Creo el resumen final
-    new_resu = np.array([np.array(['Etiqueta', metodo])])
-    # Agrego la fila con el error y el valor 0, despues este se tiene que reemplazar al calcular el error al final
-    new_resu = np.append(new_resu, np.array([np.array(['Accuracy', '0'])]), axis=0)
-    new_resu = np.append(new_resu, np.array([np.array(['UAR', '0'])]), axis=0)
 
     # Si los mejores son por modalidad, guardo los indices de donde se encuentran cada uno
     modalidad_audio = list()
@@ -288,9 +281,6 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
                 modalidad_audio.append(i)
 
     if mejores > 0:
-        # Agrego al mejor de que tantos era
-        new_resu[0, 1] = new_resu[0, 1] + ' M' + str(mejores)
-
         if por_modalidad:
             indice_mejores_video = np.empty(0, dtype=np.int)
             valores_mejores_video = np.empty(0)
@@ -325,6 +315,20 @@ def Fusion(resumen, metodo, mejores=-1, por_modalidad=False):
                     valores_mejores[valores_mejores.argmin()] = float(resumen[2, i])
     else:
         indice_mejores = np.array(range(1, resumen.shape[1]))
+
+    return indice_mejores
+
+def Fusion(resumen, metodo, indice_mejores):
+    """
+    Recibiendo el resumen de todas las predicciones, metricas y etiquetas fusiona las mejores con el metodo indicado
+    """
+    # Creo el resumen final
+    new_resu = np.array([np.array(['Etiqueta', metodo])])
+    # Agrego la fila con el error y el valor 0, despues este se tiene que reemplazar al calcular el error al final
+    new_resu = np.append(new_resu, np.array([np.array(['Accuracy', '0'])]), axis=0)
+    new_resu = np.append(new_resu, np.array([np.array(['UAR', '0'])]), axis=0)
+
+    new_resu[0, 1] = new_resu[0, 1] + ' M' + str(indice_mejores.size)
 
     if metodo == 'Voto':
         for j in range(3, resumen.shape[0]):

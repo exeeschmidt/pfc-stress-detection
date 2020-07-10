@@ -69,7 +69,7 @@ def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
     return data_trn_filtrada, data_vld_filtrada, data_tst_filtrada
 
 
-def Clasificacion(data_train, data_test, metodo_clasificacion, metodo_seleccion, sumario=False):
+def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_seleccion, sumario=False):
     # Opciones, metodo = 'J48', 'RForest', 'RTree', 'SVM', 'LR', 'MLP'
     switcher = {
         'J48': 'weka.classifiers.trees.J48',
@@ -84,17 +84,34 @@ def Clasificacion(data_train, data_test, metodo_clasificacion, metodo_seleccion,
     classifier = Classifier(classname=met_clasificacion)
     classifier.build_classifier(data_train)
 
-    serialization.write_all(os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_seleccion + '-' + metodo_clasificacion + '.model'), [classifier, data_train])
+    nombre_archivo = os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_seleccion + '-' + metodo_clasificacion)
+    serialization.write_all(nombre_archivo + '.model', classifier)
 
-    pout = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
+    attrib_list = list()
+    it = data_train.attributes()
+    attrib = it.next()
+    while it.col != data_train.num_attributes:
+        attrib_list.append(attrib.name)
+        attrib = it.next()
+
+    wf = open(nombre_archivo + '.txt', 'w')
+    attrib_list_m = map(lambda x: x + '\n', attrib_list)
+    wf.writelines(attrib_list_m)
+    wf.close()
+
+    pout_val = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
+    evl = Evaluation(data_val)
+    evl.test_model(classifier, data_val, output=pout_val)
+
+    pout_tst = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
     evl = Evaluation(data_test)
-    evl.test_model(classifier, data_test, output=pout)
+    evl.test_model(classifier, data_test, output=pout_tst)
 
     if sumario:
         print(evl.summary())
     # Las columnas de predicciones (5) indican: número de segmento, etiqueta real, etiqueta predicha, error (indica con
     # un '+' donde se presentan), y el porcentaje de confianza o algo asi
-    return pout.buffer_content()
+    return pout_val.buffer_content(), pout_tst.buffer_content()
 
 
 def ParticionaDatos(data, porcentaje=66.0):
@@ -103,23 +120,27 @@ def ParticionaDatos(data, porcentaje=66.0):
     return train, test
 
 
-def LeeModelo(path, data_val):
-    objects = serialization.read_all(path)
+def LeeModelo(nombre_archivo, data_val, data_tst):
+    objects = serialization.read(nombre_archivo + '.model')
+    classifier = Classifier(objects)
 
-    classifier = Classifier(jobject=objects[0])
-    data_load = Instances(jobject=objects[1])
-    print('Data cargada', data_load.num_attributes)
+    rf = open(nombre_archivo + '.txt', 'r')
+    attrib_list_readed = rf.read().splitlines()
+    rf.close()
 
     ind_keep = ""
-    for i in range(0, data_load.num_attributes):
-        attrib = data_val.attribute_by_name(data_load.attribute(i).name)
-    ind_keep = ind_keep + str(attrib.index + 1) + ','
-    ind_keep = ind_keep[0:len(ind_keep) - 1]
+    while np.size(attrib_list_readed) != 0:
+        attrib = data_val.attribute_by_name(attrib_list_readed.pop())
+        ind_keep = ind_keep + str(attrib.index + 1) + ','
+    ind_keep = ind_keep + str(data_val.class_attribute.index + 1)
 
     flter = Filter(classname="weka.filters.unsupervised.attribute.Remove")
     flter.set_property("attributeIndices", ind_keep)
     flter.set_property("invertSelection", True)
     flter.inputformat(data_val)
     data_val_f = flter.filter(data_val)
+    data_tst_f = flter.filter(data_tst)
     data_val_f.class_is_last()
-    return data_val_f, classifier
+    data_tst_f.class_is_last()
+
+    return data_val_f, data_tst_f, classifier

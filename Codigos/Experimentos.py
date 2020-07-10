@@ -67,10 +67,13 @@ def Unimodal():
             val_ori = am.Concatena(personas_train, etapas, 'VCom')
             test_ori = am.Concatena(personas_test, etapas, 'VCom')
 
-        vec_predicciones = np.array([])
+        vec_predicciones_val = np.array([])
+        vec_predicciones_tst = np.array([])
         lista_metodos = list()
-        lista_acu = list()
-        lista_uar = list()
+        lista_acu_tst = list()
+        lista_uar_tst = list()
+        lista_acu_val = list()
+        lista_uar_val = list()
 
         print('Seleccion y clasificación en progreso')
         for i in range(0, len(met_seleccion)):
@@ -95,19 +98,25 @@ def Unimodal():
                     log.agrega(met_clasificacion[j])
                     start2 = time.time()
                     lista_metodos.append(metodo_actual + met_clasificacion[j])
-                    predi_csv = wek.Clasificacion(train, test, met_clasificacion[j], met_seleccion[i])
-                    prediccion = hrm.prediccionCSVtoArray(predi_csv)
-                    lista_acu.append(hrm.Accuracy(prediccion[:, 1], prediccion[:, 2]))
-                    lista_uar.append(hrm.UAR(prediccion[:, 1], prediccion[:, 2]))
-                    if len(vec_predicciones) == 0:
-                        vec_predicciones = np.array([prediccion])
+                    predi_csv_val, predi_csv_tst = wek.Clasificacion(train, val, test, met_clasificacion[j], met_seleccion[i])
+                    prediccion_val = hrm.prediccionCSVtoArray(predi_csv_val)
+                    prediccion_tst = hrm.prediccionCSVtoArray(predi_csv_tst)
+                    lista_acu_val.append(hrm.Accuracy(prediccion_val[:, 1], prediccion_val[:, 2]))
+                    lista_acu_tst.append(hrm.Accuracy(prediccion_tst[:, 1], prediccion_tst[:, 2]))
+                    lista_uar_val.append(hrm.UAR(prediccion_val[:, 1], prediccion_val[:, 2]))
+                    lista_uar_tst.append(hrm.UAR(prediccion_tst[:, 1], prediccion_tst[:, 2]))
+                    if len(vec_predicciones_val) == 0:
+                        vec_predicciones_val = np.array([prediccion_val])
                     else:
-                        vec_predicciones = np.concatenate([vec_predicciones, np.array([prediccion])])
+                        vec_predicciones_val = np.concatenate([vec_predicciones_val, np.array([prediccion_val])])
                     print(time.time() - start2)
                     log.agrega(time.time() - start2)
 
-        resultados = hrm.resumePredicciones(vec_predicciones, lista_metodos, lista_acu, lista_uar)
-        resultados_fusionado = hrm.Fusion(resultados, 'Voto', mejores=datos.VOTO_MEJORES_X)
+        resultados_val = hrm.resumePredicciones(vec_predicciones_val, lista_metodos, lista_acu_val, lista_uar_val)
+        resultados_tst = hrm.resumePredicciones(vec_predicciones_tst, lista_metodos, lista_acu_tst, lista_uar_tst)
+
+        indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
+        resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
 
         if test == -1:
             resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
@@ -115,11 +124,11 @@ def Unimodal():
         else:
             resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
 
-        vec_resultados = np.concatenate([vec_resultados,  np.array([resultados[0:3, :]])], axis=0)
+        vec_resultados = np.concatenate([vec_resultados,  np.array([resultados_tst[0:3, :]])], axis=0)
         vec_resultados_fusionado = np.concatenate([vec_resultados_fusionado, np.array([resultados_fusionado[0:3, :]])], axis=0)
         vec_resultados_fusionado_2 = np.concatenate([vec_resultados_fusionado_2, np.array([resultados_fusionado_2[0:3, :]])], axis=0)
 
-        hrm.muestraTabla(resultados)
+        hrm.muestraTabla(resultados_tst)
         hrm.muestraTabla(resultados_fusionado)
         hrm.muestraTabla(resultados_fusionado_2)
     if test != -1:
