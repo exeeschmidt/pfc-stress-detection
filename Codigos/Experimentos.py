@@ -19,8 +19,8 @@ def Unimodal():
     met_seleccion = datos.MET_SELECCION
     met_clasificacion = datos.MET_CLASIFICACION
     binarizo_etiquetas = datos.BINARIZO_ETIQUETA
-    val = datos.VAL
-    test = datos.TEST
+    nro_val = datos.VAL
+    nro_test = datos.TEST
 
     jvm.start(max_heap_size="9G", packages=True)
 
@@ -45,24 +45,25 @@ def Unimodal():
     vec_resultados_fusionado = np.empty((0, 3, 2))
     vec_resultados_fusionado_2 = np.empty((0, 3, 2))
 
-    if test == -1:
+    if nro_test == -1:
         vueltas = 1
     else:
         # Contando que cuando se usa test siempre se trabaja con toda la bd
-        vueltas = int(21 / test)
+        vueltas = int(21 / nro_test)
 
     orden_instancias = np.empty(0)
     for k in range(0, vueltas):
         datos.defineFoldActual(k + 1)
-        if test == -1:
+        if nro_test == -1:
             data = am.Concatena(personas, etapas, 'VCom')
             orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
             data_ori = am.MezclaInstancias(data, orden_instancias)
             train_ori, test_ori = wek.ParticionaDatos(data_ori)
+            train_ori, val_ori = wek.ParticionaDatos(train_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            personas_train, personas_val, personas_test = GeneraConjuntos(k, val, test)
+            personas_train, personas_val, personas_test = GeneraConjuntos(k, nro_val, nro_test)
             train_ori = am.Concatena(personas_train, etapas, 'VCom')
             val_ori = am.Concatena(personas_train, etapas, 'VCom')
             test_ori = am.Concatena(personas_test, etapas, 'VCom')
@@ -90,6 +91,7 @@ def Unimodal():
                 print('Sin selección de caracteristicas')
                 metodo_actual = ''
                 train = train_ori
+                val = val_ori
                 test = test_ori
             for j in range(0, len(met_clasificacion)):
                 # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
@@ -107,8 +109,10 @@ def Unimodal():
                     lista_uar_tst.append(hrm.UAR(prediccion_tst[:, 1], prediccion_tst[:, 2]))
                     if len(vec_predicciones_val) == 0:
                         vec_predicciones_val = np.array([prediccion_val])
+                        vec_predicciones_tst = np.array([prediccion_tst])
                     else:
                         vec_predicciones_val = np.concatenate([vec_predicciones_val, np.array([prediccion_val])])
+                        vec_predicciones_tst = np.concatenate([vec_predicciones_tst, np.array([prediccion_tst])])
                     print(time.time() - start2)
                     log.agrega(time.time() - start2)
 
@@ -116,6 +120,11 @@ def Unimodal():
         resultados_tst = hrm.resumePredicciones(vec_predicciones_tst, lista_metodos, lista_acu_tst, lista_uar_tst)
 
         indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
+        aux_mejores_metodos = 'Mejores combinaciones para la fusion: '
+        for i in range(0, indice_mejores.size):
+            aux_mejores_metodos = aux_mejores_metodos + '[', str(resultados_tst[0, indice_mejores[i]]) + ']'
+        print(aux_mejores_metodos)
+        log.agrega(aux_mejores_metodos)
         resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
 
         if test == -1:

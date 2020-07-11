@@ -163,6 +163,15 @@ def leeCSV(ruta_archivo):
     return leido
 
 
+def escribeCSV(ruta_archivo, datos):
+    """
+    Guarda un csv a partir de un vector con valores separados por coma
+    """
+    with open(ruta_archivo, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(datos)
+    return
+
 def leeEtiqueta(archivo, persona, etapa, parte):
     """
     Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
@@ -187,15 +196,19 @@ def leeTiemposRespuesta(archivo, persona, etapa, parte):
     return segundos
 
 
-def prediccionCSVtoArray(predi):
+def prediccionCSVtoArray(predi, desdeCSVleido=False):
     """
     Sirve para convertir los csv de las predicciones en vectores de numpy formato: [ [...,...,...], [....,...,...]...]
+    Si el csv viene de uno que genero escribeCSV, este lo deja como listas, asi que hay que ingresar a cada char
+    como si fuera una lista
     """
     vec = np.array([])
     fila = np.array([])
     dato = ''
     # Recorro cada char
     for i in predi:
+        if desdeCSVleido:
+            i = i.pop()
         # Si es una coma o salto de línea agrego el dato a la fila y lo reinicio
         if i == ',' or i == '\n':
             # En caso de dos comas seguidas o datos incompletos que el dato sea un espacio

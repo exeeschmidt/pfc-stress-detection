@@ -5,7 +5,9 @@ from weka.core.dataset import Instances
 from weka.core import serialization
 import Codigos.Datos as datos
 import Codigos.LogManager as log
+import Codigos.Herramientas as hrm
 import os
+import numpy as np
 
 
 def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
@@ -85,7 +87,7 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
     classifier.build_classifier(data_train)
 
     nombre_archivo = os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_seleccion + '-' + metodo_clasificacion)
-    serialization.write_all(nombre_archivo + '.model', classifier)
+    serialization.write_all(nombre_archivo + '.model', [classifier])
 
     attrib_list = list()
     it = data_train.attributes()
@@ -102,10 +104,12 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
     pout_val = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
     evl = Evaluation(data_val)
     evl.test_model(classifier, data_val, output=pout_val)
+    hrm.escribeCSV(nombre_archivo + '(VAL).csv', pout_val.buffer_content())
 
     pout_tst = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
     evl = Evaluation(data_test)
     evl.test_model(classifier, data_test, output=pout_tst)
+    hrm.escribeCSV(nombre_archivo + '(TEST).csv', pout_tst.buffer_content())
 
     if sumario:
         print(evl.summary())
@@ -121,19 +125,23 @@ def ParticionaDatos(data, porcentaje=66.0):
 
 
 def LeeModelo(nombre_archivo, data_val, data_tst):
+    # Permite leer tanto el clasificador entrenado como los atributos del conjunto con el cual se entreno, luego con
+    # esto filtra los datos de validacion y test para aplicar la misma seleccion de caracteristicas
     objects = serialization.read(nombre_archivo + '.model')
-    classifier = Classifier(objects)
+    classifier = Classifier(objects[0])
 
     rf = open(nombre_archivo + '.txt', 'r')
     attrib_list_readed = rf.read().splitlines()
     rf.close()
 
+    # Voy guardando los indices donde se encuentran los atributos que quiero quedarme
     ind_keep = ""
     while np.size(attrib_list_readed) != 0:
         attrib = data_val.attribute_by_name(attrib_list_readed.pop())
         ind_keep = ind_keep + str(attrib.index + 1) + ','
     ind_keep = ind_keep + str(data_val.class_attribute.index + 1)
 
+    # Uso el filtro para remover de forma invertida con tal de quedarme solo con los indices de los que les paso
     flter = Filter(classname="weka.filters.unsupervised.attribute.Remove")
     flter.set_property("attributeIndices", ind_keep)
     flter.set_property("invertSelection", True)

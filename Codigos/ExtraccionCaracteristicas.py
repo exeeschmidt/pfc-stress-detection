@@ -241,7 +241,6 @@ class Video:
                 # Verifico si termino el periodo, si es asi debo promediar y agregar al arff
                 if acu_tiempos >= self.tiempo_micro:
                     if vec_prom.size != 0:
-                        # NOTA: estamos promediando tambien la intensidad de las AUs, esto podemos volver a analizarlo
                         vec_prom = vec_prom / cps
                         etiqueta_prom = self._voto(vec_etiquetas, self.clases)
 

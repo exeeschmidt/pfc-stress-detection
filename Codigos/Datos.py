@@ -20,17 +20,20 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 # PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
-EXPERIMENTO = 'Primer multimodal'
-TEST = 1
-VAL = 3
+EXPERIMENTO = 'Unimodal'
+TEST = 3
+VAL = 4
 BINARIZO_ETIQUETA = False
 ELIMINA_SILENCIOS = False
 
 INSTANCIAS_POR_PERIODOS = 20
 VOTO_MEJORES_X = 4
-ATRIBS_PCA = 3000
-ATRIBS_PSO = 500
-ATRIBS_BF = 1000
+# ATRIBS_PCA = 3000
+# ATRIBS_PSO = 500
+# ATRIBS_BF = 1000
+ATRIBS_PCA = 100
+ATRIBS_PSO = 100
+ATRIBS_BF = 100
 ATRIBS_FINALES = 100
 TIEMPO_MICROEXPRESION = 0.25
 
@@ -39,8 +42,9 @@ PERSONAS = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10',
 ETAPAS = np.array(['1', '2'])
 ZONAS = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])
 MET_EXTRACCION = np.array(['LBP', 'HOG', 'HOP', 'AUS'])
-MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
-MET_CLASIFICACION = np.array(['RForest', 'SVM', 'J48', 'MLP'])
+MET_SELECCION = np.array(['BF', 'PSO'])
+# MET_CLASIFICACION = np.array(['RForest', 'SVM', 'J48', 'MLP'])
+MET_CLASIFICACION = np.array(['RForest', 'J48', 'MLP'])
 
 FOLD_ACTUAL = -1
 
