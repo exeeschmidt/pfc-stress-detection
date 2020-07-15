@@ -19,7 +19,6 @@ def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
     options_eval = ''
     options_search = ''
 
-    final = True
     # Segun el metodo elegido realiza una preseleccion de características usando Gain Ratio (GR). Para cada metodo en
     # particular se preseleccionan un numero distinto de atributos. Luego al aplicarse cada metodo, si este tiene mas
     # del numero de atributos finales, se realiza nuevamente una seleccion utilizando GR
@@ -82,24 +81,32 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
         'MLP': 'weka.classifiers.functions.MultilayerPerceptron'
     }
 
-    met_clasificacion = switcher.get(metodo_clasificacion)
-    classifier = Classifier(classname=met_clasificacion)
+    # En el caso de probar parametros se agregan como opciones, sino toma todos los parametros por defecto
+    if not datos.PRUEBA_PARAMETROS:
+        met_clasificacion = switcher.get(metodo_clasificacion)
+        classifier = Classifier(classname=met_clasificacion)
+    else:
+        met_clasificacion = switcher.get(metodo_clasificacion[0: len(metodo_clasificacion) - 2])
+        opciones = datos.PARAMETROS_CLASIFICADOR(met_clasificacion)
+        classifier = Classifier(classname=met_clasificacion, options=opciones)
+
     classifier.build_classifier(data_train)
 
-    nombre_archivo = os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_seleccion + '-' + metodo_clasificacion)
-    serialization.write_all(nombre_archivo + '.model', [classifier])
+    if datos.GUARDO_MODEL:
+        nombre_archivo = os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_seleccion + '-' + metodo_clasificacion)
+        serialization.write_all(nombre_archivo + '.model', [classifier])
 
-    attrib_list = list()
-    it = data_train.attributes()
-    attrib = it.next()
-    while it.col != data_train.num_attributes:
-        attrib_list.append(attrib.name)
+        attrib_list = list()
+        it = data_train.attributes()
         attrib = it.next()
+        while it.col != data_train.num_attributes:
+            attrib_list.append(attrib.name)
+            attrib = it.next()
 
-    wf = open(nombre_archivo + '.txt', 'w')
-    attrib_list_m = map(lambda x: x + '\n', attrib_list)
-    wf.writelines(attrib_list_m)
-    wf.close()
+        wf = open(nombre_archivo + '.txt', 'w')
+        attrib_list_m = map(lambda x: x + '\n', attrib_list)
+        wf.writelines(attrib_list_m)
+        wf.close()
 
     pout_val = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
     evl = Evaluation(data_val)
