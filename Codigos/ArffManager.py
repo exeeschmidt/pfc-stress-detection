@@ -38,6 +38,7 @@ def Une(data_vec):
     data = Instances.copy_instances(data_vec[0])
     for i in range(1, data_vec.size):
         data = Instances.merge_instances(data, data_vec[i])
+    data.class_is_last()
     return data
 
 
@@ -46,6 +47,7 @@ def Unev2(data_vec):
     data = Instances.copy_instances(data_vec[0])
     for i in range(1, data_vec.size):
         data = Instances.append_instances(data, data_vec[i])
+    data.class_is_last()
     return data
 
 
@@ -67,6 +69,8 @@ def Concatena(personas, etapas, sub, sub2=''):
     if sub2 != '':
         data_sub1 = Unev2(data_vec)
         data_sub2 = Unev2(data_vec2)
+        data_sub1.no_class()
+        data_sub1.delete_last_attribute()
         data_vec_f = Normaliza(np.array([data_sub1, data_sub2]))
         data_final = Une(data_vec_f)
     else:

@@ -122,7 +122,7 @@ def Unimodal():
         indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
         aux_mejores_metodos = 'Mejores combinaciones para la fusion: '
         for i in range(0, indice_mejores.size):
-            aux_mejores_metodos = aux_mejores_metodos + '[', str(resultados_tst[0, indice_mejores[i]]) + ']'
+            aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
         print(aux_mejores_metodos)
         log.agrega(aux_mejores_metodos)
         resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
@@ -163,24 +163,24 @@ def PrimerMultimodalCompleto(elimino_silencios=False):
 
     jvm.start(max_heap_size="9G", packages=True)
 
-    print('Adaptación de caracteristicas en progreso')
-    log.agrega('Adaptación de caracteristicas en progreso')
-    features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
-    features_a = carac.Audio(binarizo_etiquetas)
-    for i in personas:
-        for j in etapas:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            log.agrega('Persona ' + i + ' -> Etapa ' + j)
-            rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
-            features_v(i, j, completo=False, rangos_audibles=rang_audibles)
-            print(time.time() - start2)
-            log.agrega(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    log.agrega('Completada adaptación de caracteristicas')
-    log.agrega(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # log.agrega('Adaptación de caracteristicas en progreso')
+    # features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
+    # features_a = carac.Audio(binarizo_etiquetas)
+    # for i in personas:
+    #     for j in etapas:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         log.agrega('Persona ' + i + ' -> Etapa ' + j)
+    #         rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
+    #         features_v(i, j, completo=False, rangos_audibles=rang_audibles)
+    #         print(time.time() - start2)
+    #         log.agrega(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # log.agrega('Completada adaptación de caracteristicas')
+    # log.agrega(time.time() - start_total)
 
     vec_resultados = np.empty((0, 3, 2 * met_seleccion.size * met_clasificacion.size + 1))
     vec_resultados_fusionado = np.empty((0, 3, 2))
@@ -266,6 +266,10 @@ def PrimerMultimodalCompleto(elimino_silencios=False):
                     prediccion_a_tst = hrm.prediccionCSVtoArray(predi_csv_a_tst)
                     lista_acu_v_val.append(hrm.Accuracy(prediccion_v_val[:, 1], prediccion_v_val[:, 2]))
                     lista_acu_a_val.append(hrm.Accuracy(prediccion_a_val[:, 1], prediccion_a_val[:, 2]))
+                    lista_acu_v_tst.append(hrm.UAR(prediccion_v_tst[:, 1], prediccion_v_tst[:, 2]))
+                    lista_acu_a_tst.append(hrm.UAR(prediccion_a_tst[:, 1], prediccion_a_tst[:, 2]))
+                    lista_uar_v_val.append(hrm.Accuracy(prediccion_v_val[:, 1], prediccion_v_val[:, 2]))
+                    lista_uar_a_val.append(hrm.Accuracy(prediccion_a_val[:, 1], prediccion_a_val[:, 2]))
                     lista_uar_v_tst.append(hrm.UAR(prediccion_v_tst[:, 1], prediccion_v_tst[:, 2]))
                     lista_uar_a_tst.append(hrm.UAR(prediccion_a_tst[:, 1], prediccion_a_tst[:, 2]))
                     if len(vec_predicciones_v_val) == 0:
@@ -292,7 +296,7 @@ def PrimerMultimodalCompleto(elimino_silencios=False):
         indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
         aux_mejores_metodos = 'Mejores combinaciones para la fusion: '
         for i in range(0, indice_mejores.size):
-            aux_mejores_metodos = aux_mejores_metodos + '[', str(resultados_tst[0, indice_mejores[i]]) + ']'
+            aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
         print(aux_mejores_metodos)
         log.agrega(aux_mejores_metodos)
 
@@ -334,24 +338,24 @@ def SegundoMultimodalCompleto(elimino_silencios=False):
 
     jvm.start(max_heap_size="9G", packages=True)
 
-    print('Adaptación de caracteristicas en progreso')
-    log.agrega('Adaptación de caracteristicas en progreso')
-    features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
-    features_a = carac.Audio(binarizo_etiquetas)
-    for i in personas:
-        for j in etapas:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            log.agrega('Persona ' + i + ' -> Etapa ' + j)
-            rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
-            features_v(i, j, completo=False, rangos_audibles=rang_audibles)
-            print(time.time() - start2)
-            log.agrega(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    log.agrega('Completada adaptación de caracteristicas')
-    log.agrega(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # log.agrega('Adaptación de caracteristicas en progreso')
+    # features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
+    # features_a = carac.Audio(binarizo_etiquetas)
+    # for i in personas:
+    #     for j in etapas:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         log.agrega('Persona ' + i + ' -> Etapa ' + j)
+    #         rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
+    #         features_v(i, j, completo=False, rangos_audibles=rang_audibles)
+    #         print(time.time() - start2)
+    #         log.agrega(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # log.agrega('Completada adaptación de caracteristicas')
+    # log.agrega(time.time() - start_total)
 
     vec_resultados = np.empty((0, 3, met_seleccion.size * met_clasificacion.size + 1))
     vec_resultados_fusionado = np.empty((0, 3, 2))
@@ -434,12 +438,12 @@ def SegundoMultimodalCompleto(elimino_silencios=False):
         indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
         aux_mejores_metodos = 'Mejores combinaciones para la fusion: '
         for i in range(0, indice_mejores.size):
-            aux_mejores_metodos = aux_mejores_metodos + '[', str(resultados_tst[0, indice_mejores[i]]) + ']'
+            aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
         print(aux_mejores_metodos)
         log.agrega(aux_mejores_metodos)
         resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
 
-        if test == -1:
+        if nro_test == -1:
             resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
             resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
@@ -452,7 +456,7 @@ def SegundoMultimodalCompleto(elimino_silencios=False):
         hrm.muestraTabla(resultados_tst)
         hrm.muestraTabla(resultados_fusionado)
         hrm.muestraTabla(resultados_fusionado_2)
-    if test != -1:
+    if nro_test != -1:
         resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
         hrm.muestraTabla(resumen_final)
     jvm.stop()
@@ -468,11 +472,11 @@ def ExtractorDeCaracteristicas(personas, etapas, zonas):
     features = carac.CaracteristicasVideo(zonas)
     for i in personas:
         for j in etapas:
-            if i != '09' or j != '1':
-                start2 = time.time()
-                print('Persona ' + i + ' -> Etapa ' + j)
-                features(i, j)
-                print(time.time() - start2)
+            # if i != '09' or j != '1':
+            start2 = time.time()
+            print('Persona ' + i + ' -> Etapa ' + j)
+            features(i, j)
+            print(time.time() - start2)
     print('Completada extraccion de caracteristicas')
     print(time.time() - start_total)
     # jvm.stop()

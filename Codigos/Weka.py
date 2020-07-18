@@ -71,11 +71,11 @@ def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
 
 
 def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_seleccion, sumario=False):
-    # Opciones, metodo = 'J48', 'RForest', 'RTree', 'SVM', 'LR', 'MLP'
-    switcher = {
+    # Opciones, metodo = 'J48', 'RF', 'RT', 'SVM', 'LR', 'MLP'
+    traduccion_clasificadores = {
         'J48': 'weka.classifiers.trees.J48',
-        'RForest': 'weka.classifiers.trees.RandomForest',
-        'RTree': 'weka.classifiers.trees.RandomTree',
+        'RF': 'weka.classifiers.trees.RandomForest',
+        'RT': 'weka.classifiers.trees.RandomTree',
         'SVM': 'weka.classifiers.functions.LibSVM',
         'LR': 'weka.classifiers.functions.LinearRegression',
         'MLP': 'weka.classifiers.functions.MultilayerPerceptron'
@@ -83,14 +83,22 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
 
     # En el caso de probar parametros se agregan como opciones, sino toma todos los parametros por defecto
     if not datos.PRUEBA_PARAMETROS:
-        met_clasificacion = switcher.get(metodo_clasificacion)
+        met_clasificacion = traduccion_clasificadores.get(metodo_clasificacion)
         classifier = Classifier(classname=met_clasificacion)
     else:
-        met_clasificacion = switcher.get(metodo_clasificacion[0: len(metodo_clasificacion) - 2])
-        opciones = datos.PARAMETROS_CLASIFICADOR(met_clasificacion)
+        met_clasificacion = traduccion_clasificadores.get(metodo_clasificacion[0: len(metodo_clasificacion) - 2])
+        opciones = datos.PARAMETROS_CLASIFICADOR.get(metodo_clasificacion)
         classifier = Classifier(classname=met_clasificacion, options=opciones)
 
     classifier.build_classifier(data_train)
+
+    pout_val = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
+    evl = Evaluation(data_val)
+    evl.test_model(classifier, data_val, output=pout_val)
+
+    pout_tst = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
+    evl = Evaluation(data_test)
+    evl.test_model(classifier, data_test, output=pout_tst)
 
     if datos.GUARDO_MODEL:
         nombre_archivo = os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_' + metodo_seleccion + '-' + metodo_clasificacion)
@@ -108,15 +116,8 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
         wf.writelines(attrib_list_m)
         wf.close()
 
-    pout_val = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
-    evl = Evaluation(data_val)
-    evl.test_model(classifier, data_val, output=pout_val)
-    hrm.escribeCSV(nombre_archivo + '(VAL).csv', pout_val.buffer_content())
-
-    pout_tst = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
-    evl = Evaluation(data_test)
-    evl.test_model(classifier, data_test, output=pout_tst)
-    hrm.escribeCSV(nombre_archivo + '(TEST).csv', pout_tst.buffer_content())
+        hrm.escribeCSV(nombre_archivo + '(VAL).csv', pout_val.buffer_content())
+        hrm.escribeCSV(nombre_archivo + '(TEST).csv', pout_tst.buffer_content())
 
     if sumario:
         print(evl.summary())

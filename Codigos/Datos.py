@@ -20,7 +20,7 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 # PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
-EXPERIMENTO = 'Unimodal'
+EXPERIMENTO = 'Segundo multimodal'
 TEST = 3
 VAL = 4
 BINARIZO_ETIQUETA = False
@@ -43,26 +43,34 @@ PERSONAS = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10',
 ETAPAS = np.array(['1', '2'])
 ZONAS = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])
 MET_EXTRACCION = np.array(['LBP', 'HOG', 'HOP', 'AUS'])
-MET_SELECCION = np.array(['BF', 'PSO'])
-# MET_CLASIFICACION = np.array(['RForest', 'SVM', 'J48', 'MLP'])
-# MET_CLASIFICACION = np.array(['RForest', 'J48', 'MLP'])
+MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
+# MET_SELECCION = np.array(['BF'])
+# MET_CLASIFICACION = np.array(['RF', 'SVM', 'J48', 'MLP'])
+MET_CLASIFICACION = np.array(['RF', 'J48'])
 
 FOLD_ACTUAL = -1
 
 # Esto permite probar distinto parametros de los clasificadores
-PRUEBA_PARAMETROS = True
-MET_CLASIFICACION = np.array(['SVM 1', 'SVM 2', 'SVM 3', 'SVM 4'])
+PRUEBA_PARAMETROS = False
+# MET_CLASIFICACION = np.array(['SVM 1', 'SVM 2', 'SVM 3', 'SVM 4'])
+# MET_CLASIFICACION = np.array(['RF 1', 'RF 2', 'RF 3', 'RF 4'])
+# MET_CLASIFICACION = np.array(['J48 1', 'J48 2', 'J48 3', 'J48 4'])
 PARAMETROS_CLASIFICADOR = {
-    'SVM 1': ['-S', '0', '-K', '0', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '40.0', '-C', '1.0', '-E', '0.001', '-P', '0.1'],
-    'SVM 2': ['-S', '0', '-K', '1', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '40.0', '-C', '1.0', '-E', '0.001', '-P', '0.1'],
-    'SVM 3': ['-S', '0', '-K', '2', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '40.0', '-C', '1.0', '-E', '0.001', '-P', '0.1'],
-    'SVM 4': ['-S', '0', '-K', '3', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '40.0', '-C', '1.0', '-E', '0.001', '-P', '0.1'],
+    'SVM 1': ['-S', '0', '-K', '0', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
+    'SVM 2': ['-S', '0', '-K', '1', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
+    'SVM 3': ['-S', '0', '-K', '2', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
+    'SVM 4': ['-S', '0', '-K', '3', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
     'MLP 1': ['-L', '0.3', '-M', '0.2', '-N', '500', '-V', '0', '-S', '0', '-E', '20', '-H', 'a'],
-    'RF 1': ['-P', '100', '-I', '100', '-num-slots', '1', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
-    'J48 1': ['-C', '0.25' '-M', '2']
+    'RF 1': ['-P', '100', '-I', '100', '-num-slots', '16', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
+    'RF 2': ['-P', '100', '-I', '500', '-num-slots', '16', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
+    'RF 3': ['-P', '100', '-I', '1000', '-num-slots', '16', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
+    'J48 1': ['-C', '0.25', '-M', '2'],
+    'J48 2': ['-C', '0.5', '-M', '2'],
+    'J48 3': ['-C', '0.75', '-M', '2'],
+    'J48 4': ['-C', '0.25', '-M', '4']
 }
 
-# -M (Cache Size in MB) -G (Gamma) -E (Epsilon) -P(Lost)
+# -M (Cache Size in MB) -G (Gamma) -E (Tolerance criteria) -P(Epsilon in Lost) -Z (Normalize data)
 # -K (Kernel Type: 0-linear 1-polynomial 2-radial 3-sigmoid
 # weka.classifiers.functions.LibSVM -S 0 -K 2 -D 3 -G 0.0 -R 0.0 -N 0.5 -M 40.0 -C 1.0 -E 0.001 -P 0.1
 
