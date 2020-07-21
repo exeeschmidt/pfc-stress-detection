@@ -20,8 +20,8 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 # PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
-EXPERIMENTO = 'Segundo multimodal'
-TEST = 3
+EXPERIMENTO = 'Primer multimodal'
+TEST = -1
 VAL = 4
 BINARIZO_ETIQUETA = False
 ELIMINA_SILENCIOS = False
@@ -33,25 +33,26 @@ VOTO_MEJORES_X = 4
 # ATRIBS_PSO = 500
 # ATRIBS_BF = 1000
 ATRIBS_PCA = 100
-ATRIBS_PSO = 100
-ATRIBS_BF = 100
-ATRIBS_FINALES = 100
+ATRIBS_PSO = 500
+ATRIBS_BF = 500
+ATRIBS_FINALES = 500
 TIEMPO_MICROEXPRESION = 0.25
 
-PERSONAS = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16',
-                     '17', '18', '19', '20', '21'])
+PERSONAS = np.array(['05', '13', '19'])
+# PERSONAS = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16',
+#                      '17', '18', '19', '20', '21'])
 ETAPAS = np.array(['1', '2'])
 ZONAS = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])
 MET_EXTRACCION = np.array(['LBP', 'HOG', 'HOP', 'AUS'])
-MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
+# MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
 # MET_SELECCION = np.array(['BF'])
 # MET_CLASIFICACION = np.array(['RF', 'SVM', 'J48', 'MLP'])
-MET_CLASIFICACION = np.array(['RF', 'J48'])
+MET_CLASIFICACION = np.array(['J48'])
 
 FOLD_ACTUAL = -1
 
 # Esto permite probar distinto parametros de los clasificadores
-PRUEBA_PARAMETROS = False
+PRUEBA_PARAMETROS_CLASIFICACION = False
 # MET_CLASIFICACION = np.array(['SVM 1', 'SVM 2', 'SVM 3', 'SVM 4'])
 # MET_CLASIFICACION = np.array(['RF 1', 'RF 2', 'RF 3', 'RF 4'])
 # MET_CLASIFICACION = np.array(['J48 1', 'J48 2', 'J48 3', 'J48 4'])
@@ -85,6 +86,36 @@ PARAMETROS_CLASIFICADOR = {
 
 # -C (confidence factor) -M (minimun objects per leaf)
 # weka.classifiers.trees.J48 -C 0.25 -M 2
+
+PRUEBA_PARAMETROS_SELECCION = True
+MET_SELECCION = np.array(['BF 1', 'BF 2', 'BF 3', 'PSO 1', 'PSO 2', 'PSO 3'])
+
+PARAMETROS_SELECCION_BUSQUEDA = {
+    'BF 1': ['-D', '0', '-N', '5'],
+    'BF 2': ['-D', '1', '-N', '5'],
+    'BF 3': ['-D', '2', '-N', '5'],
+    'PSO 1': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S', '1'],
+    'PSO 2': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.33', '-B', '0.33', '-C', '0.34', '-S', '1'],
+    'PSO 3': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.05', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S', '1']
+}
+
+# -D (Direction (0-Backward, 1-Forward, 2-Bidirectional)) -N (SearchTermination)how many expansion without changes for finish)
+# weka.attributeSelection.BestFirst -D 1 -N 5
+
+# -N (PopulationSize) -I (Nro Iterations) -B (Social Weigth) -A (Inertial Weigth) -C (Individual Weigth)
+# -M (Mutation prob) -T (Mutation type)
+# weka.attributeSelection.PSOSearch -N 20 -I 40 -T 0 -M 0.01 -A 0.33 -B 0.33 -C 0.34 -S 1 -L
+
+# -T (Threshold) -N (Num to select)
+# weka.attributeSelection.Ranker -T -1.7976931348623157E308 -N -1
+
+# EVALUADORES
+# -P (NumThreads) -E (Size of pool) (nro of cores for example) -Z (Precalculate correlation matrix)
+# weka.attributeSelection.CfsSubsetEval -P 1 -E 1 -Z
+
+# -R (Variance covered) -C (Center data) (like normalize)
+#weka.attributeSelection.PrincipalComponents -R 0.95 -A 5 -C
+
 
 def defineFoldActual(fold):
     global FOLD_ACTUAL

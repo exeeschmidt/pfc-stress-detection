@@ -149,7 +149,7 @@ def Unimodal():
     log.agrega(time.time() - start_total)
 
 
-def PrimerMultimodalCompleto(elimino_silencios=False):
+def PrimerMultimodal(elimino_silencios=False):
     start_total = time.time()
     personas = datos.PERSONAS
     etapas = datos.ETAPAS
@@ -324,7 +324,7 @@ def PrimerMultimodalCompleto(elimino_silencios=False):
     log.agrega(time.time() - start_total)
 
 
-def SegundoMultimodalCompleto(elimino_silencios=False):
+def SegundoMultimodal(elimino_silencios=False):
     start_total = time.time()
     personas = datos.PERSONAS
     etapas = datos.ETAPAS

@@ -12,9 +12,9 @@ def main():
     if datos.EXPERIMENTO == 'Unimodal':
         exp.Unimodal()
     elif datos.EXPERIMENTO == 'Primer multimodal':
-        exp.PrimerMultimodalCompleto()
+        exp.PrimerMultimodal()
     else:
-        exp.SegundoMultimodalCompleto()
+        exp.SegundoMultimodal()
     print('Fin de ejecucion')
     log.agrega('Fin de ejecucion')
 

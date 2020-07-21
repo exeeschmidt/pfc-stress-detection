@@ -11,7 +11,7 @@ import numpy as np
 
 
 def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
-    # opciones: 'PSO' , 'PCA', 'Firsts', 'PC'
+    # opciones: 'PSO' , 'PCA', 'BF', 'PC'
     data_trn = Instances.copy_instances(data_train)
     data_vld = Instances.copy_instances(data_val)
     data_tst = Instances.copy_instances(data_test)
@@ -19,14 +19,14 @@ def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
     options_eval = ''
     options_search = ''
 
-    # Segun el metodo elegido realiza una preseleccion de características usando Gain Ratio (GR). Para cada metodo en
-    # particular se preseleccionan un numero distinto de atributos. Luego al aplicarse cada metodo, si este tiene mas
-    # del numero de atributos finales, se realiza nuevamente una seleccion utilizando GR
-    if metodo_seleccion == 'PCA' or metodo_seleccion == 'PC' or metodo_seleccion == 'PC-pca' or metodo_seleccion == 'PC-pso' or metodo_seleccion == 'PC-bf':
+    # Segun el metodo elegido realiza una preseleccion de características usando Coeficientes de correlacion de Pearson
+    # (PC). Para cada metodo en particular se preseleccionan un numero distinto de atributos.
+    if metodo_seleccion == 'PCA' or metodo_seleccion == 'PC' or metodo_seleccion == 'PC-pca' or \
+            metodo_seleccion == 'PC-pso' or metodo_seleccion == 'PC-bf':
         met_search = 'weka.attributeSelection.Ranker'
         if metodo_seleccion == 'PCA':
             met_eval = 'weka.attributeSelection.PrincipalComponents'
-            options_eval = ['-R', '0.95', '-A', '10']
+            options_eval = ['-R', '0.95', '-A', '10', '-C']
             options_search = ['-N', str(datos.ATRIBS_FINALES)]
             data_trn, data_vld, data_tst = SeleccionCaracteristicas(data_trn, data_vld, data_tst, 'PC-pca')
         else:
@@ -43,14 +43,19 @@ def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
         met_eval = 'weka.attributeSelection.CfsSubsetEval'
         # Agregar -Z para activar el precalculo de la matriz de correlacion
         options_eval = ['-Z', '-P', '4', '-E', '8']
+        if datos.PRUEBA_PARAMETROS_SELECCION:
+            options_search = datos.PARAMETROS_SELECCION_BUSQUEDA.get(metodo_seleccion)
+            metodo_seleccion = metodo_seleccion[0: len(metodo_seleccion) - 2]
         if metodo_seleccion == 'PSO':
             met_search = 'weka.attributeSelection.PSOSearch'
-            options_search = ['-N', '250', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S', '1']
-            data_trn, data_vld, data_tst = SeleccionCaracteristicas(data_trn, data_vld, data_tst, 'PC-pso')
-        else:
+            if not datos.PRUEBA_PARAMETROS_SELECCION:
+                options_search = ['-N', '250', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.15', '-B', '0.25', '-C',
+                                '0.6', '-S', '1']
+        elif metodo_seleccion == 'BF':
             met_search = 'weka.attributeSelection.BestFirst'
-            options_search = ['-D', '1', '-N', '5']
-            data_trn, data_vld, data_tst = SeleccionCaracteristicas(data_trn, data_vld, data_tst, 'PC-bf')
+            if not datos.PRUEBA_PARAMETROS_SELECCION:
+                options_search = ['-D', '1', '-N', '5']
+        data_trn, data_vld, data_tst = SeleccionCaracteristicas(data_trn, data_vld, data_tst, 'PC-' + metodo_seleccion.lower())
 
     flter = Filter(classname="weka.filters.supervised.attribute.AttributeSelection")
     aseval = ASEvaluation(met_eval, options=options_eval)
@@ -82,7 +87,7 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
     }
 
     # En el caso de probar parametros se agregan como opciones, sino toma todos los parametros por defecto
-    if not datos.PRUEBA_PARAMETROS:
+    if not datos.PRUEBA_PARAMETROS_CLASIFICACION:
         met_clasificacion = traduccion_clasificadores.get(metodo_clasificacion)
         classifier = Classifier(classname=met_clasificacion)
     else:
