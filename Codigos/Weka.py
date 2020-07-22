@@ -131,10 +131,12 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
     return pout_val.buffer_content(), pout_tst.buffer_content()
 
 
-def ParticionaDatos(data, porcentaje=66.0):
+def ParticionaDatos(data):
     # El rnd None permite que no los mezcle ni desordene al dividirlo
-    train, test = data.train_test_split(porcentaje, rnd=None)
-    return train, test
+    val_train, test = data.train_test_split(datos.PORCENTAJE_VAL + datos.PORCENTAJE_TRAIN, rnd=None)
+    train, val = val_train.train_test_split((datos.PORCENTAJE_TRAIN / (datos.PORCENTAJE_VAL + datos.PORCENTAJE_TRAIN) * 100),
+                                            rnd=None)
+    return train, val, test
 
 
 def LeeModelo(nombre_archivo, data_val, data_tst):

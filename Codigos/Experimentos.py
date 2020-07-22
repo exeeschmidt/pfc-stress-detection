@@ -58,8 +58,7 @@ def Unimodal():
             data = am.Concatena(personas, etapas, 'VCom')
             orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
             data_ori = am.MezclaInstancias(data, orden_instancias)
-            train_ori, test_ori = wek.ParticionaDatos(data_ori)
-            train_ori, val_ori = wek.ParticionaDatos(train_ori)
+            train_ori, val_ori, test_ori = wek.ParticionaDatos(data_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
@@ -196,15 +195,12 @@ def PrimerMultimodal(elimino_silencios=False):
     for k in range(0, vueltas):
         datos.defineFoldActual(k + 1)
         if nro_test == -1:
-            data_v = am.Concatena(personas, etapas, 'VResp')
-            data_a = am.Concatena(personas, etapas, 'AResp')
+            data_v, data_a = am.Concatena(personas, etapas, 'VResp', 'AResp')
             orden_instancias = am.GeneraOrdenInstancias(data_v, datos.INSTANCIAS_POR_PERIODOS)
             data_v_ori = am.MezclaInstancias(data_v, orden_instancias)
             data_a_ori = am.MezclaInstancias(data_a, orden_instancias)
-            train_v_ori, test_v_ori = wek.ParticionaDatos(data_v_ori)
-            train_v_ori, val_v_ori = wek.ParticionaDatos(train_v_ori)
-            train_a_ori, test_a_ori = wek.ParticionaDatos(data_a_ori)
-            train_a_ori, val_a_ori = wek.ParticionaDatos(train_a_ori)
+            train_v_ori, val_v_ori, test_v_ori = wek.ParticionaDatos(data_v_ori)
+            train_a_ori, val_a_ori, test_a_ori = wek.ParticionaDatos(data_a_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
@@ -238,7 +234,11 @@ def PrimerMultimodal(elimino_silencios=False):
                 print(met_seleccion[i])
                 log.agrega(met_seleccion[i])
                 metodo_actual = met_seleccion[i] + ' + '
+                print('Video')
+                log.agrega('Video')
                 train_v, val_v, test_v = wek.SeleccionCaracteristicas(train_v_ori, val_v_ori, test_v_ori, met_seleccion[i])
+                print('Audio')
+                log.agrega('Audio')
                 train_a, val_a, test_a = wek.SeleccionCaracteristicas(train_a_ori, val_a_ori, test_a_ori, met_seleccion[i])
                 print(time.time() - start2)
                 log.agrega(time.time() - start2)
@@ -371,11 +371,10 @@ def SegundoMultimodal(elimino_silencios=False):
     for k in range(0, vueltas):
         datos.defineFoldActual(k + 1)
         if nro_test == -1:
-            data = am.Concatena(personas, etapas, 'VResp', 'AResp')
+            data = am.Concatena(personas, etapas, 'VResp', 'AResp', une=True)
             orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
             data_ori = am.MezclaInstancias(data, orden_instancias)
-            train_ori, test_ori = wek.ParticionaDatos(data_ori)
-            train_ori, val_ori = wek.ParticionaDatos(train_ori)
+            train_ori, val_ori, test_ori = wek.ParticionaDatos(data_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))

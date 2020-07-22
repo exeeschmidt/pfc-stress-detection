@@ -51,31 +51,37 @@ def Unev2(data_vec):
     return data
 
 
-def Concatena(personas, etapas, sub, sub2=''):
+def Concatena(personas, etapas, sub, sub2='', une=False):
     # Levanta y une los dataset de multiples personas y etapas
     # Sub cambia segun el conjunto de caracteristicas, si se presenta sub2 es por si hay que concatenar el audio y video
     # entre sí también
-    data_vec = np.empty(0)
+    data_vec1 = np.empty(0)
     data_vec2 = np.empty(0)
     for i in personas:
         for j in etapas:
             path = hrm.buildPathSub(i, j, sub)
-            data = CargaYFiltrado(path)
-            data_vec = np.append(data_vec, data)
+            data1 = CargaYFiltrado(path)
             if sub2 != '':
                 path = hrm.buildPathSub(i, j, sub2)
-                data = CargaYFiltrado(path)
-                data_vec2 = np.append(data_vec2, data)
-    if sub2 != '':
-        data_sub1 = Unev2(data_vec)
-        data_sub2 = Unev2(data_vec2)
+                data2 = CargaYFiltrado(path)
+                data_vec_norm = Normaliza(np.array([data1, data2]))
+                data_vec1 = np.append(data_vec1, data_vec_norm[0])
+                data_vec2 = np.append(data_vec2, data_vec_norm[1])
+            else:
+                data_vec1 = np.append(data_vec1, data1)
+
+    data_sub1 = Unev2(data_vec1)
+    data_sub2 = Unev2(data_vec2)
+    if une:
         data_sub1.no_class()
         data_sub1.delete_last_attribute()
-        data_vec_f = Normaliza(np.array([data_sub1, data_sub2]))
-        data_final = Une(data_vec_f)
+        data_final = Une(np.array([data_sub1, data_sub2]))
+        return data_final
     else:
-        data_final = Unev2(data_vec)
-    return data_final
+        if sub != '':
+            return data_sub1, data_sub2
+        else:
+            return data_sub1
 
 
 def Normaliza(data_vec):

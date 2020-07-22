@@ -20,7 +20,7 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 # PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
-EXPERIMENTO = 'Primer multimodal'
+EXPERIMENTO = 'Segundo multimodal'
 TEST = -1
 VAL = 4
 BINARIZO_ETIQUETA = False
@@ -50,6 +50,10 @@ MET_EXTRACCION = np.array(['LBP', 'HOG', 'HOP', 'AUS'])
 MET_CLASIFICACION = np.array(['J48'])
 
 FOLD_ACTUAL = -1
+
+# Definen la division de datos al usar la mezcla de instancias
+PORCENTAJE_TRAIN = 50
+PORCENTAJE_VAL = 30
 
 # Esto permite probar distinto parametros de los clasificadores
 PRUEBA_PARAMETROS_CLASIFICACION = False
