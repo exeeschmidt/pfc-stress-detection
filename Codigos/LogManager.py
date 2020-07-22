@@ -6,7 +6,8 @@ import datetime
 def crea():
     # Fecha y hora
     x = datetime.datetime.now()
-    nombre = str(x.day) + '-' + str(x.month) + '-' + str(x.year) + ' ' + str(x.hour) + '_' + str(x.minute)
+    nombre = str(x.day) + '-' + str(x.month) + '-' + str(x.year) + ' ' + str(x.hour) + '_' + str(x.minute) + ' ' \
+             + str(x.microsecond)
     datos.defineCarpetaLog(nombre)
     try:
         os.stat(datos.PATH_LOGS)

@@ -10,6 +10,7 @@ import time
 
 
 def Unimodal():
+    log.crea()
     start_total = time.time()
 
     personas = datos.PERSONAS
@@ -21,8 +22,6 @@ def Unimodal():
     binarizo_etiquetas = datos.BINARIZO_ETIQUETA
     nro_val = datos.VAL
     nro_test = datos.TEST
-
-    jvm.start(max_heap_size="9G", packages=True)
 
     # print('Adaptación de caracteristicas en progreso')
     # log.agrega('Adaptación de caracteristicas en progreso')
@@ -142,13 +141,15 @@ def Unimodal():
     if test != -1:
         resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
         hrm.muestraTabla(resumen_final)
-    jvm.stop()
     print(time.time() - start_total)
     log.agrega('Tiempo final')
     log.agrega(time.time() - start_total)
+    print('Fin de experimento')
+    log.agrega('Fin de experimento')
 
 
 def PrimerMultimodal(elimino_silencios=False):
+    log.crea()
     start_total = time.time()
     personas = datos.PERSONAS
     etapas = datos.ETAPAS
@@ -159,8 +160,6 @@ def PrimerMultimodal(elimino_silencios=False):
     binarizo_etiquetas = datos.BINARIZO_ETIQUETA
     nro_val = datos.VAL
     nro_test = datos.TEST
-
-    jvm.start(max_heap_size="9G", packages=True)
 
     # print('Adaptación de caracteristicas en progreso')
     # log.agrega('Adaptación de caracteristicas en progreso')
@@ -318,13 +317,13 @@ def PrimerMultimodal(elimino_silencios=False):
     if nro_test != -1:
         resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
         hrm.muestraTabla(resumen_final)
-    jvm.stop()
     print(time.time() - start_total)
     log.agrega('Tiempo final')
     log.agrega(time.time() - start_total)
 
 
 def SegundoMultimodal(elimino_silencios=False):
+    log.crea()
     start_total = time.time()
     personas = datos.PERSONAS
     etapas = datos.ETAPAS
@@ -335,8 +334,6 @@ def SegundoMultimodal(elimino_silencios=False):
     binarizo_etiquetas = datos.BINARIZO_ETIQUETA
     nro_val = datos.VAL
     nro_test = datos.TEST
-
-    jvm.start(max_heap_size="9G", packages=True)
 
     # print('Adaptación de caracteristicas en progreso')
     # log.agrega('Adaptación de caracteristicas en progreso')
@@ -458,7 +455,6 @@ def SegundoMultimodal(elimino_silencios=False):
     if nro_test != -1:
         resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
         hrm.muestraTabla(resumen_final)
-    jvm.stop()
     print(time.time() - start_total)
     log.agrega('Tiempo final')
     log.agrega(time.time() - start_total)

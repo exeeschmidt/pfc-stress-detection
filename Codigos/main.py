@@ -1,3 +1,5 @@
+from weka.core import jvm
+
 import Codigos.Experimentos as exp
 import Codigos.Datos as datos
 import Codigos.LogManager as log
@@ -7,16 +9,28 @@ import Codigos.LogManager as log
 
 def main():
     # exp.ExtractorDeCaracteristicas()
+    # if datos.EXPERIMENTO == 'Unimodal':
+    #     exp.Unimodal()
+    # elif datos.EXPERIMENTO == 'Primer multimodal':
+    #     exp.PrimerMultimodal()
+    # else:
+    #     exp.SegundoMultimodal()
 
-    log.crea()
-    if datos.EXPERIMENTO == 'Unimodal':
+    jvm.start(max_heap_size="9G", packages=True)
+    datos.parametrosSeleccion()
+    for i in range(0, 2):
+        if i == 1:
+            datos.parametrosClasificacion()
+        datos.EXPERIMENTO = 'Unimodal'
         exp.Unimodal()
-    elif datos.EXPERIMENTO == 'Primer multimodal':
+        datos.EXPERIMENTO = 'Primer multimodal'
         exp.PrimerMultimodal()
-    else:
+        datos.EXPERIMENTO = 'Segundo multimodal'
         exp.SegundoMultimodal()
+
     print('Fin de ejecucion')
     log.agrega('Fin de ejecucion')
+    jvm.stop()
 
 
 if __name__ == '__main__':

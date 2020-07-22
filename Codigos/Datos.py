@@ -10,7 +10,7 @@ PATH_CARACTERISTICAS = os.path.join(ROOT_PATH, 'Caracteristicas')
 PATH_CODIGOS = os.path.join(ROOT_PATH, 'Codigos')
 PATH_LIBRERIAS = os.path.join(ROOT_PATH, 'Librerias')
 PATH_PROCESADO = os.path.join(ROOT_PATH, 'Procesado')
-PATH_LOGS = os.path.join(ROOT_PATH, 'Logs')
+PATH_LOGS = ''
 
 PATH_OPENFACE = os.path.join(PATH_LIBRERIAS, 'openface')
 PATH_OPENSMILE = os.path.join(PATH_LIBRERIAS, 'opensmile')
@@ -33,8 +33,8 @@ VOTO_MEJORES_X = 4
 # ATRIBS_PSO = 500
 # ATRIBS_BF = 1000
 ATRIBS_PCA = 100
-ATRIBS_PSO = 500
-ATRIBS_BF = 500
+ATRIBS_PSO = 100
+ATRIBS_BF = 100
 ATRIBS_FINALES = 500
 TIEMPO_MICROEXPRESION = 0.25
 
@@ -44,10 +44,8 @@ PERSONAS = np.array(['05', '13', '19'])
 ETAPAS = np.array(['1', '2'])
 ZONAS = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])
 MET_EXTRACCION = np.array(['LBP', 'HOG', 'HOP', 'AUS'])
-# MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
-# MET_SELECCION = np.array(['BF'])
-# MET_CLASIFICACION = np.array(['RF', 'SVM', 'J48', 'MLP'])
-MET_CLASIFICACION = np.array(['J48'])
+MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
+MET_CLASIFICACION = np.array(['RF', 'SVM', 'J48', 'MLP'])
 
 FOLD_ACTUAL = -1
 
@@ -57,9 +55,6 @@ PORCENTAJE_VAL = 30
 
 # Esto permite probar distinto parametros de los clasificadores
 PRUEBA_PARAMETROS_CLASIFICACION = False
-# MET_CLASIFICACION = np.array(['SVM 1', 'SVM 2', 'SVM 3', 'SVM 4'])
-# MET_CLASIFICACION = np.array(['RF 1', 'RF 2', 'RF 3', 'RF 4'])
-# MET_CLASIFICACION = np.array(['J48 1', 'J48 2', 'J48 3', 'J48 4'])
 PARAMETROS_CLASIFICADOR = {
     'SVM 1': ['-S', '0', '-K', '0', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
     'SVM 2': ['-S', '0', '-K', '1', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
@@ -70,8 +65,8 @@ PARAMETROS_CLASIFICADOR = {
     'RF 2': ['-P', '100', '-I', '500', '-num-slots', '16', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
     'RF 3': ['-P', '100', '-I', '1000', '-num-slots', '16', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
     'J48 1': ['-C', '0.25', '-M', '2'],
-    'J48 2': ['-C', '0.5', '-M', '2'],
-    'J48 3': ['-C', '0.75', '-M', '2'],
+    'J48 2': ['-C', '0.3', '-M', '2'],
+    'J48 3': ['-C', '0.5', '-M', '2'],
     'J48 4': ['-C', '0.25', '-M', '4']
 }
 
@@ -91,17 +86,19 @@ PARAMETROS_CLASIFICADOR = {
 # -C (confidence factor) -M (minimun objects per leaf)
 # weka.classifiers.trees.J48 -C 0.25 -M 2
 
-PRUEBA_PARAMETROS_SELECCION = True
-MET_SELECCION = np.array(['BF 1', 'BF 2', 'BF 3', 'PSO 1', 'PSO 2', 'PSO 3'])
-
+PRUEBA_PARAMETROS_SELECCION = False
 PARAMETROS_SELECCION_BUSQUEDA = {
     'BF 1': ['-D', '0', '-N', '5'],
     'BF 2': ['-D', '1', '-N', '5'],
     'BF 3': ['-D', '2', '-N', '5'],
-    'PSO 1': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S', '1'],
-    'PSO 2': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.33', '-B', '0.33', '-C', '0.34', '-S', '1'],
-    'PSO 3': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.05', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S', '1']
+    'PSO 1': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S',
+              '1'],
+    'PSO 2': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.33', '-B', '0.33', '-C', '0.34', '-S',
+              '1'],
+    'PSO 3': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.05', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S',
+              '1']
 }
+
 
 # -D (Direction (0-Backward, 1-Forward, 2-Bidirectional)) -N (SearchTermination)how many expansion without changes for finish)
 # weka.attributeSelection.BestFirst -D 1 -N 5
@@ -118,8 +115,7 @@ PARAMETROS_SELECCION_BUSQUEDA = {
 # weka.attributeSelection.CfsSubsetEval -P 1 -E 1 -Z
 
 # -R (Variance covered) -C (Center data) (like normalize)
-#weka.attributeSelection.PrincipalComponents -R 0.95 -A 5 -C
-
+# weka.attributeSelection.PrincipalComponents -R 0.95 -A 5 -C
 
 def defineFoldActual(fold):
     global FOLD_ACTUAL
@@ -128,4 +124,27 @@ def defineFoldActual(fold):
 
 def defineCarpetaLog(nombre):
     global PATH_LOGS
-    PATH_LOGS = os.path.join(PATH_LOGS, nombre)
+    PATH_LOGS = os.path.join(ROOT_PATH, 'Logs', nombre)
+
+
+def parametrosClasificacion():
+    global PRUEBA_PARAMETROS_SELECCION
+    PRUEBA_PARAMETROS_SELECCION = False
+    global PRUEBA_PARAMETROS_CLASIFICACION
+    PRUEBA_PARAMETROS_CLASIFICACION = True
+    global MET_CLASIFICACION
+    MET_CLASIFICACION = np.array(['SVM 1', 'SVM 2', 'SVM 3', 'SVM 4', 'RF 1', 'RF 2', 'RF 3', 'RF 4',
+                                         'J48 1', 'J48 2', 'J48 3', 'J48 4'])
+    global MET_SELECCION
+    MET_SELECCION = np.array(['BF'])
+
+
+def parametrosSeleccion():
+    global PRUEBA_PARAMETROS_CLASIFICACION
+    PRUEBA_PARAMETROS_CLASIFICACION = False
+    global PRUEBA_PARAMETROS_SELECCION
+    PRUEBA_PARAMETROS_SELECCION = True
+    global MET_SELECCION
+    MET_SELECCION = np.array(['BF 1', 'BF 2', 'BF 3', 'PSO 1', 'PSO 2', 'PSO 3'])
+    global MET_CLASIFICACION
+    MET_CLASIFICACION = np.array(['RF'])
