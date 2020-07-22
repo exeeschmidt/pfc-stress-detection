@@ -69,16 +69,16 @@ def Concatena(personas, etapas, sub, sub2='', une=False):
                 data_vec2 = np.append(data_vec2, data_vec_norm[1])
             else:
                 data_vec1 = np.append(data_vec1, data1)
-
     data_sub1 = Unev2(data_vec1)
-    data_sub2 = Unev2(data_vec2)
+    if sub2 != '':
+        data_sub2 = Unev2(data_vec2)
     if une:
         data_sub1.no_class()
         data_sub1.delete_last_attribute()
         data_final = Une(np.array([data_sub1, data_sub2]))
         return data_final
     else:
-        if sub != '':
+        if sub2 != '':
             return data_sub1, data_sub2
         else:
             return data_sub1
