@@ -99,7 +99,6 @@ PARAMETROS_SELECCION_BUSQUEDA = {
               '1']
 }
 
-
 # -D (Direction (0-Backward, 1-Forward, 2-Bidirectional)) -N (SearchTermination)how many expansion without changes for finish)
 # weka.attributeSelection.BestFirst -D 1 -N 5
 
@@ -116,6 +115,7 @@ PARAMETROS_SELECCION_BUSQUEDA = {
 
 # -R (Variance covered) -C (Center data) (like normalize)
 # weka.attributeSelection.PrincipalComponents -R 0.95 -A 5 -C
+
 
 def defineFoldActual(fold):
     global FOLD_ACTUAL
@@ -134,7 +134,7 @@ def parametrosClasificacion():
     PRUEBA_PARAMETROS_CLASIFICACION = True
     global MET_CLASIFICACION
     MET_CLASIFICACION = np.array(['SVM 1', 'SVM 2', 'SVM 3', 'SVM 4', 'RF 1', 'RF 2', 'RF 3', 'RF 4',
-                                         'J48 1', 'J48 2', 'J48 3', 'J48 4'])
+                                  'J48 1', 'J48 2', 'J48 3', 'J48 4'])
     global MET_SELECCION
     MET_SELECCION = np.array(['BF'])
 

@@ -1,12 +1,13 @@
 import csv
 import numpy as np
 import cv2 as cv
-import read_hog_file
+# import read_hog_file
 import os
 import Codigos.Datos as datos
 import Codigos.LogManager as log
 from sklearn.metrics import recall_score, accuracy_score
 from tabulate import tabulate
+
 
 def buildVideoName(persona, etapa, parte=-1, extension=False):
     video_name = 'Sujeto_' + persona + '_' + etapa
@@ -141,16 +142,16 @@ def ResizeZona(imagen, region):
     return img
 
 
-def leeHOG(ruta_archivo):
-    """
-    Devuelve dos valores. El primero corresponde a la matriz con los hog por cuadro y el segundo devuelve si en ese
-    cuadro se extrajo correctamente.
-    Ejemplo: ruta_archivo = 'Procesado/Sujeto 01a.hog'
-    """
-    rhf = read_hog_file.initialize()
-    [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
-    rhf.terminate()
-    return hog, inds
+# def leeHOG(ruta_archivo):
+#     """
+#     Devuelve dos valores. El primero corresponde a la matriz con los hog por cuadro y el segundo devuelve si en ese
+#     cuadro se extrajo correctamente.
+#     Ejemplo: ruta_archivo = 'Procesado/Sujeto 01a.hog'
+#     """
+#     rhf = read_hog_file.initialize()
+#     [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
+#     rhf.terminate()
+#     return hog, inds
 
 
 def leeCSV(ruta_archivo):

@@ -16,7 +16,7 @@ def main():
     # else:
     #     exp.SegundoMultimodal()
 
-    jvm.start(max_heap_size="9G", packages=True)
+    jvm.start(max_heap_size="3G", packages=True)
     datos.parametrosSeleccion()
     for i in range(0, 2):
         if i == 1:

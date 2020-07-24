@@ -6,13 +6,12 @@ import datetime
 def crea():
     # Fecha y hora
     x = datetime.datetime.now()
-    nombre = str(x.day) + '-' + str(x.month) + '-' + str(x.year) + ' ' + str(x.hour) + '_' + str(x.minute) + ' ' \
-             + str(x.microsecond)
+    nombre = str(x.day) + '-' + str(x.month) + '-' + str(x.year) + ' ' + str(x.hour) + '_' + str(x.minute) + ' ' + str(x.microsecond)
     datos.defineCarpetaLog(nombre)
     try:
         os.stat(datos.PATH_LOGS)
     except (ValueError, Exception):
-        os.mkdir(datos.PATH_LOGS)
+        os.makedirs(datos.PATH_LOGS)
     archivo = open(os.path.join(datos.PATH_LOGS, 'log.txt'), 'w', encoding="utf-8")
     archivo.write('Experimento: ' + datos.EXPERIMENTO + '\n\n')
 

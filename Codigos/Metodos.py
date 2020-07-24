@@ -1,4 +1,4 @@
-import histogramofphase
+# import histogramofphase
 import imagesc
 import os
 import cv2 as cv
@@ -273,31 +273,31 @@ class HistogramOfPhase:
         [feat, pc] = hop(img)
     """
     
-    def __init__(self, plotear, resize):
-        self._plotear = plotear
-        self._resize = resize
-
-    def __call__(self, imagen):
-        image = np.copy(imagen)
-
-        # Se convierte a escala de grises por si no lo está
-        image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-
-        # Convierto de tipo np a uint8 de matlab para poder ser pasado a la librería
-        image = matlab.uint8(image.tolist())
-
-        hop = histogramofphase.initialize()
-        # Devuelve los histogramas de HOP concatenados y la congruencia de fase
-        features, pc = hop.mainHOP(image, self._resize, nargout=2)
-        hop.terminate()
-
-        # print(pc.size)
-        # print(features)
-        if self._plotear:
-            array_pc = np.array(pc)
-            imagesc.clean(array_pc)
-        # Solo retorno las características
-        return features
+    # def __init__(self, plotear, resize):
+    #     self._plotear = plotear
+    #     self._resize = resize
+    #
+    # def __call__(self, imagen):
+    #     image = np.copy(imagen)
+    #
+    #     # Se convierte a escala de grises por si no lo está
+    #     image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    #
+    #     # Convierto de tipo np a uint8 de matlab para poder ser pasado a la librería
+    #     image = matlab.uint8(image.tolist())
+    #
+    #     hop = histogramofphase.initialize()
+    #     # Devuelve los histogramas de HOP concatenados y la congruencia de fase
+    #     features, pc = hop.mainHOP(image, self._resize, nargout=2)
+    #     hop.terminate()
+    #
+    #     # print(pc.size)
+    #     # print(features)
+    #     if self._plotear:
+    #         array_pc = np.array(pc)
+    #         imagesc.clean(array_pc)
+    #     # Solo retorno las características
+    #     return features
 
 
 # ================================================= ELIMINA SILENCIOS ==================================================
