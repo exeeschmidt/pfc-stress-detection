@@ -7,8 +7,8 @@ import matlab
 import subprocess
 import matplotlib.pyplot as plt
 import scipy.io.wavfile as waves
-import Codigos.Datos as datos
-import Codigos.Herramientas as hrm
+import Datos as datos
+import Herramientas as hrm
 
 # Contiene todos los métodos a utilizar, donde las implementaciones de cada uno comienzan con un bookmark.
 

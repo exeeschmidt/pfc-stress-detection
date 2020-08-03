@@ -1,10 +1,10 @@
 import os
 import numpy as np
-import Codigos.Datos as datos
+import Datos as datos
+import Herramientas as hrm
 from weka.core.converters import Loader, Saver
 from weka.filters import Filter
 from weka.core.dataset import Instances, Attribute, Instance
-import Codigos.Herramientas as hrm
 
 
 def CargaYFiltrado(path):

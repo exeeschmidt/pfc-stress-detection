@@ -3,9 +3,9 @@ from weka.classifiers import Classifier, Evaluation, PredictionOutput
 from weka.filters import Filter
 from weka.core.dataset import Instances
 from weka.core import serialization
-import Codigos.Datos as datos
-import Codigos.LogManager as log
-import Codigos.Herramientas as hrm
+import Datos as datos
+import LogManager as log
+import Herramientas as hrm
 import os
 import numpy as np
 
@@ -26,7 +26,7 @@ def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
         met_search = 'weka.attributeSelection.Ranker'
         if metodo_seleccion == 'PCA':
             met_eval = 'weka.attributeSelection.PrincipalComponents'
-            options_eval = ['-R', '0.95', '-A', '10', '-C']
+            options_eval = datos.PARAMETROS_SELECCION_EVALUACION.get(metodo_seleccion)
             options_search = ['-N', str(datos.ATRIBS_FINALES)]
             data_trn, data_vld, data_tst = SeleccionCaracteristicas(data_trn, data_vld, data_tst, 'PC-pca')
         else:
@@ -41,20 +41,16 @@ def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
             options_search = ['-N', str(datos.ATRIBS_BF)]
     else:
         met_eval = 'weka.attributeSelection.CfsSubsetEval'
-        # Agregar -Z para activar el precalculo de la matriz de correlacion
-        options_eval = ['-Z', '-P', '4', '-E', '8']
+        options_eval = datos.PARAMETROS_SELECCION_EVALUACION.get('CFS')
         if datos.PRUEBA_PARAMETROS_SELECCION:
             options_search = datos.PARAMETROS_SELECCION_BUSQUEDA.get(metodo_seleccion)
             metodo_seleccion = metodo_seleccion[0: len(metodo_seleccion) - 2]
+        else:
+            options_search = datos.PARAMETROS_SELECCION_BUSQUEDA.get(metodo_seleccion + ' 1')
         if metodo_seleccion == 'PSO':
             met_search = 'weka.attributeSelection.PSOSearch'
-            if not datos.PRUEBA_PARAMETROS_SELECCION:
-                options_search = ['-N', '250', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.15', '-B', '0.25', '-C',
-                                '0.6', '-S', '1']
         elif metodo_seleccion == 'BF':
             met_search = 'weka.attributeSelection.BestFirst'
-            if not datos.PRUEBA_PARAMETROS_SELECCION:
-                options_search = ['-D', '1', '-N', '5']
         data_trn, data_vld, data_tst = SeleccionCaracteristicas(data_trn, data_vld, data_tst, 'PC-' + metodo_seleccion.lower())
 
     flter = Filter(classname="weka.filters.supervised.attribute.AttributeSelection")
@@ -89,11 +85,12 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
     # En el caso de probar parametros se agregan como opciones, sino toma todos los parametros por defecto
     if not datos.PRUEBA_PARAMETROS_CLASIFICACION:
         met_clasificacion = traduccion_clasificadores.get(metodo_clasificacion)
-        classifier = Classifier(classname=met_clasificacion)
+        opciones = datos.PARAMETROS_CLASIFICADOR.get(metodo_clasificacion + ' 1')
     else:
         met_clasificacion = traduccion_clasificadores.get(metodo_clasificacion[0: len(metodo_clasificacion) - 2])
         opciones = datos.PARAMETROS_CLASIFICADOR.get(metodo_clasificacion)
-        classifier = Classifier(classname=met_clasificacion, options=opciones)
+
+    classifier = Classifier(classname=met_clasificacion, options=opciones)
 
     classifier.build_classifier(data_train)
 

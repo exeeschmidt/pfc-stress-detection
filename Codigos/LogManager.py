@@ -1,4 +1,4 @@
-import Codigos.Datos as datos
+import Datos as datos
 import os
 import datetime
 

@@ -21,26 +21,26 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
 EXPERIMENTO = 'Unimodal'
-TEST = -1
-VAL = 4
+TEST = 1
+VAL = 5
 BINARIZO_ETIQUETA = False
 ELIMINA_SILENCIOS = False
-GUARDO_MODEL = False
+GUARDO_MODEL = True
 
 INSTANCIAS_POR_PERIODOS = 20
 VOTO_MEJORES_X = 4
 # ATRIBS_PCA = 3000
 # ATRIBS_PSO = 500
 # ATRIBS_BF = 1000
-ATRIBS_PCA = 100
-ATRIBS_PSO = 100
-ATRIBS_BF = 100
+ATRIBS_PCA = 15000
+ATRIBS_PSO = 1000
+ATRIBS_BF = 2000
 ATRIBS_FINALES = 500
 TIEMPO_MICROEXPRESION = 0.25
 
-PERSONAS = np.array(['05', '13', '19'])
-# PERSONAS = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16',
-#                      '17', '18', '19', '20', '21'])
+# PERSONAS = np.array(['05', '13', '19'])
+PERSONAS = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16',
+                     '17', '18', '19', '20', '21'])
 ETAPAS = np.array(['1', '2'])
 ZONAS = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])
 MET_EXTRACCION = np.array(['LBP', 'HOG', 'HOP', 'AUS'])
@@ -56,21 +56,14 @@ PORCENTAJE_VAL = 30
 # Esto permite probar distinto parametros de los clasificadores
 PRUEBA_PARAMETROS_CLASIFICACION = False
 PARAMETROS_CLASIFICADOR = {
-    'SVM 1': ['-S', '0', '-K', '0', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
-    'SVM 2': ['-S', '0', '-K', '1', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
-    'SVM 3': ['-S', '0', '-K', '2', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
-    'SVM 4': ['-S', '0', '-K', '3', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '500.0', '-C', '1.0', '-E', '0.001', '-P', '0.1', '-Z'],
+    'SVM 1': ['-S', '0', '-K', '0', '-D', '3', '-G', '0.0', '-R', '0.0', '-N', '0.5', '-M', '1000.0', '-C', '1.0',
+              '-E', '0.001', '-P', '0.1', '-Z'],
     'MLP 1': ['-L', '0.3', '-M', '0.2', '-N', '500', '-V', '0', '-S', '0', '-E', '20', '-H', 'a'],
-    'RF 1': ['-P', '100', '-I', '100', '-num-slots', '16', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
-    'RF 2': ['-P', '100', '-I', '500', '-num-slots', '16', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
-    'RF 3': ['-P', '100', '-I', '1000', '-num-slots', '16', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
-    'J48 1': ['-C', '0.25', '-M', '2'],
-    'J48 2': ['-C', '0.3', '-M', '2'],
-    'J48 3': ['-C', '0.5', '-M', '2'],
-    'J48 4': ['-C', '0.25', '-M', '4']
+    'RF 1': ['-P', '100', '-I', '500', '-num-slots', '16', '-K', '0', '-M', '1.0', '-V', '0.001', '-S', '1'],
+    'J48 1': ['-C', '0.25', '-M', '8'],
 }
 
-# -M (Cache Size in MB) -G (Gamma) -E (Tolerance criteria) -P(Epsilon in Lost) -Z (Normalize data)
+# -M (Cache Size in MB) -G (Gamma) -E (Tolerance criteria) -P(Epsilon in Lost) -Z (Normalize data) -C (Cost)
 # -K (Kernel Type: 0-linear 1-polynomial 2-radial 3-sigmoid
 # weka.classifiers.functions.LibSVM -S 0 -K 2 -D 3 -G 0.0 -R 0.0 -N 0.5 -M 40.0 -C 1.0 -E 0.001 -P 0.1
 
@@ -89,14 +82,14 @@ PARAMETROS_CLASIFICADOR = {
 PRUEBA_PARAMETROS_SELECCION = False
 PARAMETROS_SELECCION_BUSQUEDA = {
     'BF 1': ['-D', '0', '-N', '5'],
-    'BF 2': ['-D', '1', '-N', '5'],
-    'BF 3': ['-D', '2', '-N', '5'],
-    'PSO 1': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S',
+    'PSO 1': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.03', '-A', '0.33', '-B', '0.33', '-C', '0.34', '-S',
               '1'],
-    'PSO 2': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.01', '-A', '0.33', '-B', '0.33', '-C', '0.34', '-S',
-              '1'],
-    'PSO 3': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.05', '-A', '0.15', '-B', '0.25', '-C', '0.6', '-S',
-              '1']
+    'PCA 1': ['-R', '0.95', '-A', '10', '-C']
+}
+
+PARAMETROS_SELECCION_EVALUACION = {
+    'PCA': ['-R', '0.95', '-A', '10', '-C'],
+    'CFS': ['-Z', '-P', '4', '-E', '8']
 }
 
 # -D (Direction (0-Backward, 1-Forward, 2-Bidirectional)) -N (SearchTermination)how many expansion without changes for finish)
@@ -133,8 +126,8 @@ def parametrosClasificacion():
     global PRUEBA_PARAMETROS_CLASIFICACION
     PRUEBA_PARAMETROS_CLASIFICACION = True
     global MET_CLASIFICACION
-    MET_CLASIFICACION = np.array(['SVM 1', 'SVM 2', 'SVM 3', 'SVM 4', 'RF 1', 'RF 2', 'RF 3', 'RF 4',
-                                  'J48 1', 'J48 2', 'J48 3', 'J48 4'])
+    MET_CLASIFICACION = np.array(['SVM 1', 'SVM 2', 'SVM 3', 'SVM 4', 'SVM 5', 'SVM 6', 'SVM 7', 'MLP 1', 'MLP 2',
+                                  'MLP 3', 'MLP 4', 'J48 1', 'J48 2', 'J48 3'])
     global MET_SELECCION
     MET_SELECCION = np.array(['BF'])
 
@@ -145,6 +138,6 @@ def parametrosSeleccion():
     global PRUEBA_PARAMETROS_SELECCION
     PRUEBA_PARAMETROS_SELECCION = True
     global MET_SELECCION
-    MET_SELECCION = np.array(['BF 1', 'BF 2', 'BF 3', 'PSO 1', 'PSO 2', 'PSO 3'])
+    MET_SELECCION = np.array(['BF 1', 'BF 2', 'BF 3', 'BF 4', 'PSO 1', 'PSO 2', 'PSO 3', 'PSO 4', 'PSO 5'])
     global MET_CLASIFICACION
-    MET_CLASIFICACION = np.array(['RF'])
+    MET_CLASIFICACION = np.array(['SVM', 'RF'])

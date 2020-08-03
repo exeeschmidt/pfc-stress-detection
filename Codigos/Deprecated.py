@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from scipy.signal import convolve2d
-import Codigos.Datos as datos
+import Datos as datos
 # import Codigos.Herramientas as hrm
 
 

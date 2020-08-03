@@ -3,8 +3,8 @@ import numpy as np
 import cv2 as cv
 # import read_hog_file
 import os
-import Codigos.Datos as datos
-import Codigos.LogManager as log
+import Datos as datos
+import LogManager as log
 from sklearn.metrics import recall_score, accuracy_score
 from tabulate import tabulate
 
@@ -451,10 +451,18 @@ def generaResumenFinal(vec_res, vec_res_fus, vec_res_fus_2):
             resumen_final[i + 1, j + 1] = str(aux_res[i, j])
     return resumen_final
 
+# def muestraTabla(resultados):
+#     headers = resultados[0, :]
+#     table = tabulate(resultados[1:3, :], headers, tablefmt="fancy_grid")
+#     print(table)
+#     log.agrega(table)
 
 
 def muestraTabla(resultados):
-    headers = resultados[0, :]
-    table = tabulate(resultados[1:3, :], headers, tablefmt="fancy_grid")
-    print(table)
-    log.agrega(table)
+    for j in range(0, resultados.shape[0]):
+        fila = ''
+        for i in range(0, resultados.shape[1] - 1):
+            fila = fila + resultados[j, i] + ' | '
+        fila = fila + resultados[j, resultados.shape[1] - 1]
+        print(fila)
+        log.agrega(fila)

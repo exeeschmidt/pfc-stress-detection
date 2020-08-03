@@ -3,10 +3,10 @@ import cv2 as cv
 import numpy as np
 from tqdm import tqdm
 from colorama import Fore
-import Codigos.ArffManager as am
-import Codigos.Metodos as met
-import Codigos.Herramientas as hrm
-import Codigos.Datos as datos
+import ArffManager as am
+import Metodos as met
+import Herramientas as hrm
+import Datos as datos
 
 
 # ======================================================= VIDEO ========================================================

@@ -1,11 +1,11 @@
 import numpy as np
 import weka.core.jvm as jvm
-import Codigos.ExtraccionCaracteristicas as carac
-import Codigos.Herramientas as hrm
-import Codigos.Weka as wek
-import Codigos.ArffManager as am
-import Codigos.Datos as datos
-import Codigos.LogManager as log
+import ExtraccionCaracteristicas as carac
+import Herramientas as hrm
+import Weka as wek
+import ArffManager as am
+import Datos as datos
+import LogManager as log
 import time
 
 
@@ -23,22 +23,22 @@ def Unimodal():
     nro_val = datos.VAL
     nro_test = datos.TEST
 
-    print('Adaptación de caracteristicas en progreso')
-    log.agrega('Adaptación de caracteristicas en progreso')
-    features = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
-    for i in personas:
-        for j in etapas:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            log.agrega('Persona ' + i + ' -> Etapa ' + j)
-            features(i, j, completo=True)
-            print(time.time() - start2)
-            log.agrega(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    log.agrega('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    log.agrega(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # log.agrega('Adaptación de caracteristicas en progreso')
+    # features = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
+    # for i in personas:
+    #     for j in etapas:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         log.agrega('Persona ' + i + ' -> Etapa ' + j)
+    #         features(i, j, completo=True)
+    #         print(time.time() - start2)
+    #         log.agrega(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # log.agrega('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # log.agrega(time.time() - start_total)
 
     vec_resultados = np.empty((0, 3, met_seleccion.size * met_clasificacion.size + 1))
     vec_resultados_fusionado = np.empty((0, 3, 2))
@@ -165,24 +165,24 @@ def PrimerMultimodal(elimino_silencios=False):
     nro_val = datos.VAL
     nro_test = datos.TEST
 
-    print('Adaptación de caracteristicas en progreso')
-    log.agrega('Adaptación de caracteristicas en progreso')
-    features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
-    features_a = carac.Audio(binarizo_etiquetas)
-    for i in personas:
-        for j in etapas:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            log.agrega('Persona ' + i + ' -> Etapa ' + j)
-            rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
-            features_v(i, j, completo=False, rangos_audibles=rang_audibles)
-            print(time.time() - start2)
-            log.agrega(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    log.agrega('Completada adaptación de caracteristicas')
-    log.agrega(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # log.agrega('Adaptación de caracteristicas en progreso')
+    # features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
+    # features_a = carac.Audio(binarizo_etiquetas)
+    # for i in personas:
+    #     for j in etapas:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         log.agrega('Persona ' + i + ' -> Etapa ' + j)
+    #         rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
+    #         features_v(i, j, completo=False, rangos_audibles=rang_audibles)
+    #         print(time.time() - start2)
+    #         log.agrega(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # log.agrega('Completada adaptación de caracteristicas')
+    # log.agrega(time.time() - start_total)
 
     vec_resultados = np.empty((0, 3, 2 * met_seleccion.size * met_clasificacion.size + 1))
     vec_resultados_fusionado = np.empty((0, 3, 2))
@@ -339,24 +339,24 @@ def SegundoMultimodal(elimino_silencios=False):
     nro_val = datos.VAL
     nro_test = datos.TEST
 
-    print('Adaptación de caracteristicas en progreso')
-    log.agrega('Adaptación de caracteristicas en progreso')
-    features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
-    features_a = carac.Audio(binarizo_etiquetas)
-    for i in personas:
-        for j in etapas:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            log.agrega('Persona ' + i + ' -> Etapa ' + j)
-            rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
-            features_v(i, j, completo=False, rangos_audibles=rang_audibles)
-            print(time.time() - start2)
-            log.agrega(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    log.agrega('Completada adaptación de caracteristicas')
-    log.agrega(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # log.agrega('Adaptación de caracteristicas en progreso')
+    # features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
+    # features_a = carac.Audio(binarizo_etiquetas)
+    # for i in personas:
+    #     for j in etapas:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         log.agrega('Persona ' + i + ' -> Etapa ' + j)
+    #         rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
+    #         features_v(i, j, completo=False, rangos_audibles=rang_audibles)
+    #         print(time.time() - start2)
+    #         log.agrega(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # log.agrega('Completada adaptación de caracteristicas')
+    # log.agrega(time.time() - start_total)
 
     vec_resultados = np.empty((0, 3, met_seleccion.size * met_clasificacion.size + 1))
     vec_resultados_fusionado = np.empty((0, 3, 2))
