@@ -54,13 +54,9 @@ def Unimodal():
     for k in range(0, vueltas):
         datos.defineFoldActual(k + 1)
         if nro_test == -1:
-            print('   Concatenando...')
             data = am.Concatena(personas, etapas, 'VCom')
-            print('   Generando orden de instancias...')
             orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
-            print('   Mezclando instancias...')
             data_ori = am.MezclaInstancias(data, orden_instancias)
-            print('   Particionando datos...')
             train_ori, val_ori, test_ori = wek.ParticionaDatos(data_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))

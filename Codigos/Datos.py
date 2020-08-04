@@ -21,6 +21,7 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
 EXPERIMENTO = 'Unimodal'
+# TEST con valor -1 indica que se usara la lista de personas y por tanto el ordena instancia.
 TEST = 1
 VAL = 5
 BINARIZO_ETIQUETA = False
@@ -84,7 +85,6 @@ PARAMETROS_SELECCION_BUSQUEDA = {
     'BF 1': ['-D', '0', '-N', '5'],
     'PSO 1': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.03', '-A', '0.33', '-B', '0.33', '-C', '0.34', '-S',
               '1'],
-    'PCA 1': ['-R', '0.95', '-A', '10', '-C']
 }
 
 PARAMETROS_SELECCION_EVALUACION = {

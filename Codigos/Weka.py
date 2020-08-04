@@ -107,11 +107,8 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
         serialization.write_all(nombre_archivo + '.model', [classifier])
 
         attrib_list = list()
-        it = data_train.attributes()
-        attrib = it.next()
-        while it.col != data_train.num_attributes:
-            attrib_list.append(attrib.name)
-            attrib = it.next()
+        for i in range(0, data_train.num_attributes - 1):
+            attrib_list.append(data_train.attribute(i).name)
 
         wf = open(nombre_archivo + '.txt', 'w')
         attrib_list_m = map(lambda x: x + '\n', attrib_list)
@@ -146,6 +143,8 @@ def LeeModelo(nombre_archivo, data_val, data_tst):
     attrib_list_readed = rf.read().splitlines()
     rf.close()
 
+    # Invierto la lista porque voy sacando del ultimo, asi quedan en el mismo orden que el original
+    attrib_list_readed.reverse()
     # Voy guardando los indices donde se encuentran los atributos que quiero quedarme
     ind_keep = ""
     while np.size(attrib_list_readed) != 0:
