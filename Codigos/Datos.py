@@ -30,13 +30,15 @@ GUARDO_MODEL = True
 
 INSTANCIAS_POR_PERIODOS = 20
 VOTO_MEJORES_X = 4
-# ATRIBS_PCA = 3000
-# ATRIBS_PSO = 500
-# ATRIBS_BF = 1000
-ATRIBS_PCA = 15000
-ATRIBS_PSO = 1000
-ATRIBS_BF = 2000
-ATRIBS_FINALES = 500
+PORC_ATRIBS_PCA = 50
+PORC_ATRIBS_PSO = 10
+PORC_ATRIBS_BF = 10
+PORC_ATRIBS_FINALES = 5
+ATRIBS_PCA = 0
+ATRIBS_PSO = 0
+ATRIBS_BF = 0
+ATRIBS_FINALES = 0
+NUM_ATRIBS = 0
 TIEMPO_MICROEXPRESION = 0.25
 
 # PERSONAS = np.array(['05', '13', '19'])
@@ -82,7 +84,8 @@ PARAMETROS_CLASIFICADOR = {
 
 PRUEBA_PARAMETROS_SELECCION = False
 PARAMETROS_SELECCION_BUSQUEDA = {
-    'BF 1': ['-D', '0', '-N', '5'],
+    'BF 1': ['-D', '2', '-N', '5'],
+    'BF 2': ['-D', '0', '-N', '5'],
     'PSO 1': ['-N', '1000', '-I', '1000', '-T', '0', '-M', '0.03', '-A', '0.33', '-B', '0.33', '-C', '0.34', '-S',
               '1'],
 }
@@ -118,6 +121,15 @@ def defineFoldActual(fold):
 def defineCarpetaLog(nombre):
     global PATH_LOGS
     PATH_LOGS = os.path.join(ROOT_PATH, 'Logs', nombre)
+
+
+def calculaAtributosRecorte(atributos):
+    global ATRIBS_BF, ATRIBS_PCA, ATRIBS_PSO
+    NUM_ATRIBS = atributos
+    ATRIBS_BF = int(NUM_ATRIBS * (PORC_ATRIBS_BF/100))
+    ATRIBS_PCA = int(NUM_ATRIBS * (PORC_ATRIBS_PCA/100))
+    ATRIBS_PSO = int(NUM_ATRIBS * (PORC_ATRIBS_PSO/100))
+    ATRIBS_FINALES = int(NUM_ATRIBS * (PORC_ATRIBS_FINALES/100))
 
 
 def parametrosClasificacion():

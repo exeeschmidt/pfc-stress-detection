@@ -24,10 +24,10 @@ def crea():
 
     archivo.write('Instancias por periodos: ' + str(datos.INSTANCIAS_POR_PERIODOS) + '\n')
     archivo.write('Votos entre mejores ' + str(datos.VOTO_MEJORES_X) + '\n')
-    archivo.write('Atributos seleccionados PCA: ' + str(datos.ATRIBS_PCA) + '\n')
-    archivo.write('Atributos seleccionados PSO: ' + str(datos.ATRIBS_PSO) + '\n')
-    archivo.write('Atributos seleccionados BF: ' + str(datos.ATRIBS_BF) + '\n')
-    archivo.write('Atributos finales: ' + str(datos.ATRIBS_FINALES) + '\n')
+    archivo.write('Porcentaje de atributos seleccionados PCA: ' + str(datos.PORC_ATRIBS_PCA) + '\n')
+    archivo.write('Porcentaje de atributos seleccionados PSO: ' + str(datos.PORC_ATRIBS_PSO) + '\n')
+    archivo.write('Porcentaje de atributos seleccionados BF: ' + str(datos.PORC_ATRIBS_BF) + '\n')
+    archivo.write('Porcentaje de atributos finales: ' + str(datos.PORC_ATRIBS_FINALES) + '\n')
     archivo.write('Tiempo de microexpresion(s): ' + str(datos.TIEMPO_MICROEXPRESION) + '\n\n')
 
     archivo.write('Personas: ' + '\n')

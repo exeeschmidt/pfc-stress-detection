@@ -66,6 +66,7 @@ def Unimodal():
             val_ori = am.Concatena(personas_val, etapas, 'VCom')
             test_ori = am.Concatena(personas_test, etapas, 'VCom')
 
+        datos.calculaAtributosRecorte(train_ori.num_attributes)
         vec_predicciones_val = np.array([])
         vec_predicciones_tst = np.array([])
         lista_metodos = list()
@@ -118,14 +119,14 @@ def Unimodal():
         resultados_tst = hrm.resumePredicciones(vec_predicciones_tst, lista_metodos, lista_acu_tst, lista_uar_tst)
 
         indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
-        aux_mejores_metodos = 'Mejores combinaciones para la fusion: '
+        aux_mejores_metodos = 'Mejores combinaciones para la fusion según la validación: '
         for i in range(0, indice_mejores.size):
             aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
         print(aux_mejores_metodos)
         log.agrega(aux_mejores_metodos)
         resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
 
-        if test == -1:
+        if nro_test == -1:
             resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
             resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
@@ -211,6 +212,7 @@ def PrimerMultimodal(elimino_silencios=False):
             val_a_ori = am.Concatena(personas_val, etapas, 'AResp')
             test_a_ori = am.Concatena(personas_test, etapas, 'AResp')
 
+        datos.calculaAtributosRecorte(train_v_ori.num_attributes)
         vec_predicciones_v_val = np.array([])
         vec_predicciones_v_tst = np.array([])
         vec_predicciones_a_val = np.array([])
@@ -380,6 +382,7 @@ def SegundoMultimodal(elimino_silencios=False):
             val_ori = am.Concatena(personas_val, etapas, 'VResp', 'AResp')
             test_ori = am.Concatena(personas_test, etapas, 'VResp', 'AResp')
 
+        datos.calculaAtributosRecorte(train_ori.num_attributes)
         vec_predicciones_val = np.array([])
         vec_predicciones_tst = np.array([])
         lista_metodos = list()
