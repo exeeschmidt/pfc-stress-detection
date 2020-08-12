@@ -24,12 +24,12 @@ def main():
     #     datos.EXPERIMENTO = 'Segundo multimodal'
     #     exp.SegundoMultimodal()
 
-    datos.EXPERIMENTO = 'Unimodal'
-    exp.Unimodal()
+    # datos.EXPERIMENTO = 'Unimodal'
+    # exp.Unimodal()
     # datos.EXPERIMENTO = 'Primer multimodal'
     # exp.PrimerMultimodal()
-    # datos.EXPERIMENTO = 'Segundo multimodal'
-    # exp.SegundoMultimodal()
+    datos.EXPERIMENTO = 'Segundo multimodal'
+    exp.SegundoMultimodal()
 
     print('Fin de ejecucion')
     log.agrega('Fin de ejecucion')

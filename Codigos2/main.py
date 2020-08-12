@@ -24,10 +24,10 @@ def main():
     #     datos.EXPERIMENTO = 'Segundo multimodal'
     #     exp.SegundoMultimodal()
 
-    datos.EXPERIMENTO = 'Unimodal'
-    exp.Unimodal()
-    # datos.EXPERIMENTO = 'Primer multimodal'
-    # exp.PrimerMultimodal()
+    # datos.EXPERIMENTO = 'Unimodal'
+    # exp.Unimodal()
+    datos.EXPERIMENTO = 'Primer multimodal'
+    exp.PrimerMultimodal()
     # datos.EXPERIMENTO = 'Segundo multimodal'
     # exp.SegundoMultimodal()
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=Stress1Exp # nombre para identificar el trabajo. Por defecto es el nombre del script
+#SBATCH --job-name=Stress3Exp # nombre para identificar el trabajo. Por defecto es el nombre del script
 #SBATCH --ntasks=3 # cantidad de cores pedidos
 #SBATCH --tasks-per-node=3 # cantidad de cores por nodo, para que distribuya entre varios nodos
 ##SBATCH --nodes=1 # solicita P=1 nodos completos. Tener en cuenta lanzar la cantidad adecuada de procesos para que el nodo no quede subtulizado.
