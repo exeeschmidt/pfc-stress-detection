@@ -437,7 +437,7 @@ def generaResumenFinal(vec_res, vec_res_fus, vec_res_fus_2):
     resumen_final[0, 2] = vec_res_fus_2[0, 0, 1]
     resumen_final[0, 3:] = vec_res[0, 0, 1:]
 
-    aux_res = np.empty((2, cant_metodos + 2), dtype=np.float)
+    aux_res = np.zeros((2, cant_metodos + 2), dtype=np.float)
     for i in range(0, folds):
         for k in range(0, 2):
             aux_res[k, 0] = aux_res[k, 0] + float(vec_res_fus[i, k + 1, 1])
