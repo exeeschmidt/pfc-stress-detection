@@ -20,13 +20,13 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 # PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
-EXPERIMENTO = 'Unimodal'
+EXPERIMENTO = ''
 # TEST con valor -1 indica que se usara la lista de personas y por tanto el ordena instancia.
 TEST = 1
-VAL = 5
+VAL = 2
 BINARIZO_ETIQUETA = False
 ELIMINA_SILENCIOS = False
-GUARDO_MODEL = True
+GUARDO_MODEL = False
 
 INSTANCIAS_POR_PERIODOS = 20
 VOTO_MEJORES_X = 4
@@ -41,9 +41,12 @@ ATRIBS_FINALES = 0
 NUM_ATRIBS = 0
 TIEMPO_MICROEXPRESION = 0.25
 
-PERSONAS = np.array(['05', '13', '19'])
-# PERSONAS = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16',
-#                      '17', '18', '19', '20', '21'])
+if TEST == -1:
+    PERSONAS = np.array(['05', '13', '19'])
+else:
+    PERSONAS = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16',
+                         '17', '18', '19', '20', '21'])
+
 ETAPAS = np.array(['1', '2'])
 ZONAS = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])
 MET_EXTRACCION = np.array(['LBP', 'HOG', 'HOP', 'AUS'])
@@ -95,6 +98,7 @@ PARAMETROS_SELECCION_EVALUACION = {
     'CFS': ['-Z', '-P', '4', '-E', '8']
 }
 
+
 # -D (Direction (0-Backward, 1-Forward, 2-Bidirectional)) -N (SearchTermination)how many expansion without changes
 # for finish) weka.attributeSelection.BestFirst -D 1 -N 5
 
@@ -126,10 +130,10 @@ def defineCarpetaLog(nombre):
 def calculaAtributosRecorte(atributos):
     global ATRIBS_BF, ATRIBS_PCA, ATRIBS_PSO, ATRIBS_FINALES, NUM_ATRIBS
     NUM_ATRIBS = atributos
-    ATRIBS_BF = int(NUM_ATRIBS * (PORC_ATRIBS_BF/100))
-    ATRIBS_PCA = int(NUM_ATRIBS * (PORC_ATRIBS_PCA/100))
-    ATRIBS_PSO = int(NUM_ATRIBS * (PORC_ATRIBS_PSO/100))
-    ATRIBS_FINALES = int(NUM_ATRIBS * (PORC_ATRIBS_FINALES/100))
+    ATRIBS_BF = int(NUM_ATRIBS * (PORC_ATRIBS_BF / 100))
+    ATRIBS_PCA = int(NUM_ATRIBS * (PORC_ATRIBS_PCA / 100))
+    ATRIBS_PSO = int(NUM_ATRIBS * (PORC_ATRIBS_PSO / 100))
+    ATRIBS_FINALES = int(NUM_ATRIBS * (PORC_ATRIBS_FINALES / 100))
 
 
 def parametrosClasificacion():
@@ -157,7 +161,7 @@ def parametrosSeleccion():
 def actualizaParametrosMLP(atributos):
     # Los 4 vienen de la cantidad de clases
     r1 = int(np.sqrt(atributos * 4))
-    r2 = float((atributos / 4) ** (1/3))
+    r2 = float((atributos / 4) ** (1 / 3))
     actualizacion = {
         'MLP 4': ['-L', '0.3', '-M', '0.2', '-N', '500', '-V', '0', '-S', '0', '-E', '20', '-H',
                   str(int(atributos / 20)) + ',' + str(int(atributos / 40))],

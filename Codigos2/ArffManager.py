@@ -51,12 +51,14 @@ def Unev2(data_vec):
     return data
 
 
-def Concatena(personas, etapas, sub, sub2='', une=False):
+def Concatena(personas, etapas, sub, sub2='', une=False, es_test=False):
     # Levanta y une los dataset de multiples personas y etapas
     # Sub cambia segun el conjunto de caracteristicas, si se presenta sub2 es por si hay que concatenar el audio y video
     # entre sí también
     data_vec1 = np.empty(0)
     data_vec2 = np.empty(0)
+    limites_respuesta = list()
+    acu_limites = 0
     for i in personas:
         for j in etapas:
             path = hrm.buildPathSub(i, j, sub)
@@ -69,6 +71,10 @@ def Concatena(personas, etapas, sub, sub2='', une=False):
                 data_vec2 = np.append(data_vec2, data_vec_norm[1])
             else:
                 data_vec1 = np.append(data_vec1, data1)
+            acu_limites = acu_limites + data1.num_instances
+            limites_respuesta.append(acu_limites)
+    if (es_test):
+        hrm.escriboLimites(limites_respuesta)
     data_sub1 = Unev2(data_vec1)
     if sub2 != '':
         data_sub2 = Unev2(data_vec2)

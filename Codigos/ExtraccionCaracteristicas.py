@@ -407,7 +407,7 @@ class Audio:
         return rangos_silencios
 
 
-# =========================================== CARACTERISTICSA VIDEO ====================================================
+# =========================================== CARACTERISTICAS VIDEO ====================================================
 
 class CaracteristicasVideo:
     def __init__(self, zonas, tiempo_micro=0.25):
@@ -421,15 +421,15 @@ class CaracteristicasVideo:
     def __call__(self, persona, etapa):
         nro_zonas = len(self.zonas)
 
-        # Inicializo y ejecuto openface
-        op_fa = met.OpenFace(cara=False, hog=False, landmarks=True, aus=True)
-        op_fa(persona, etapa)
-
         nombre = hrm.buildVideoName(persona, etapa)
         path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
         if not os.path.exists(path):
             raise Exception("Ruta de archivo incorrecta o no válida")
         video = cv.VideoCapture(path)
+
+        # Inicializo y ejecuto openface
+        op_fa = met.OpenFace(cara=False, hog=False, landmarks=True, aus=True)
+        op_fa(persona, etapa)
 
         arch_openface = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
 

@@ -1,12 +1,13 @@
 import csv
-import numpy as np
-import cv2 as cv
 # import read_hog_file
 import os
+
+import cv2 as cv
+import numpy as np
+from sklearn.metrics import recall_score, accuracy_score
+
 import Datos as datos
 import LogManager as log
-from sklearn.metrics import recall_score, accuracy_score
-from tabulate import tabulate
 
 
 def buildVideoName(persona, etapa, parte=-1, extension=False):
@@ -164,14 +165,15 @@ def leeCSV(ruta_archivo):
     return leido
 
 
-def escribeCSV(ruta_archivo, datos):
+def escribeCSV(ruta_archivo, dato):
     """
     Guarda un csv a partir de un vector con valores separados por coma
     """
     with open(ruta_archivo, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerows(datos)
+        writer.writerows(dato)
     return
+
 
 def leeEtiqueta(archivo, persona, etapa, parte):
     """
@@ -193,7 +195,8 @@ def leeTiemposRespuesta(archivo, persona, etapa, parte):
     ind_persona = 1 + (int(persona) - 1) * 13
     ind_etapa = (int(etapa) - 1) * 7
     ind_parte = int(parte) - 1
-    segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa + ind_parte][4])
+    segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa +
+                                                                                       ind_parte][4])
     return segundos
 
 
@@ -384,8 +387,8 @@ def VotoPorSegmento(resumen, instancias_intervalos, desfase=0):
             votos.append(resumen[j, 1])
         if votos:
             mas_votado = max(set(votos), key=votos.count)
-        for j in range(i, hasta):
-            new_resu[j, 1] = mas_votado
+            for j in range(i, hasta):
+                new_resu[j, 1] = mas_votado
     new_resu[1, 1] = str(Accuracy(new_resu[3:, 0], new_resu[3:, 1]))
     new_resu[2, 1] = str(UAR(new_resu[3:, 0], new_resu[3:, 1]))
 
@@ -465,4 +468,8 @@ def muestraTabla(resultados):
             fila = fila + resultados[j, i] + ' | '
         fila = fila + resultados[j, resultados.shape[1] - 1]
         print(fila)
-        log.agrega(fila)
+        log.agregaATabla(fila)
+
+def escriboLimites(limites_respuesta):
+    archivo = open(os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_limites' + '.txt'), 'a+', encoding="utf-8")
+    archivo.writelines(str(limites_respuesta))

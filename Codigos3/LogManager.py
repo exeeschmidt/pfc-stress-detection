@@ -12,6 +12,7 @@ def crea():
         os.stat(datos.PATH_LOGS)
     except (ValueError, Exception):
         os.makedirs(datos.PATH_LOGS)
+    archivo_tablas = open(os.path.join(datos.PATH_LOGS, 'tablas.txt'), 'w', encoding="utf-8")
     archivo = open(os.path.join(datos.PATH_LOGS, 'log.txt'), 'w', encoding="utf-8")
     archivo.write('Experimento: ' + datos.EXPERIMENTO + '\n\n')
 
@@ -19,6 +20,7 @@ def crea():
         archivo.write('Leave-X-out inactivo' + '\n')
     else:
         archivo.write('Leave-' + str(datos.TEST) + ' -out' + '\n')
+        archivo.write('Validación con ' + str(datos.VAL) + ' personas')
     archivo.write('Binarización de etiquetas: ' + str(datos.BINARIZO_ETIQUETA) + '\n')
     archivo.write('Eliminación de silencios: ' + str(datos.ELIMINA_SILENCIOS) + '\n')
 
@@ -78,9 +80,18 @@ def crea():
     archivo.write('--------------------------------------------------------------------------------------------------')
     archivo.write('\n')
     archivo.close()
+    archivo_tablas.write('Tablas de resultados')
+    archivo_tablas.write('\n')
+    archivo_tablas.write('--------------------------------------------------------------------------------------------------')
+    archivo_tablas.write('\n')
 
 
 def agrega(dato):
     archivo = open(os.path.join(datos.PATH_LOGS, 'log.txt'), 'a+', encoding="utf-8")
+    archivo.write(str(dato) + '\n')
+    archivo.close()
+
+def agregaATabla(dato):
+    archivo = open(os.path.join(datos.PATH_LOGS, 'tablas.txt'), 'a+', encoding="utf-8")
     archivo.write(str(dato) + '\n')
     archivo.close()
