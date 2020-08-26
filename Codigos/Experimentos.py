@@ -1,506 +1,558 @@
 import numpy as np
 import weka.core.jvm as jvm
-import ExtraccionCaracteristicas as carac
-import Herramientas as hrm
-import Weka as wek
-import ArffManager as am
-import Datos as datos
-import LogManager as log
+import ExtraccionCaracteristicas as Extrc
+import Herramientas as Hrm
+import Weka
+import ArffManager as Am
+import Datos
+import LogManager as Log
 import time
 
 
 def Unimodal():
-    log.crea()
+    Log.create()
     start_total = time.time()
 
-    personas = datos.PERSONAS
-    etapas = datos.ETAPAS
-    zonas = datos.ZONAS
-    met_extraccion = datos.MET_EXTRACCION
-    met_seleccion = datos.MET_SELECCION
-    met_clasificacion = datos.MET_CLASIFICACION
-    binarizo_etiquetas = datos.BINARIZO_ETIQUETA
-    nro_val = datos.VAL
-    nro_test = datos.TEST
+    persons = Datos.PERSONAS
+    stages = Datos.ETAPAS
+    zones = Datos.ZONAS
+    extraction_methods = Datos.MET_EXTRACCION
+    selection_methods = Datos.MET_SELECCION
+    classification_methods = Datos.MET_CLASIFICACION
+    binarize_labels = Datos.BINARIZO_ETIQUETA
+    num_to_validation = Datos.VAL
+    num_to_test = Datos.TEST
 
-    # print('Adaptación de caracteristicas en progreso')
-    # log.agrega('Adaptación de caracteristicas en progreso')
-    # features = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
-    # for i in personas:
-    #     for j in etapas:
-    #         start2 = time.time()
-    #         print('Persona ' + i + ' -> Etapa ' + j)
-    #         log.agrega('Persona ' + i + ' -> Etapa ' + j)
-    #         features(i, j, completo=True)
-    #         print(time.time() - start2)
-    #         log.agrega(time.time() - start2)
-    #
-    # print('Completada adaptación de caracteristicas')
-    # log.agrega('Completada adaptación de caracteristicas')
-    # print(time.time() - start_total)
-    # log.agrega(time.time() - start_total)
+    print('Adaptación de caracteristicas en progreso')
+    Log.add('Adaptación de caracteristicas en progreso')
+    features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    answers_limits_list = list()
+    for i in persons:
+        for j in stages:
+            start2 = time.time()
+            print('Persona ' + i + ' -> Etapa ' + j)
+            Log.add('Persona ' + i + ' -> Etapa ' + j)
+            video_name = Hrm.buildFileName(i, j)
+            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+            labels_list, answers_limits = Hrm.mapLabels(i, j, binarize_labels, complete_mode=True)
+            answers_limits_list.append(answers_limits)
+            features(video_name, video_path, labels_list, complete_mode=True)
+            print(time.time() - start2)
+            Log.add(time.time() - start2)
 
-    vec_resultados = np.empty((0, 3, met_seleccion.size * met_clasificacion.size + 1))
-    vec_resultados_fusionado = np.empty((0, 3, 2))
-    vec_resultados_fusionado_2 = np.empty((0, 3, 2))
+    print('Completada adaptación de caracteristicas')
+    Log.add('Completada adaptación de caracteristicas')
+    print(time.time() - start_total)
+    Log.add(time.time() - start_total)
 
-    if nro_test == -1:
-        vueltas = 1
+    result_raw_vector = np.empty((0, 3, selection_methods.size * classification_methods.size + 1))
+    result_first_fusion_vector = np.empty((0, 3, 2))
+    result_second_fusion_vector = np.empty((0, 3, 2))
+
+    if num_to_test == -1:
+        laps = 1
     else:
         # Contando que cuando se usa test siempre se trabaja con toda la bd
-        vueltas = int(21 / nro_test)
+        laps = int(21 / num_to_test)
 
-    orden_instancias = np.empty(0)
-    for k in range(0, vueltas):
-        datos.defineFoldActual(k + 1)
-        if nro_test == -1:
-            data = am.Concatena(personas, etapas, 'VCom')
-            orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
-            data_ori = am.MezclaInstancias(data, orden_instancias)
-            train_ori, val_ori, test_ori = wek.ParticionaDatos(data_ori)
+    instances_order = np.empty(0)
+    for k in range(0, laps):
+        Datos.defineActualValidationFold(k + 1)
+        if num_to_test == -1:
+            data = Am.joinPersonStageData(persons, stages, 'VCom')
+            instances_order = Am.generateInstancesOrder(data, Datos.INSTANCIAS_POR_PERIODOS)
+            data_ori = Am.mixInstances(data, instances_order)
+            train_ori, val_ori, test_ori = Weka.partitionData(data_ori)
         else:
-            print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            personas_train, personas_val, personas_test = GeneraConjuntos(k, nro_val, nro_test)
-            train_ori = am.Concatena(personas_train, etapas, 'VCom')
-            val_ori = am.Concatena(personas_val, etapas, 'VCom')
-            test_ori = am.Concatena(personas_test, etapas, 'VCom')
+            print('Vuelta: ' + str(k + 1) + '/' + str(laps))
+            Log.add('Vuelta: ' + str(k + 1) + '/' + str(laps))
+            persons_train, persons_validation, persons_test = generateSets(k, num_to_validation, num_to_test)
+            train_ori = Am.joinPersonStageData(persons_train, stages, 'VCom')
+            val_ori = Am.joinPersonStageData(persons_validation, stages, 'VCom')
+            test_ori = Am.joinPersonStageData(persons_test, stages, 'VCom')
+            Hrm.writeLimits(persons_test, answers_limits_list)
 
-        datos.calculaAtributosRecorte(train_ori.num_attributes)
-        vec_predicciones_val = np.array([])
-        vec_predicciones_tst = np.array([])
-        lista_metodos = list()
-        lista_acu_tst = list()
-        lista_uar_tst = list()
-        lista_acu_val = list()
-        lista_uar_val = list()
+        Datos.calculateAttributesToCut(train_ori.num_attributes)
+        validation_predic_vector = np.array([])
+        test_predic_vector = np.array([])
+        methods_list = list()
+        test_accuracy = list()
+        test_uar = list()
+        validation_accuracy = list()
+        validation_uar = list()
 
         print('Seleccion y clasificación en progreso')
-        for i in range(0, len(met_seleccion)):
+        for i in range(0, len(selection_methods)):
             start2 = time.time()
 
-            if met_seleccion[i] != '':
-                print(met_seleccion[i])
-                log.agrega(met_seleccion[i])
-                metodo_actual = met_seleccion[i] + ' + '
-                train, val, test = wek.SeleccionCaracteristicas(train_ori, val_ori, test_ori, met_seleccion[i])
+            if selection_methods[i] != '':
+                print(selection_methods[i])
+                Log.add(selection_methods[i])
+                actual_selection_method = selection_methods[i] + ' + '
+                train, val, test = Weka.featuresSelection(train_ori, val_ori, test_ori, selection_methods[i])
                 print(time.time() - start2)
-                log.agrega(time.time() - start2)
+                Log.add(time.time() - start2)
             else:
                 print('Sin selección de caracteristicas')
-                metodo_actual = ''
+                actual_selection_method = ''
                 train = train_ori
                 val = val_ori
                 test = test_ori
-            for j in range(0, len(met_clasificacion)):
+            for j in range(0, len(classification_methods)):
                 # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
-                if metodo_actual != '' or met_clasificacion[j] != 'MLP':
-                    print(met_clasificacion[j])
-                    log.agrega(met_clasificacion[j])
+                if actual_selection_method != '' or classification_methods[j] != 'MLP':
+                    print(classification_methods[j])
+                    Log.add(classification_methods[j])
                     start2 = time.time()
-                    lista_metodos.append(metodo_actual + met_clasificacion[j])
-                    predi_csv_val, predi_csv_tst = wek.Clasificacion(train, val, test, met_clasificacion[j], met_seleccion[i])
-                    prediccion_val = hrm.prediccionCSVtoArray(predi_csv_val)
-                    prediccion_tst = hrm.prediccionCSVtoArray(predi_csv_tst)
-                    lista_acu_val.append(hrm.Accuracy(prediccion_val[:, 1], prediccion_val[:, 2]))
-                    lista_acu_tst.append(hrm.Accuracy(prediccion_tst[:, 1], prediccion_tst[:, 2]))
-                    lista_uar_val.append(hrm.UAR(prediccion_val[:, 1], prediccion_val[:, 2]))
-                    lista_uar_tst.append(hrm.UAR(prediccion_tst[:, 1], prediccion_tst[:, 2]))
-                    if len(vec_predicciones_val) == 0:
-                        vec_predicciones_val = np.array([prediccion_val])
-                        vec_predicciones_tst = np.array([prediccion_tst])
+                    methods_list.append(actual_selection_method + classification_methods[j])
+                    validation_predic_in_csv, test_predic_in_csv = Weka.classification(train, val, test,
+                                                                                       classification_methods[j],
+                                                                                       selection_methods[i])
+                    validation_prediction = Hrm.predictionCSVtoArray(validation_predic_in_csv)
+                    test_prediction = Hrm.predictionCSVtoArray(test_predic_in_csv)
+                    validation_accuracy.append(Hrm.Accuracy(validation_prediction[:, 1], validation_prediction[:, 2]))
+                    test_accuracy.append(Hrm.Accuracy(test_prediction[:, 1], test_prediction[:, 2]))
+                    validation_uar.append(Hrm.UAR(validation_prediction[:, 1], validation_prediction[:, 2]))
+                    test_uar.append(Hrm.UAR(test_prediction[:, 1], test_prediction[:, 2]))
+                    if len(validation_predic_vector) == 0:
+                        validation_predic_vector = np.array([validation_prediction])
+                        test_predic_vector = np.array([test_prediction])
                     else:
-                        vec_predicciones_val = np.concatenate([vec_predicciones_val, np.array([prediccion_val])])
-                        vec_predicciones_tst = np.concatenate([vec_predicciones_tst, np.array([prediccion_tst])])
+                        validation_predic_vector = np.concatenate([validation_predic_vector, 
+                                                                   np.array([validation_prediction])])
+                        test_predic_vector = np.concatenate([test_predic_vector, np.array([test_prediction])])
                     print(time.time() - start2)
-                    log.agrega(time.time() - start2)
+                    Log.add(time.time() - start2)
 
-        resultados_val = hrm.resumePredicciones(vec_predicciones_val, lista_metodos, lista_acu_val, lista_uar_val)
-        resultados_tst = hrm.resumePredicciones(vec_predicciones_tst, lista_metodos, lista_acu_tst, lista_uar_tst)
+        validation_results = Hrm.summarizePredictions(validation_predic_vector, methods_list, validation_accuracy,
+                                                      validation_uar)
+        test_results = Hrm.summarizePredictions(test_predic_vector, methods_list, test_accuracy, test_uar)
 
-        indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
-        aux_mejores_metodos = 'Mejores combinaciones para la fusion según la validación: '
-        for i in range(0, indice_mejores.size):
-            aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
-        print(aux_mejores_metodos)
-        log.agrega(aux_mejores_metodos)
-        resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
+        best_index = Hrm.indexsBestClassifiers(validation_results, best_of=Datos.VOTO_MEJORES_X)
+        best_methods = 'Mejores combinaciones para la fusion según la validación: '
+        for i in range(0, best_index.size):
+            best_methods = best_methods + '[' + str(test_results[0, best_index[i]]) + ']'
+        print(best_methods)
+        Log.add(best_methods)
+        results_first_fusion = Hrm.fusionClassifiers(test_results, 'Voto', best_index)
 
-        if nro_test == -1:
-            resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
+        if num_to_test == -1:
+            results_first_fusion, desfase = Hrm.sortInstances(results_first_fusion, instances_order)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS)
 
-        vec_resultados = np.concatenate([vec_resultados,  np.array([resultados_tst[0:3, :]])], axis=0)
-        vec_resultados_fusionado = np.concatenate([vec_resultados_fusionado, np.array([resultados_fusionado[0:3, :]])], axis=0)
-        vec_resultados_fusionado_2 = np.concatenate([vec_resultados_fusionado_2, np.array([resultados_fusionado_2[0:3, :]])], axis=0)
+        result_raw_vector = np.concatenate([result_raw_vector, np.array([test_results[0:3, :]])], axis=0)
+        result_first_fusion_vector = np.concatenate([result_first_fusion_vector,
+                                                     np.array([results_first_fusion[0:3, :]])], axis=0)
+        result_second_fusion_vector = np.concatenate([result_second_fusion_vector,
+                                                      np.array([results_second_fusion[0:3, :]])], axis=0)
 
-        hrm.muestraTabla(resultados_tst)
-        hrm.muestraTabla(resultados_fusionado)
-        hrm.muestraTabla(resultados_fusionado_2)
-    if test != -1:
-        resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
-        hrm.muestraTabla(resumen_final)
+        Hrm.showTable(test_results)
+        Hrm.showTable(results_first_fusion)
+        Hrm.showTable(results_second_fusion)
+    if num_to_test != -1:
+        final_summary = Hrm.createFinalSummary(result_raw_vector, result_first_fusion_vector,
+                                               result_second_fusion_vector)
+        Hrm.showTable(final_summary)
     print(time.time() - start_total)
-    log.agrega('Tiempo final')
-    log.agrega(time.time() - start_total)
+    Log.add('Tiempo final')
+    Log.add(time.time() - start_total)
     print('Fin de experimento')
-    log.agrega('Fin de experimento')
+    Log.add('Fin de experimento')
 
 
-def PrimerMultimodal(elimino_silencios=False):
-    log.crea()
+def PrimerMultimodal():
+    Log.create()
     start_total = time.time()
-    personas = datos.PERSONAS
-    etapas = datos.ETAPAS
-    zonas = datos.ZONAS
-    met_extraccion = datos.MET_EXTRACCION
-    met_seleccion = datos.MET_SELECCION
-    met_clasificacion = datos.MET_CLASIFICACION
-    binarizo_etiquetas = datos.BINARIZO_ETIQUETA
-    nro_val = datos.VAL
-    nro_test = datos.TEST
+    persons = Datos.PERSONAS
+    stages = Datos.ETAPAS
+    zones = Datos.ZONAS
+    extraction_methods = Datos.MET_EXTRACCION
+    selection_methods = Datos.MET_SELECCION
+    classification_methods = Datos.MET_CLASIFICACION
+    binarize_labels = Datos.BINARIZO_ETIQUETA
+    num_to_validation = Datos.VAL
+    num_to_test = Datos.TEST
 
-    # print('Adaptación de caracteristicas en progreso')
-    # log.agrega('Adaptación de caracteristicas en progreso')
-    # features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
-    # features_a = carac.Audio(binarizo_etiquetas)
-    # for i in personas:
-    #     for j in etapas:
-    #         start2 = time.time()
-    #         print('Persona ' + i + ' -> Etapa ' + j)
-    #         log.agrega('Persona ' + i + ' -> Etapa ' + j)
-    #         rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
-    #         features_v(i, j, completo=False, rangos_audibles=rang_audibles)
-    #         print(time.time() - start2)
-    #         log.agrega(time.time() - start2)
-    #
-    # print('Completada adaptación de caracteristicas')
-    # print(time.time() - start_total)
-    # log.agrega('Completada adaptación de caracteristicas')
-    # log.agrega(time.time() - start_total)
+    print('Adaptación de caracteristicas en progreso')
+    Log.add('Adaptación de caracteristicas en progreso')
+    video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    answers_limits_list = list()
+    for i in persons:
+        for j in stages:
+            start2 = time.time()
+            print('Persona ' + i + ' -> Etapa ' + j)
+            Log.add('Persona ' + i + ' -> Etapa ' + j)
+            video_name = Hrm.buildFileName(i, j)
+            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+            labels_list, answers_limits = Hrm.mapLabels(i, j, binarize_labels, complete_mode=False)
+            answers_limits_list.append(answers_limits)
+            audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
+            video_features(video_name, video_path, labels_list, complete_mode=False)
+            print(time.time() - start2)
+            Log.add(time.time() - start2)
 
-    vec_resultados = np.empty((0, 3, 2 * met_seleccion.size * met_clasificacion.size + 1))
-    vec_resultados_fusionado = np.empty((0, 3, 2))
-    vec_resultados_fusionado_2 = np.empty((0, 3, 2))
+    print('Completada adaptación de caracteristicas')
+    print(time.time() - start_total)
+    Log.add('Completada adaptación de caracteristicas')
+    Log.add(time.time() - start_total)
 
-    if nro_test == -1:
-        vueltas = 1
+    result_raw_vector = np.empty((0, 3, 2 * selection_methods.size * classification_methods.size + 1))
+    result_first_fusion_vector = np.empty((0, 3, 2))
+    result_second_fusion_vector = np.empty((0, 3, 2))
+
+    if num_to_test == -1:
+        laps = 1
     else:
         # Contando que cuando se usa test siempre se trabaja con toda la bd
-        vueltas = int(21 / nro_test)
+        laps = int(21 / num_to_test)
 
-    orden_instancias = np.empty(0)
-    for k in range(0, vueltas):
-        datos.defineFoldActual(k + 1)
-        if nro_test == -1:
-            data_v, data_a = am.Concatena(personas, etapas, 'VResp', 'AResp')
-            orden_instancias = am.GeneraOrdenInstancias(data_v, datos.INSTANCIAS_POR_PERIODOS)
-            data_v_ori = am.MezclaInstancias(data_v, orden_instancias)
-            data_a_ori = am.MezclaInstancias(data_a, orden_instancias)
-            train_v_ori, val_v_ori, test_v_ori = wek.ParticionaDatos(data_v_ori)
-            train_a_ori, val_a_ori, test_a_ori = wek.ParticionaDatos(data_a_ori)
+    instances_order = np.empty(0)
+    for k in range(0, laps):
+        Datos.defineActualValidationFold(k + 1)
+        if num_to_test == -1:
+            data_v, data_a = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp')
+            instances_order = Am.generateInstancesOrder(data_v, Datos.INSTANCIAS_POR_PERIODOS)
+            data_v_ori = Am.mixInstances(data_v, instances_order)
+            data_a_ori = Am.mixInstances(data_a, instances_order)
+            train_v_ori, val_v_ori, test_v_ori = Weka.partitionData(data_v_ori)
+            train_a_ori, val_a_ori, test_a_ori = Weka.partitionData(data_a_ori)
         else:
-            print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            personas_train, personas_val, personas_test = GeneraConjuntos(k, nro_val, nro_test)
-            train_v_ori, train_a_ori = am.Concatena(personas_train, etapas, 'VResp', 'AResp')
-            val_v_ori, val_a_ori = am.Concatena(personas_val, etapas, 'VResp', 'AResp')
-            test_v_ori, test_a_ori = am.Concatena(personas_test, etapas, 'VResp', 'AResp')
+            print('Vuelta: ' + str(k + 1) + '/' + str(laps))
+            Log.add('Vuelta: ' + str(k + 1) + '/' + str(laps))
+            persons_train, persons_validation, persons_test = generateSets(k, num_to_validation, num_to_test)
+            train_v_ori, train_a_ori = Am.joinPersonStageData(persons_train, stages, 'VResp', 'AResp')
+            val_v_ori, val_a_ori = Am.joinPersonStageData(persons_validation, stages, 'VResp', 'AResp')
+            test_v_ori, test_a_ori = Am.joinPersonStageData(persons_test, stages, 'VResp', 'AResp')
+            Hrm.writeLimits(persons_test, answers_limits_list)
 
-        datos.calculaAtributosRecorte(train_v_ori.num_attributes)
-        vec_predicciones_v_val = np.array([])
-        vec_predicciones_v_tst = np.array([])
-        vec_predicciones_a_val = np.array([])
-        vec_predicciones_a_tst = np.array([])
-        lista_metodos = list()
-        lista_acu_v_val = list()
-        lista_acu_v_tst = list()
-        lista_acu_a_val = list()
-        lista_acu_a_tst = list()
-        lista_uar_v_val = list()
-        lista_uar_v_tst = list()
-        lista_uar_a_val = list()
-        lista_uar_a_tst = list()
+        Datos.calculateAttributesToCut(train_v_ori.num_attributes)
+        validation_predic_vector_v = np.array([])
+        test_predic_vector_v = np.array([])
+        validation_predic_vector_a = np.array([])
+        test_predic_vector_a = np.array([])
+        methods_list = list()
+        validation_accuracy_v = list()
+        test_accuracy_v = list()
+        validation_accuracy_a = list()
+        test_accuracy_a = list()
+        validation_uar_v = list()
+        test_uar_v = list()
+        validation_uar_a = list()
+        test_uar_a = list()
 
         print('Seleccion y clasificación en progreso')
-        for i in range(0, len(met_seleccion)):
+        for i in range(0, len(selection_methods)):
             start2 = time.time()
 
-            if met_seleccion[i] != '':
-                print(met_seleccion[i])
-                log.agrega(met_seleccion[i])
-                metodo_actual = met_seleccion[i] + ' + '
+            if selection_methods[i] != '':
+                print(selection_methods[i])
+                Log.add(selection_methods[i])
+                actual_selection_method = selection_methods[i] + ' + '
                 print('Video')
-                log.agrega('Video')
-                train_v, val_v, test_v = wek.SeleccionCaracteristicas(train_v_ori, val_v_ori, test_v_ori, met_seleccion[i])
+                Log.add('Video')
+                train_v, val_v, test_v = Weka.featuresSelection(train_v_ori, val_v_ori, test_v_ori,
+                                                                selection_methods[i])
                 print('Audio')
-                log.agrega('Audio')
-                train_a, val_a, test_a = wek.SeleccionCaracteristicas(train_a_ori, val_a_ori, test_a_ori, met_seleccion[i])
+                Log.add('Audio')
+                train_a, val_a, test_a = Weka.featuresSelection(train_a_ori, val_a_ori, test_a_ori,
+                                                                selection_methods[i])
                 print(time.time() - start2)
-                log.agrega(time.time() - start2)
+                Log.add(time.time() - start2)
             else:
                 print('Sin selección de caracteristicas')
-                metodo_actual = ''
+                actual_selection_method = ''
                 train_v = train_v_ori
                 val_v = val_v_ori
                 test_v = test_v_ori
                 train_a = train_a_ori
                 val_a = val_a_ori
                 test_a = test_a_ori
-            for j in range(0, len(met_clasificacion)):
+            for j in range(0, len(classification_methods)):
                 # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
-                if metodo_actual != '' or met_clasificacion[j] != 'MLP':
-                    print(met_clasificacion[j])
-                    log.agrega(met_clasificacion[j])
+                if actual_selection_method != '' or classification_methods[j] != 'MLP':
+                    print(classification_methods[j])
+                    Log.add(classification_methods[j])
                     start2 = time.time()
-                    lista_metodos.append(metodo_actual + met_clasificacion[j])
-                    predi_csv_v_val, predi_csv_v_tst = wek.Clasificacion(train_v, val_v, test_v, met_clasificacion[j], met_seleccion[i])
-                    predi_csv_a_val, predi_csv_a_tst = wek.Clasificacion(train_a, val_a, test_a, met_clasificacion[j], met_seleccion[i])
-                    prediccion_v_val = hrm.prediccionCSVtoArray(predi_csv_v_val)
-                    prediccion_v_tst = hrm.prediccionCSVtoArray(predi_csv_v_tst)
-                    prediccion_a_val = hrm.prediccionCSVtoArray(predi_csv_a_val)
-                    prediccion_a_tst = hrm.prediccionCSVtoArray(predi_csv_a_tst)
-                    lista_acu_v_val.append(hrm.Accuracy(prediccion_v_val[:, 1], prediccion_v_val[:, 2]))
-                    lista_acu_a_val.append(hrm.Accuracy(prediccion_a_val[:, 1], prediccion_a_val[:, 2]))
-                    lista_acu_v_tst.append(hrm.Accuracy(prediccion_v_tst[:, 1], prediccion_v_tst[:, 2]))
-                    lista_acu_a_tst.append(hrm.Accuracy(prediccion_a_tst[:, 1], prediccion_a_tst[:, 2]))
-                    lista_uar_v_val.append(hrm.UAR(prediccion_v_val[:, 1], prediccion_v_val[:, 2]))
-                    lista_uar_a_val.append(hrm.UAR(prediccion_a_val[:, 1], prediccion_a_val[:, 2]))
-                    lista_uar_v_tst.append(hrm.UAR(prediccion_v_tst[:, 1], prediccion_v_tst[:, 2]))
-                    lista_uar_a_tst.append(hrm.UAR(prediccion_a_tst[:, 1], prediccion_a_tst[:, 2]))
-                    if len(vec_predicciones_v_val) == 0:
-                        vec_predicciones_v_val = np.array([prediccion_v_val])
-                        vec_predicciones_a_val = np.array([prediccion_a_val])
-                        vec_predicciones_v_tst = np.array([prediccion_v_tst])
-                        vec_predicciones_a_tst = np.array([prediccion_a_tst])
+                    methods_list.append(actual_selection_method + classification_methods[j])
+                    validation_predic_in_csv_v, test_predic_in_csv_v = Weka.classification(train_v, val_v, test_v,
+                                                                                           classification_methods[j],
+                                                                                           selection_methods[i])
+                    validation_predic_in_csv_a, test_predic_in_csv_a = Weka.classification(train_a, val_a, test_a,
+                                                                                           classification_methods[j],
+                                                                                           selection_methods[i])
+                    validation_prediction_v = Hrm.predictionCSVtoArray(validation_predic_in_csv_v)
+                    test_prediction_v = Hrm.predictionCSVtoArray(test_predic_in_csv_v)
+                    validation_prediction_a = Hrm.predictionCSVtoArray(validation_predic_in_csv_a)
+                    test_prediction_a = Hrm.predictionCSVtoArray(test_predic_in_csv_a)
+                    validation_accuracy_v.append(Hrm.Accuracy(validation_prediction_v[:, 1],
+                                                              validation_prediction_v[:, 2]))
+                    validation_accuracy_a.append(Hrm.Accuracy(validation_prediction_a[:, 1],
+                                                              validation_prediction_a[:, 2]))
+                    test_accuracy_v.append(Hrm.Accuracy(test_prediction_v[:, 1], test_prediction_v[:, 2]))
+                    test_accuracy_a.append(Hrm.Accuracy(test_prediction_a[:, 1], test_prediction_a[:, 2]))
+                    validation_uar_v.append(Hrm.UAR(validation_prediction_v[:, 1], validation_prediction_v[:, 2]))
+                    validation_uar_a.append(Hrm.UAR(validation_prediction_a[:, 1], validation_prediction_a[:, 2]))
+                    test_uar_v.append(Hrm.UAR(test_prediction_v[:, 1], test_prediction_v[:, 2]))
+                    test_uar_a.append(Hrm.UAR(test_prediction_a[:, 1], test_prediction_a[:, 2]))
+                    if len(validation_predic_vector_v) == 0:
+                        validation_predic_vector_v = np.array([validation_prediction_v])
+                        validation_predic_vector_a = np.array([validation_prediction_a])
+                        test_predic_vector_v = np.array([test_prediction_v])
+                        test_predic_vector_a = np.array([test_prediction_a])
                     else:
-                        vec_predicciones_v_val = np.concatenate([vec_predicciones_v_val, np.array([prediccion_v_val])])
-                        vec_predicciones_a_val = np.concatenate([vec_predicciones_a_val, np.array([prediccion_a_val])])
-                        vec_predicciones_v_tst = np.concatenate([vec_predicciones_v_tst, np.array([prediccion_v_tst])])
-                        vec_predicciones_a_tst = np.concatenate([vec_predicciones_a_tst, np.array([prediccion_a_tst])])
+                        validation_predic_vector_v = np.concatenate([validation_predic_vector_v,
+                                                                     np.array([validation_prediction_v])])
+                        validation_predic_vector_a = np.concatenate([validation_predic_vector_a,
+                                                                     np.array([validation_prediction_a])])
+                        test_predic_vector_v = np.concatenate([test_predic_vector_v, np.array([test_prediction_v])])
+                        test_predic_vector_a = np.concatenate([test_predic_vector_a, np.array([test_prediction_a])])
                     print(time.time() - start2)
-                    log.agrega(time.time() - start2)
+                    Log.add(time.time() - start2)
 
-        resultados_v_val = hrm.resumePredicciones(vec_predicciones_v_val, lista_metodos, lista_acu_v_val, lista_uar_v_val)
-        resultados_a_val = hrm.resumePredicciones(vec_predicciones_a_val, lista_metodos, lista_acu_a_val, lista_uar_a_val)
-        resultados_v_tst = hrm.resumePredicciones(vec_predicciones_v_tst, lista_metodos, lista_acu_v_tst, lista_uar_v_tst)
-        resultados_a_tst = hrm.resumePredicciones(vec_predicciones_a_tst, lista_metodos, lista_acu_a_tst, lista_uar_a_tst)
+        validation_results_v = Hrm.summarizePredictions(validation_predic_vector_v, methods_list, validation_accuracy_v,
+                                                        validation_uar_v)
+        validation_results_a = Hrm.summarizePredictions(validation_predic_vector_a, methods_list, validation_accuracy_a,
+                                                        validation_uar_a)
+        test_results_v = Hrm.summarizePredictions(test_predic_vector_v, methods_list, test_accuracy_v, test_uar_v)
+        test_results_a = Hrm.summarizePredictions(test_predic_vector_a, methods_list, test_accuracy_a, test_uar_a)
 
-        resultados_val = hrm.uneResumenes(resultados_v_val, resultados_a_val)
-        resultados_tst = hrm.uneResumenes(resultados_v_tst, resultados_a_tst)
+        validation_results_joined = Hrm.joinSummaries(validation_results_v, validation_results_a)
+        test_results_joined = Hrm.joinSummaries(test_results_v, test_results_a)
 
-        indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
-        aux_mejores_metodos = 'Mejores combinaciones para la fusion: '
-        for i in range(0, indice_mejores.size):
-            aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
-        print(aux_mejores_metodos)
-        log.agrega(aux_mejores_metodos)
+        best_index = Hrm.indexsBestClassifiers(validation_results_joined, best_of=Datos.VOTO_MEJORES_X)
+        best_methods = 'Mejores combinaciones para la fusion: '
+        for i in range(0, best_index.size):
+            best_methods = best_methods + '[' + str(test_results_joined[0, best_index[i]]) + ']'
+        print(best_methods)
+        Log.add(best_methods)
 
-        resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
+        results_first_fusion = Hrm.fusionClassifiers(test_results_joined, 'Voto', best_index)
 
-        if nro_test == -1:
-            resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
+        if num_to_test == -1:
+            results_first_fusion, gap = Hrm.sortInstances(results_first_fusion, instances_order)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS, gap)
         else:
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS)
 
-        vec_resultados = np.concatenate([vec_resultados,  np.array([resultados_tst[0:3, :]])], axis=0)
-        vec_resultados_fusionado = np.concatenate([vec_resultados_fusionado, np.array([resultados_fusionado[0:3, :]])], axis=0)
-        vec_resultados_fusionado_2 = np.concatenate([vec_resultados_fusionado_2, np.array([resultados_fusionado_2[0:3, :]])], axis=0)
+        result_raw_vector = np.concatenate([result_raw_vector,  np.array([test_results_joined[0:3, :]])], axis=0)
+        result_first_fusion_vector = np.concatenate([result_first_fusion_vector,
+                                                     np.array([results_first_fusion[0:3, :]])], axis=0)
+        result_second_fusion_vector = np.concatenate([result_second_fusion_vector,
+                                                      np.array([results_second_fusion[0:3, :]])], axis=0)
 
-        hrm.muestraTabla(resultados_tst)
-        hrm.muestraTabla(resultados_fusionado)
-        hrm.muestraTabla(resultados_fusionado_2)
-    if nro_test != -1:
-        resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
-        hrm.muestraTabla(resumen_final)
+        Hrm.showTable(test_results_joined)
+        Hrm.showTable(results_first_fusion)
+        Hrm.showTable(results_second_fusion)
+    if num_to_test != -1:
+        final_summary = Hrm.createFinalSummary(result_raw_vector, result_first_fusion_vector,
+                                               result_second_fusion_vector)
+        Hrm.showTable(final_summary)
     print(time.time() - start_total)
-    log.agrega('Tiempo final')
-    log.agrega(time.time() - start_total)
+    Log.add('Tiempo final')
+    Log.add(time.time() - start_total)
 
 
-def SegundoMultimodal(elimino_silencios=False):
-    log.crea()
+def SegundoMultimodal():
+    Log.create()
     start_total = time.time()
-    personas = datos.PERSONAS
-    etapas = datos.ETAPAS
-    zonas = datos.ZONAS
-    met_extraccion = datos.MET_EXTRACCION
-    met_seleccion = datos.MET_SELECCION
-    met_clasificacion = datos.MET_CLASIFICACION
-    binarizo_etiquetas = datos.BINARIZO_ETIQUETA
-    nro_val = datos.VAL
-    nro_test = datos.TEST
+    persons = Datos.PERSONAS
+    stages = Datos.ETAPAS
+    zones = Datos.ZONAS
+    extraction_methods = Datos.MET_EXTRACCION
+    selection_methods = Datos.MET_SELECCION
+    classification_methods = Datos.MET_CLASIFICACION
+    binarize_labels = Datos.BINARIZO_ETIQUETA
+    num_to_validation = Datos.VAL
+    num_to_test = Datos.TEST
 
-    # print('Adaptación de caracteristicas en progreso')
-    # log.agrega('Adaptación de caracteristicas en progreso')
-    # features_v = carac.Video(binarizo_etiquetas, zonas, met_extraccion)
-    # features_a = carac.Audio(binarizo_etiquetas)
-    # for i in personas:
-    #     for j in etapas:
-    #         start2 = time.time()
-    #         print('Persona ' + i + ' -> Etapa ' + j)
-    #         log.agrega('Persona ' + i + ' -> Etapa ' + j)
-    #         rang_audibles = features_a(i, j, eliminar_silencios=elimino_silencios)
-    #         features_v(i, j, completo=False, rangos_audibles=rang_audibles)
-    #         print(time.time() - start2)
-    #         log.agrega(time.time() - start2)
-    #
-    # print('Completada adaptación de caracteristicas')
-    # print(time.time() - start_total)
-    # log.agrega('Completada adaptación de caracteristicas')
-    # log.agrega(time.time() - start_total)
+    print('Adaptación de caracteristicas en progreso')
+    Log.add('Adaptación de caracteristicas en progreso')
+    video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    answers_limits_list = list()
+    for i in persons:
+        for j in stages:
+            start2 = time.time()
+            print('Persona ' + i + ' -> Etapa ' + j)
+            Log.add('Persona ' + i + ' -> Etapa ' + j)
+            video_name = Hrm.buildFileName(i, j)
+            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+            labels_list, answers_limits = Hrm.mapLabels(i, j, binarize_labels, complete_mode=False)
+            answers_limits_list.append(answers_limits)
+            audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
+            # video_features(video_name, video_path, labels_list, complete_mode=False)
+            print(time.time() - start2)
+            Log.add(time.time() - start2)
 
-    vec_resultados = np.empty((0, 3, met_seleccion.size * met_clasificacion.size + 1))
-    vec_resultados_fusionado = np.empty((0, 3, 2))
-    vec_resultados_fusionado_2 = np.empty((0, 3, 2))
+    print('Completada adaptación de caracteristicas')
+    print(time.time() - start_total)
+    Log.add('Completada adaptación de caracteristicas')
+    Log.add(time.time() - start_total)
 
-    if nro_test == -1:
-        vueltas = 1
+    result_raw_vector = np.empty((0, 3, selection_methods.size * classification_methods.size + 1))
+    result_first_fusion_vector = np.empty((0, 3, 2))
+    result_second_fusion_vector = np.empty((0, 3, 2))
+
+    if num_to_test == -1:
+        laps = 1
     else:
         # Contando que cuando se usa test siempre se trabaja con toda la bd
-        vueltas = int(21 / nro_test)
+        laps = int(21 / num_to_test)
 
-    orden_instancias = np.empty(0)
-    for k in range(0, vueltas):
-        datos.defineFoldActual(k + 1)
-        if nro_test == -1:
-            data = am.Concatena(personas, etapas, 'VResp', 'AResp', une=True)
-            orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
-            data_ori = am.MezclaInstancias(data, orden_instancias)
-            train_ori, val_ori, test_ori = wek.ParticionaDatos(data_ori)
+    instances_order = np.empty(0)
+    for k in range(0, laps):
+        Datos.defineActualValidationFold(k + 1)
+        if num_to_test == -1:
+            data = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp', join=True)
+            instances_order = Am.generateInstancesOrder(data, Datos.INSTANCIAS_POR_PERIODOS)
+            data_ori = Am.mixInstances(data, instances_order)
+            train_ori, val_ori, test_ori = Weka.partitionData(data_ori)
         else:
-            print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            personas_train, personas_val, personas_test = GeneraConjuntos(k, nro_val, nro_test)
-            train_ori = am.Concatena(personas_train, etapas, 'VResp', 'AResp', une=True)
-            val_ori = am.Concatena(personas_val, etapas, 'VResp', 'AResp', une=True)
-            test_ori = am.Concatena(personas_test, etapas, 'VResp', 'AResp', une=True)
+            print('Vuelta: ' + str(k + 1) + '/' + str(laps))
+            Log.add('Vuelta: ' + str(k + 1) + '/' + str(laps))
+            persons_train, persons_validation, persons_test = generateSets(k, num_to_validation, num_to_test)
+            train_ori = Am.joinPersonStageData(persons_train, stages, 'VResp', 'AResp', join=True)
+            val_ori = Am.joinPersonStageData(persons_validation, stages, 'VResp', 'AResp', join=True)
+            test_ori = Am.joinPersonStageData(persons_test, stages, 'VResp', 'AResp', join=True)
+            Hrm.writeLimits(persons_test, answers_limits_list)
 
-        datos.calculaAtributosRecorte(train_ori.num_attributes)
-        vec_predicciones_val = np.array([])
-        vec_predicciones_tst = np.array([])
-        lista_metodos = list()
-        lista_acu_tst = list()
-        lista_uar_tst = list()
-        lista_acu_val = list()
-        lista_uar_val = list()
+        Datos.calculateAttributesToCut(train_ori.num_attributes)
+        validation_predic_vector = np.array([])
+        test_predic_vector = np.array([])
+        methods_list = list()
+        test_accuracy = list()
+        test_uar = list()
+        validation_accuracy = list()
+        validation_uar = list()
 
         print('Seleccion y clasificación en progreso')
-        for i in range(0, len(met_seleccion)):
+        for i in range(0, len(selection_methods)):
             start2 = time.time()
 
-            if met_seleccion[i] != '':
-                print(met_seleccion[i])
-                log.agrega(met_seleccion[i])
-                metodo_actual = met_seleccion[i] + ' + '
-                train, val, test = wek.SeleccionCaracteristicas(train_ori, val_ori, test_ori, met_seleccion[i])
+            if selection_methods[i] != '':
+                print(selection_methods[i])
+                Log.add(selection_methods[i])
+                actual_selection_method = selection_methods[i] + ' + '
+                train, val, test = Weka.featuresSelection(train_ori, val_ori, test_ori, selection_methods[i])
                 print(time.time() - start2)
-                log.agrega(time.time() - start2)
+                Log.add(time.time() - start2)
             else:
                 print('Sin selección de caracteristicas')
-                metodo_actual = ''
+                actual_selection_method = ''
                 train = train_ori
                 val = val_ori
                 test = test_ori
-            for j in range(0, len(met_clasificacion)):
+            for j in range(0, len(classification_methods)):
                 # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
-                if metodo_actual != '' or met_clasificacion[j] != 'MLP':
-                    print(met_clasificacion[j])
-                    log.agrega(met_clasificacion[j])
+                if actual_selection_method != '' or classification_methods[j] != 'MLP':
+                    print(classification_methods[j])
+                    Log.add(classification_methods[j])
                     start2 = time.time()
-                    lista_metodos.append(metodo_actual + met_clasificacion[j])
-                    predi_csv_val, predi_csv_tst = wek.Clasificacion(train, val, test, met_clasificacion[j], met_seleccion[i])
-                    prediccion_val = hrm.prediccionCSVtoArray(predi_csv_val)
-                    prediccion_tst = hrm.prediccionCSVtoArray(predi_csv_tst)
-                    lista_acu_val.append(hrm.Accuracy(prediccion_val[:, 1], prediccion_val[:, 2]))
-                    lista_acu_tst.append(hrm.Accuracy(prediccion_tst[:, 1], prediccion_tst[:, 2]))
-                    lista_uar_val.append(hrm.UAR(prediccion_val[:, 1], prediccion_val[:, 2]))
-                    lista_uar_tst.append(hrm.UAR(prediccion_tst[:, 1], prediccion_tst[:, 2]))
-                    if len(vec_predicciones_val) == 0:
-                        vec_predicciones_val = np.array([prediccion_val])
-                        vec_predicciones_tst = np.array([prediccion_tst])
+                    methods_list.append(actual_selection_method + classification_methods[j])
+                    validation_predic_in_csv, test_predic_in_csv = Weka.classification(train, val, test,
+                                                                                       classification_methods[j],
+                                                                                       selection_methods[i])
+                    validation_prediction = Hrm.predictionCSVtoArray(validation_predic_in_csv)
+                    test_prediction = Hrm.predictionCSVtoArray(test_predic_in_csv)
+                    validation_accuracy.append(
+                        Hrm.Accuracy(validation_prediction[:, 1], validation_prediction[:, 2]))
+                    test_accuracy.append(Hrm.Accuracy(test_prediction[:, 1], test_prediction[:, 2]))
+                    validation_uar.append(Hrm.UAR(validation_prediction[:, 1], validation_prediction[:, 2]))
+                    test_uar.append(Hrm.UAR(test_prediction[:, 1], test_prediction[:, 2]))
+                    if len(validation_predic_vector) == 0:
+                        validation_predic_vector = np.array([validation_prediction])
+                        test_predic_vector = np.array([test_prediction])
                     else:
-                        vec_predicciones_val = np.concatenate([vec_predicciones_val, np.array([prediccion_val])])
-                        vec_predicciones_tst = np.concatenate([vec_predicciones_tst, np.array([prediccion_tst])])
+                        validation_predic_vector = np.concatenate([validation_predic_vector,
+                                                                   np.array([validation_prediction])])
+                        test_predic_vector = np.concatenate([test_predic_vector, np.array([test_prediction])])
                     print(time.time() - start2)
-                    log.agrega(time.time() - start2)
+                    Log.add(time.time() - start2)
 
-        resultados_val = hrm.resumePredicciones(vec_predicciones_val, lista_metodos, lista_acu_val, lista_uar_val)
-        resultados_tst = hrm.resumePredicciones(vec_predicciones_tst, lista_metodos, lista_acu_tst, lista_uar_tst)
+        validation_results = Hrm.summarizePredictions(validation_predic_vector, methods_list, validation_accuracy,
+                                                      validation_uar)
+        test_results = Hrm.summarizePredictions(test_predic_vector, methods_list, test_accuracy, test_uar)
 
-        indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
-        aux_mejores_metodos = 'Mejores combinaciones para la fusion: '
-        for i in range(0, indice_mejores.size):
-            aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
-        print(aux_mejores_metodos)
-        log.agrega(aux_mejores_metodos)
-        resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
+        best_index = Hrm.indexsBestClassifiers(validation_results, best_of=Datos.VOTO_MEJORES_X)
+        best_methods = 'Mejores combinaciones para la fusion según la validación: '
+        for i in range(0, best_index.size):
+            best_methods = best_methods + '[' + str(test_results[0, best_index[i]]) + ']'
+        print(best_methods)
+        Log.add(best_methods)
+        results_first_fusion = Hrm.fusionClassifiers(test_results, 'Voto', best_index)
 
-        if nro_test == -1:
-            resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
+        if num_to_test == -1:
+            results_first_fusion, desfase = Hrm.sortInstances(results_first_fusion, instances_order)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS)
 
-        vec_resultados = np.concatenate([vec_resultados,  np.array([resultados_tst[0:3, :]])], axis=0)
-        vec_resultados_fusionado = np.concatenate([vec_resultados_fusionado, np.array([resultados_fusionado[0:3, :]])], axis=0)
-        vec_resultados_fusionado_2 = np.concatenate([vec_resultados_fusionado_2, np.array([resultados_fusionado_2[0:3, :]])], axis=0)
+        result_raw_vector = np.concatenate([result_raw_vector, np.array([test_results[0:3, :]])], axis=0)
+        result_first_fusion_vector = np.concatenate([result_first_fusion_vector,
+                                                     np.array([results_first_fusion[0:3, :]])], axis=0)
+        result_second_fusion_vector = np.concatenate([result_second_fusion_vector,
+                                                      np.array([results_second_fusion[0:3, :]])], axis=0)
 
-        hrm.muestraTabla(resultados_tst)
-        hrm.muestraTabla(resultados_fusionado)
-        hrm.muestraTabla(resultados_fusionado_2)
-    if nro_test != -1:
-        resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
-        hrm.muestraTabla(resumen_final)
+        Hrm.showTable(test_results)
+        Hrm.showTable(results_first_fusion)
+        Hrm.showTable(results_second_fusion)
+    if num_to_test != -1:
+        final_summary = Hrm.createFinalSummary(result_raw_vector, result_first_fusion_vector,
+                                               result_second_fusion_vector)
+        Hrm.showTable(final_summary)
     print(time.time() - start_total)
-    log.agrega('Tiempo final')
-    log.agrega(time.time() - start_total)
+    Log.add('Tiempo final')
+    Log.add(time.time() - start_total)
+    print('Fin de experimento')
+    Log.add('Fin de experimento')
 
 
-def ExtractorDeCaracteristicas(personas, etapas, zonas):
+def videoFeaturesExtractionWrapper(persons, stages, zones):
     start_total = time.time()
     jvm.start()
     print('Extracción de caracteristicas en progreso')
-    features = carac.CaracteristicasVideo(zonas)
-    for i in personas:
-        for j in etapas:
+    features_extraction = Extrc.VideoFeaturesExtraction(zones)
+    for i in persons:
+        for j in stages:
             # if i != '09' or j != '1':
             start2 = time.time()
             print('Persona ' + i + ' -> Etapa ' + j)
-            features(i, j)
+            video_name = Hrm.buildFileName(i, j)
+            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+            features_extraction(video_name, video_path)
             print(time.time() - start2)
     print('Completada extraccion de caracteristicas')
     print(time.time() - start_total)
     # jvm.stop()
 
 
-def GeneraConjuntos(vuelta_actual, val, test):
-    personas_train = np.empty(0, dtype=int)
-    personas_val = np.empty(0, dtype=int)
-    personas_test = vuelta_actual * test + np.array(range(1, test + 1), dtype=int)
+def generateSets(actual_lap, val, test):
+    persons_train = np.empty(0, dtype=int)
+    persons_validation = np.empty(0, dtype=int)
+    persons_test = actual_lap * test + np.array(range(1, test + 1), dtype=int)
     for i in range(0, val):
-        ind_val = personas_test[0] - 1 - i
-        if ind_val < 1:
-            ind_val = 21 - abs(ind_val)
-        personas_val = np.append(personas_val, ind_val)
+        index_validation = persons_test[0] - 1 - i
+        if index_validation < 1:
+            index_validation = 21 - abs(index_validation)
+        persons_validation = np.append(persons_validation, index_validation)
     for i in range(1, 22):
-        if np.where(personas_test == i)[0].size == 0 and np.where(personas_val == i)[0].size == 0:
-            personas_train = np.append(personas_train, i)
+        if np.where(persons_test == i)[0].size == 0 and np.where(persons_validation == i)[0].size == 0:
+            persons_train = np.append(persons_train, i)
     # Casteo a string
-    personas_train = personas_train.astype(np.str)
-    personas_val = personas_val.astype(np.str)
-    personas_test = personas_test.astype(np.str)
+    persons_train = persons_train.astype(np.str)
+    persons_validation = persons_validation.astype(np.str)
+    persons_test = persons_test.astype(np.str)
     # Los que son numero de una cifra se les tiene que agregar un 0 a la izquierda
-    for i in range(0, personas_train.size):
-        if int(personas_train[i]) < 10:
-            personas_train[i] = '0' + personas_train[i]
-    for i in range(0, personas_val.size):
-        if int(personas_val[i]) < 10:
-            personas_val[i] = '0' + personas_val[i]
-    for i in range(0, personas_test.size):
-        if int(personas_test[i]) < 10:
-            personas_test[i] = '0' + personas_test[i]
-    return personas_train, personas_val, personas_test
+    for i in range(0, persons_train.size):
+        if int(persons_train[i]) < 10:
+            persons_train[i] = '0' + persons_train[i]
+    for i in range(0, persons_validation.size):
+        if int(persons_validation[i]) < 10:
+            persons_validation[i] = '0' + persons_validation[i]
+    for i in range(0, persons_test.size):
+        if int(persons_test[i]) < 10:
+            persons_test[i] = '0' + persons_test[i]
+    return persons_train, persons_validation, persons_test

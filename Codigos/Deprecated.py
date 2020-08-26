@@ -6,25 +6,6 @@ import Datos as datos
 
 
 # =================================================== Metodos ==========================================================
-# Metodo parte de elimina silencios
-def _metodo2(energia, cruces, nro_ref, nro_muestras, tam_ventana, muestreo):
-    """
-    Toma las primeras 5 ventanas como silencio para tener números de referencia acerca de los cruces por cero y
-    la energía .
-    """
-    nro_iteraciones = int(nro_muestras / (tam_ventana * muestreo))
-    ref_sil_c = sum(cruces[0:nro_ref]) / nro_ref
-    ref_sil_e = sum(energia[0:nro_ref]) / nro_ref
-    vector = np.zeros([nro_muestras])
-
-    # Para cada ventana compara con los números de referencia y define el vector binario
-    for i in range(0, nro_iteraciones):
-        if energia[i] >= ref_sil_e and cruces[i] < ref_sil_c:
-            inicia = int(i * tam_ventana * muestreo)
-            termina = int(inicia + tam_ventana * muestreo)
-            vector[inicia:termina] = np.ones([int(tam_ventana * muestreo)])
-    return vector
-
 
 class LocalDescriptor(object):
     def __init__(self, neighbors):
@@ -278,6 +259,161 @@ class LPQ(LocalDescriptor):
         return "LPQ (neighbors=%s, radius=%s)" % (self._neighbors, self._radius)
 
 
+# ================================================= ELIMINA SILENCIOS ==================================================
+
+class removeSilences:
+    """
+    A través de los cruces por cero y energía calcula los silencios. Devuelve el audio con igual longitud que el
+    original pero con valor 0 donde se presentan silencios según lo calculado. Lee los wav desde la carpeta Procesado,
+    que ya debería haberse generado con FFMPEG.
+
+    Ejemplo:
+        ruta_bd = 'D:/Descargas/Proyecto Final de Carrera/Bd propia/Conejitos de india'
+        el_si = Metodos.EliminaSilencios(ruta_bd, True)
+        persona = 'Sujeto 01a'
+        parte = 'a'
+        el_si(persona, parte)
+    """
+
+    def __init__(self, plotear):
+        # tam_ventana = 0.2
+        self._plotear = plotear
+
+    def __call__(self, path, tam_ventana=0.125, umbral=0.008):
+        # Extraigo la posición donde está la extensión para después eliminarla en el nombre del archivo de salida
+        nro_extension = path.index('.wav')
+
+        # Lectura, casteo y extracción de características básicas de la señal
+        if not os.path.exists(path):
+            raise Exception("Ruta de archivo incorrecta o no válida")
+        muestreo, sonido = waves.read(path)
+        sonido = sonido.astype(np.int64)
+        nro_muestras = sonido.shape[0]
+
+        # Devolución del vector de 0 y 1, indicando con verdadero cada porción que sea audible
+        vector_audible = self._metodo1(self, sonido, umbral, tam_ventana, muestreo)
+
+        if self._plotear:
+            plt.plot(sonido)
+            plt.plot(vector_audible * np.max(sonido), 'r')
+            plt.show()
+
+        # Lo casteo a booleanos
+        vector_audible = vector_audible.astype(np.bool)
+
+        # Guardo los rangos donde se encuentran los segmentos audibles como tuplas
+        # Aprovecho también para cortar el audio y guardarlos en wavs por separado
+        activo = False
+        rangos_audibles = np.empty((0, 2))
+        # Recorto el nombre para borrarle la extensión y que no me quede como parte de los archivos de salida
+        path = path[0:nro_extension]
+        for i in range(0, vector_audible.size):
+            # Si es audible y no estaba activada la bandera, comienza un tramo
+            if vector_audible[i] and not activo:
+                activo = True
+                comienzo = i
+            # Si estaba activo el rango y deja de ser audible, o si sigue siendo audible pero llego al final del vector,
+            # guardo el comienzo y el fin del rango
+            elif (not vector_audible[i] and activo) or (vector_audible[i] and i == vector_audible.size - 1):
+                activo = False
+                rangos_audibles = np.append(rangos_audibles, np.array([np.array([comienzo, i])]), axis=0)
+                # Recorto el sonido segun el rango audible
+                recortado = sonido[comienzo:i]
+                # Guardo el wav
+                recortado = recortado.astype(np.int16)
+                waves.write(path + '_' + str(rangos_audibles.shape[0]) + '.wav', muestreo, recortado)
+
+        # Como solo me interesa devolver los porcentajes del total en los segmentos para recortar el video
+        rangos_audibles = rangos_audibles / nro_muestras
+
+        return rangos_audibles
+
+    @staticmethod
+    def _metodo1(self, sonido, umbral, tam_ventana, muestreo):
+        """
+        El método se basa en calcular un puntaje con todas las características para cada muestra y compararlo con un
+        umbral. En caso de ser mayor que el umbral se considera audible. Los puntajes por muestra se calculan en base
+        a la energía y los cruces por cero. En caso de tener múltiples canales para cada numero de muestra se promedia
+        el puntaje de todos los canales en ese número de muestra.
+        """
+
+        # Inicializaciones
+        nro_muestras = sonido.shape[0]
+        canales = sonido.shape[1]
+        nro_iteraciones = int(nro_muestras / (tam_ventana * muestreo))
+        energia = np.zeros((nro_iteraciones, canales))
+        cruces = np.zeros((nro_iteraciones, canales))
+
+        # Calcula la energía y cruces en todas las ventanas y canales
+        for j in range(0, canales):
+            for i in range(0, nro_iteraciones):
+                ini = int(i * tam_ventana * muestreo)
+                fin = int(ini + tam_ventana * muestreo)
+                energia[i, j] = self._energia(sonido[ini:fin, j])
+                cruces[i, j] = self._crucesporcero(sonido[ini:fin, j])
+
+        puntajes = np.zeros((nro_iteraciones, canales))
+        vector_audible = np.zeros(nro_muestras)
+
+        for j in range(0, canales):
+            # Normaliza los valores de energía y cruces por cero
+            energia[:, j] = energia[:, j] / max(energia[:, j])
+            cruces[:, j] = cruces[:, j] / max(cruces[:, j])
+            # Calcula puntajes según: Energía * (1 - Cruces por cero)
+            puntajes[:, j] = energia[:, j] * (1 - cruces[:, j])
+            # Normaliza los puntajes
+            puntajes[:, j] = puntajes[:, j] / max(puntajes[:, j])
+
+        # Según un umbral calculado empiricamente se diferencia las ventanas de silencio
+        for i in range(0, nro_iteraciones):
+            # Combinación: tomo las puntuaciones de cada canal y las promedio para asi calcular directamente el vector
+            # final
+            prom = 0
+            for j in range(0, canales):
+                prom = prom + puntajes[i, j]
+            prom = prom / (canales + 1)
+            if prom > umbral:
+                ini = int(i * tam_ventana * muestreo)
+                fin = int(ini + tam_ventana * muestreo)
+                vector_audible[ini:fin] = np.ones([int(tam_ventana * muestreo)])
+        return vector_audible
+
+    def _metodo2(energia, cruces, nro_ref, nro_muestras, tam_ventana, muestreo):
+        """
+        Toma las primeras 5 ventanas como silencio para tener números de referencia acerca de los cruces por cero y
+        la energía .
+        """
+        nro_iteraciones = int(nro_muestras / (tam_ventana * muestreo))
+        ref_sil_c = sum(cruces[0:nro_ref]) / nro_ref
+        ref_sil_e = sum(energia[0:nro_ref]) / nro_ref
+        vector = np.zeros([nro_muestras])
+
+        # Para cada ventana compara con los números de referencia y define el vector binario
+        for i in range(0, nro_iteraciones):
+            if energia[i] >= ref_sil_e and cruces[i] < ref_sil_c:
+                inicia = int(i * tam_ventana * muestreo)
+                termina = int(inicia + tam_ventana * muestreo)
+                vector[inicia:termina] = np.ones([int(tam_ventana * muestreo)])
+        return vector
+
+    @staticmethod
+    def _crucesporcero(data):
+        """
+        Calcula los cruces por cero. Hay voz si la cantidad de cruces por cero son bajas
+        """
+        tam = len(data)
+        cantidad = 0
+        for i in range(0, tam - 1):
+            if data[i] * data[i + 1] < 0:
+                cantidad = cantidad + 1
+        rate = cantidad / tam
+        return rate
+
+    @staticmethod
+    def _energia(data):
+        return sum(data * data) / len(data)
+
+
 # ================================================ Herramientas ========================================================
 def segmentaResumen(resu_1, resu_2):
     """
@@ -441,9 +577,24 @@ def BinarizoPorPersonas(sujetos, etapas):
     for i in sujetos:
         for j in etapas:
             path_final = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(sujetos[i], etapas[j]))
-            hrm.BinarizoEtiquetas(path_final)
+            hrm.binarizeLabels(path_final)
 
+def leeHOG(ruta_archivo):
+    """
+    Devuelve dos valores. El primero corresponde a la matriz con los hog por cuadro y el segundo devuelve si en ese
+    cuadro se extrajo correctamente.
+    Ejemplo: ruta_archivo = 'Procesado/Sujeto 01a.hog'
+    """
+    rhf = read_hog_file.initialize()
+    [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
+    rhf.terminate()
+    return hog, inds
 
+def muestraTabla(resultados):
+    headers = resultados[0, :]
+    table = tabulate(resultados[1:3, :], headers, tablefmt="fancy_grid")
+    print(table)
+    log.add(table)
 # ================================================= ArffManager ========================================================
 def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     """
@@ -788,3 +939,62 @@ def NormalizaArff(nombre_archivo1, nombre_archivo2):
     arch1.close()
     arch2.close()
     return int(instancias)
+
+# ============================================= ExtracciónCaracterísticas ==============================================
+# TODO ESTO SON EXTRACTOS DE LOS QUE IBA EN CADA CLASE
+
+# class Video:
+#     def __call__(self, *args, **kwargs):
+#         if len(audibles_ranges) == 0:
+#             remove_silences = False
+#         else:
+#             remove_silences = True
+#
+#
+#         # Se toman los porcentajes de los segmentos audibles ya que al multiplicarlos por el número de frames
+#         # totales, se obtiene la equivalencia al rango de cuadros
+#         audible_frames = list()
+#         if remove_silences:
+#             # rangos audibles es una lista que en cada posicion tiene un vector de vectores por respuesta
+#             audible_range_in_frames = audibles_ranges[j] * total_frames
+#             audible_range_in_frames = audible_range_in_frames.astype(int)
+#             # Convierto los rangos en una lista de cuadros
+#             for i in audible_range_in_frames:
+#                 # Al ser rangos cuadros un vector de vectores, i en cada ciclo es un vector de dos componentes
+#                 audible_frames.extend(range(i[0], i[1] + 1))
+#
+#         if (not remove_silences) or (audible_frames.count(actual_instance) > 0):
+#         # Concateno todas las caracteristicas en un solo vector
+#
+#         # Solo avanzo en el acumulador de tiempo si no estoy eliminando silencios o el cuadro es audible
+#         # En el caso de eliminar silencios los cuadros silenciosos deberian equivaler a no existir
+#         if not remove_silences or audible_frames.count(actual_instance) > 0:
+#             accumulate_time = accumulate_time + frame_duration
+#
+# class Audio:
+#     def __call__(self, *args, **kwargs):
+#         remove_silences_method = met.removeSilences(plotear=False)
+#         # Parámetro a retornar, en caso que no se eliminen los silencios quedará la lista vacía como retorno
+#         silences_ranges = list()
+#         if remove_silences_method:
+#             # Obtengo los rangos donde hay segmentos audibles
+#             rango = remove_silences_method(os.path.join(datos.PATH_PROCESADO, nombre + '.wav'), tam_ventana=self.microexpression_duration)
+#             # rango es un vector de vectores, cada fila tiene un vector de dos componente con el principio y fin
+#
+#             # Utilizo la cantidad de segmentos para saber cuantos archivos se generaron
+#             data_vec = np.empty(0)
+#             for i in range(0, rango.shape[0]):
+#                 nombre_archivo = nombre + '_' + str(i + 1) + '.wav'
+#                 open_smile(nombre_archivo, paso_ventaneo=str(self.microexpression_duration))
+#                 data_aux = am.loadAndFiltered(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'))
+#                 os.remove(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'))
+#                 # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
+#                 data_aux = am.AgregaAtributoClase(data_aux, self.classes)
+#                 for k in range(0, am.NroInstancias(data_aux)):
+#                     data_aux = am.AgregaEtiqueta(data_aux, k, np.where(self.classes == etiqueta)[0][0])
+#                 data_vec = np.append(data_vec, data_aux)
+#             # Lo agrego a la lista con los rangos de segmentos de cada respuesta
+#             silences_ranges.append(rango)
+#             # Concateno todas las subpartes en un arff por respuesta
+#             data = am.Une(data_vec)
+#         # else:

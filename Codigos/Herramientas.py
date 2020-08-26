@@ -1,49 +1,85 @@
 import csv
-# import read_hog_file
 import os
 
 import cv2 as cv
 import numpy as np
 from sklearn.metrics import recall_score, accuracy_score
 
-import Datos as datos
-import LogManager as log
+import Datos
+import LogManager as Log
 
 
-def buildVideoName(persona, etapa, parte=-1, extension=False):
-    video_name = 'Sujeto_' + persona + '_' + etapa
-    if parte != -1:
-        video_name += '_r' + str(parte)
-    if extension:
-        video_name += '.mp4'
-    return video_name
+def buildFileName(person, stages, part=-1):
+    file_name = 'Sujeto_' + person + '_' + stages
+    if part != -1:
+        file_name += '_r' + str(part)
+    return file_name
 
 
-def buildPathVideo(persona, etapa, nombre_video, extension=True):
-    path_video = os.path.join(datos.PATH_BD, 'Sujeto ' + persona, 'Etapa ' + etapa, nombre_video)
-    if extension:
-        path_video += '.mp4'
+def buildFilePath(person, stage, file_name, extension=''):
+    path_video = os.path.join(Datos.PATH_BD, 'Sujeto ' + person, 'Etapa ' + stage, file_name)
+    path_video += extension
     return path_video
 
 
-def buildPathSub(persona, etapa, sub):
-    path = os.path.join(datos.PATH_CARACTERISTICAS, sub, buildVideoName(persona, etapa) + '_' + sub + '.arff')
+def buildSubFilePath(file_name, sub_name):
+    path = os.path.join(Datos.PATH_CARACTERISTICAS, sub_name, file_name + '_' + sub_name + '.arff')
     return path
 
 
-def Histograma(imagen):
+def buildFilePartName(file_name, parte, extension=''):
+    if file_name.find('.mp4') == -1:
+        file_name += '_r' + str(parte)
+    else:
+        file_name = file_name[0:file_name.find('.mp4')] + '_r' + str(parte)
+
+    file_name += extension
+    return file_name
+
+
+def buildOpenSmileFilePath(file_name):
+    return os.path.join(Datos.PATH_CARACTERISTICAS, file_name + '.arff')
+
+
+def buildOutputPathFFMPEG(file_name):
+    return os.path.join(Datos.PATH_PROCESADO, file_name + Datos.EXTENSION_AUDIO)
+
+
+def extractStageFromFileName(file_name):
+    if file_name.find(Datos.EXTENSION_VIDEO) == -1 and file_name.find(Datos.EXTENSION_AUDIO) == -1:
+        stage = file_name[len(file_name) - 1]
+    elif file_name.find(Datos.EXTENSION_VIDEO) == -1:
+        stage = file_name[file_name.find(Datos.EXTENSION_AUDIO) - 1]
+    else:
+        stage = file_name[file_name.find(Datos.EXTENSION_VIDEO) - 1]
+    return stage
+
+
+def extractPersonFromVideoName(file_name):
+    if file_name.find(Datos.EXTENSION_VIDEO) == -1 and file_name.find(Datos.EXTENSION_AUDIO) == -1:
+        person = file_name[len(file_name) - 4] + file_name[len(file_name) - 3]
+    elif file_name.find(Datos.EXTENSION_VIDEO) == -1:
+        person = file_name[file_name.find(Datos.EXTENSION_AUDIO) - 4] + \
+                 file_name[file_name.find(Datos.EXTENSION_AUDIO) - 3]
+    else:
+        person = file_name[file_name.find(Datos.EXTENSION_VIDEO) - 4] + \
+                 file_name[file_name.find(Datos.EXTENSION_VIDEO) - 3]
+    return person
+
+
+def generateHistogram(image):
     """
     Calcula el histograma de una imagen o una matriz en escala de grises (valores de 0 a 255 por celda).
     """
-    img = np.copy(imagen)
+    img = np.copy(image)
     f = img.shape[0]
     c = img.shape[1]
-    histo = np.zeros(256)
+    hist = np.zeros(256)
 
     for i in range(0, f):
         for j in range(0, c):
-            histo[img[i, j]] = histo[img[i, j]] + 1
-    return histo
+            hist[img[i, j]] = hist[img[i, j]] + 1
+    return hist
 
 
 def ROI(img, landmarks_x, landmarks_y, region, expandir=True, resize=True):
@@ -71,16 +107,16 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir=True, resize=True):
         'boca': list(range(48, 60))
     }
 
-    rango = switcher.get(region)
+    region_range = switcher.get(region)
     frame = np.copy(img)
-    landmarks_propios = np.empty((0, 2), dtype=int)
+    landmarks_points = np.empty((0, 2), dtype=int)
 
-    for i in rango:
+    for i in region_range:
         punto = np.array([[int(float(landmarks_x[i])), int(float(landmarks_y[i]))]])
         # Este if esta por problemas al ir concatenando cuando está vacío
-        landmarks_propios = np.append(landmarks_propios, punto, axis=0)
+        landmarks_points = np.append(landmarks_points, punto, axis=0)
 
-    x1, y1, w1, h1 = cv.boundingRect(landmarks_propios)
+    x1, y1, w1, h1 = cv.boundingRect(landmarks_points)
     x2 = x1 + w1
     y2 = y1 + h1
     if expandir:
@@ -117,12 +153,12 @@ def ROI(img, landmarks_x, landmarks_y, region, expandir=True, resize=True):
         roi = frame[y1:y2, x1:x2]
 
     if resize:
-        roi = ResizeZona(roi, region)
+        roi = resizeByZone(roi, region)
 
     return roi
 
 
-def ResizeZona(imagen, region):
+def resizeByZone(image, region):
     """
     Según la región lo lleva a un tamaño fijo, estos números se sacaron manualmente a partir de la observación de un
     frame.
@@ -139,339 +175,419 @@ def ResizeZona(imagen, region):
         'boca': (80, 40)
     }
     tam = switcher.get(region)
-    img = cv.resize(imagen, tam, interpolation=cv.INTER_AREA)
+    img = cv.resize(image, tam, interpolation=cv.INTER_AREA)
     return img
 
 
-# def leeHOG(ruta_archivo):
-#     """
-#     Devuelve dos valores. El primero corresponde a la matriz con los hog por cuadro y el segundo devuelve si en ese
-#     cuadro se extrajo correctamente.
-#     Ejemplo: ruta_archivo = 'Procesado/Sujeto 01a.hog'
-#     """
-#     rhf = read_hog_file.initialize()
-#     [hog, inds] = rhf.Read_HOG_file(ruta_archivo, nargout=2)
-#     rhf.terminate()
-#     return hog, inds
-
-
-def leeCSV(ruta_archivo):
+def readCSVFile(path, delimiter=','):
     """
-    Devuelve una lista con los datos a partir de un csv.
+    Devuelve una lista con los datos de un archivo csv.
     """
-    archivo = open(ruta_archivo)
-    leido = csv.reader(archivo, delimiter=',', skipinitialspace=True)
-    leido = list(leido)
-    return leido
+    file = open(path)
+    readed = csv.reader(file, delimiter=delimiter, skipinitialspace=True)
+    return list(readed)
 
 
-def escribeCSV(ruta_archivo, dato):
+def writeCSVFile(path, data):
     """
     Guarda un csv a partir de un vector con valores separados por coma
     """
-    with open(ruta_archivo, 'w', newline='') as file:
+    with open(path, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerows(dato)
+        writer.writerows(data)
     return
 
 
-def leeEtiqueta(archivo, persona, etapa, parte):
+def readLabel(file, person, stage, part):
     """
     Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
     saltear la fila donde están las carátulas.
     """
-    ind_persona = 1 + (int(persona) - 1) * 13
-    ind_etapa = (int(etapa) - 1) * 7
-    ind_parte = int(parte) - 1
-    etiqueta = archivo[ind_persona + ind_etapa + ind_parte][5]
+    ind_persona = 1 + (int(person) - 1) * 13
+    ind_etapa = (int(stage) - 1) * 7
+    ind_parte = int(part) - 1
+    etiqueta = file[ind_persona + ind_etapa + ind_parte][5]
     return etiqueta
 
 
-def leeTiemposRespuesta(archivo, persona, etapa, parte):
+def readAnswersTime(file, person, stage, part):
     """
     Cada persona tiene 13 videos, 7 partes en la etapa 1 y 6 partes en la etapa 2. El primer 1+ en persona va para
     saltear la fila donde están las carátulas.
     """
-    ind_persona = 1 + (int(persona) - 1) * 13
-    ind_etapa = (int(etapa) - 1) * 7
-    ind_parte = int(parte) - 1
-    segundos = int(archivo[ind_persona + ind_etapa + ind_parte][3]) * 60 + int(archivo[ind_persona + ind_etapa +
-                                                                                       ind_parte][4])
-    return segundos
+    person_index = 1 + (int(person) - 1) * 13
+    stage_index = (int(stage) - 1) * 7
+    part_index = int(part) - 1
+    seconds = int(file[person_index + stage_index + part_index][3]) * 60 + int(file[person_index + stage_index +
+                                                                                    part_index][4])
+    return seconds
 
 
-def prediccionCSVtoArray(predi, desdeCSVleido=False):
+def mapLabels(person, stage, label_binarization, complete_mode=False):
+    """
+    Se encarga de generar un vector con la etiqueta que deberia ir por cada instancia, ademas se incorpo la devolucion
+    de los limites de respuesta, mapeando los tiempos de este con las instancias
+    """
+    # Defino los nombres de la clase según si se binariza o no
+    if label_binarization:
+        labels = np.array(['N', 'E'])
+    else:
+        labels = np.array(['N', 'B', 'M', 'A'])
+
+    # Cargo el archivo con las etiquetas
+    data_labels = readCSVFile(Datos.PATH_ETIQUETAS)
+
+    if int(stage) == 1:
+        parts = 7
+    else:
+        parts = 6
+
+    labels_list = list()
+    answers_limits = list()
+    if complete_mode:
+        video_name = buildFileName(person, stage)
+        video_path = buildFilePath(person, stage, video_name, extension=Datos.EXTENSION_VIDEO)
+        # Cargo los tiempos donde termina cada respuesta, para saber en que intervalos va cada etiqueta,
+        # esto está en segundos
+        seconds_by_answer = np.zeros(parts)
+        for i in range(0, parts):
+            seconds_by_answer[i] = readAnswersTime(data_labels, person, stage, str(i + 1))
+        # Permite saber en que respuesta voy para saber cuando cambiar la etiqueta
+        interval_number = 1
+
+        # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
+        # respuesta segpun el caso
+        actual_label = readLabel(data_labels, person, stage, str(1))
+        if label_binarization:
+            if actual_label != 'N':
+                actual_label = labels[1]
+
+        # Leo el video solo para saber el total de frames, este es igual a la cantidad de instancias para el etiquetado
+        video = cv.VideoCapture(video_path)
+        instances_number = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+        fps = int(video.get(cv.CAP_PROP_FPS))
+
+        for i in range(0, instances_number):
+            # Para definir intervalo de etiqueta
+            # Si paso el tiempo donde termina la respuesta, leo la siguiente etiqueta
+            # Me fijo también si el nro de intervalo no es el último, en ese caso debe etiquetarse hasta el
+            # final. Por esa razón no debe cambiar más de etiqueta. Esta verificación está por si hay error
+            # numérico al calcular los fps y se detecte un cambio de etiqueta unos cuadros antes de la
+            # última etiqueta, lo que provocaría que quiera leer la etiqueta de un número de intervalo que
+            # no existe
+            if (i >= seconds_by_answer[interval_number - 1] * fps) and (interval_number != -1):
+                answers_limits.append(answers_limits[len(answers_limits) - 1] + i)
+                interval_number = interval_number + 1
+                actual_label = readLabel(data_labels, person, stage, interval_number)
+                # Paso a usar nro_intervalo como bandera por si es la última etiqueta de la última parte
+                if interval_number == parts:
+                    interval_number = -1
+                if label_binarization:
+                    if actual_label != 'N':
+                        actual_label = labels[1]
+            labels_list.append(actual_label)
+    else:
+        for j in range(0, parts):
+            # Diferencias en los nombres de archivo y llamada a open face
+            video_name = buildFileName(person, stage, part=(j + 1))
+            video_path = buildFilePath(person, stage, video_name, extension=Datos.EXTENSION_VIDEO)
+
+            # Leo el video solo para saber el total de frames, este es igual a la cantidad de instancias para el
+            # etiquetado
+            video = cv.VideoCapture(video_path)
+            instances_number = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+            actual_label = readLabel(data_labels, person, stage, str(j + 1))
+            if len(answers_limits) == 0:
+                answers_limits.append(instances_number)
+            else:
+                answers_limits.append(answers_limits[len(answers_limits) - 1] + instances_number)
+            if label_binarization:
+                if actual_label != 'N':
+                    actual_label = labels[1]
+            for i in range(0, instances_number):
+                labels_list.append(actual_label)
+    return labels_list, answers_limits
+
+
+def predictionCSVtoArray(prediction, from_csv_file=False):
     """
     Sirve para convertir los csv de las predicciones en vectores de numpy formato: [ [...,...,...], [....,...,...]...]
     Si el csv viene de uno que genero escribeCSV, este lo deja como listas, asi que hay que ingresar a cada char
     como si fuera una lista
     """
-    vec = np.array([])
-    fila = np.array([])
-    dato = ''
+    prediction_vector = np.array([])
+    file = np.array([])
+    data = ''
     # Recorro cada char
-    for i in predi:
-        if desdeCSVleido:
+    for i in prediction:
+        if from_csv_file:
             i = i.pop()
         # Si es una coma o salto de línea agrego el dato a la fila y lo reinicio
         if i == ',' or i == '\n':
             # En caso de dos comas seguidas o datos incompletos que el dato sea un espacio
-            if dato == '':
-                dato = ' '
-            fila = np.append(fila, dato)
-            dato = ''
+            if data == '':
+                data = ' '
+            file = np.append(file, data)
+            data = ''
             # En caso de ser salto de línea agrego la fila entera al vector y la reinicio
             if i == '\n':
                 # Como no conozco la cantidad de columnas para inicializar un vector vacío, tengo que hacer esto
-                if len(vec) == 0:
-                    vec = np.array([fila])
-                    fila = np.array([])
+                if len(prediction_vector) == 0:
+                    prediction_vector = np.array([file])
+                    file = np.array([])
                 else:
-                    vec = np.concatenate([vec, np.array([fila])], axis=0)
-                    fila = np.array([])
+                    prediction_vector = np.concatenate([prediction_vector, np.array([file])], axis=0)
+                    file = np.array([])
         else:
             # Concateno el dato a partir de los char
-            dato = dato + i
-    return vec
+            data = data + i
+    return prediction_vector
 
 
-def resumePredicciones(predi, metodos, accuracy, uar):
+def summarizePredictions(predictions, methods, accuracy, uar):
     """
     El primer parámetro representa el vector de matrices con las predicciones, el segundo un vector con el nombre de los
     métodos usados. Por ejemplo, para la predicción en la posicion 0 se utilizó 'PCA + SVM'. Con esto creo la cabecera.
     """
 
     # Número de métodos
-    num_metodos = predi.shape[0]
+    methods_number = predictions.shape[0]
 
     # Cantidad de segmentos de cada modalidad
-    tam_pre = predi.shape[1]
+    instances = predictions.shape[1]
 
-    new_predi = np.empty((tam_pre + 3, 0))
+    prediction_summary = np.empty((instances + 3, 0))
     # Del primer método además de obtener la predicción saco la columna con las etiquetas (iguales en todos los métodos)
-    new_predi = np.append(new_predi, np.array([np.append(np.array(['Etiqueta', 'Accuracy', 'UAR']), predi[0, :, 1])]).T, axis=1)
-    for i in range(0, num_metodos):
-        new_predi = np.append(new_predi, np.array([np.append(np.array([metodos[i], accuracy[i], uar[i]]), predi[i, :, 2])]).T, axis=1)
-    return new_predi
+    prediction_summary = np.append(prediction_summary, np.array([np.append(np.array(['Etiqueta', 'Accuracy', 'UAR']),
+                                                                           predictions[0, :, 1])]).T, axis=1)
+    for i in range(0, methods_number):
+        prediction_summary = np.append(prediction_summary, np.array([np.append(np.array(
+            [methods[i], accuracy[i], uar[i]]), predictions[i, :, 2])]).T, axis=1)
+    return prediction_summary
 
 
-def uneResumenes(resu1, resu2):
+def joinSummaries(first_summary, second_summary):
     """
     A partir de los dos resumenes de predicciones los une en uno solo cortando al tamaño del menor.
     Se espera que el primer resumen sea el del video por el hecho de personalizar el nombre de las columnas
     """
-    filas1 = resu1.shape[0]
-    filas2 = resu2.shape[0]
+    row_first = first_summary.shape[0]
+    row_second = second_summary.shape[0]
 
-    if filas1 < filas2:
-        corte = filas1
+    if row_first < row_second:
+        row_cut = row_first
     else:
-        corte = filas2
+        row_cut = row_second
 
-    new_resu = np.concatenate([resu1[0:corte, :], resu2[0:corte, 1:]], axis=1)
+    new_summary = np.concatenate([first_summary[0:row_cut, :], second_summary[0:row_cut, 1:]], axis=1)
 
     # Al nombre de los metodos les agrego la modalidad a la que refiere, se espera que empiece con los de video
-    for i in range(1, new_resu.shape[1]):
-        if i < resu1.shape[1]:
-            new_resu[0, i] = new_resu[0, i] + '(V)'
+    for i in range(1, new_summary.shape[1]):
+        if i < first_summary.shape[1]:
+            new_summary[0, i] = new_summary[0, i] + '(V)'
         else:
-            new_resu[0, i] = new_resu[0, i] + '(A)'
-    return new_resu
+            new_summary[0, i] = new_summary[0, i] + '(A)'
+    return new_summary
 
 
-def EleccionFusion(resumen, mejores=-1, por_modalidad=False):
+def indexsBestClassifiers(summary, best_of=-1, by_modality=False):
     """
      A partir del resumen de validacion devuelve los indices de las mejores combinaciones de metodos
     """
-    indice_mejores = np.empty(0, dtype=np.int)
-    valores_mejores = np.empty(0)
+    best_index = np.empty(0, dtype=np.int)
+    best_values = np.empty(0)
 
     # Si los mejores son por modalidad, guardo los indices de donde se encuentran cada uno
-    modalidad_audio = list()
-    modalidad_video = list()
-    if por_modalidad:
-        for i in range(1, resumen.shape[1]):
+    audio_modality = list()
+    video_modality = list()
+    if by_modality:
+        for i in range(1, summary.shape[1]):
             # Si encuentro el (V) es video y sino supongo que es audio
-            if resumen[0, i].find('(V)') != -1:
-                modalidad_video.append(i)
+            if summary[0, i].find('(V)') != -1:
+                video_modality.append(i)
             else:
-                modalidad_audio.append(i)
+                audio_modality.append(i)
 
-    if mejores > 0:
-        if por_modalidad:
+    if best_of > 0:
+        if by_modality:
             indice_mejores_video = np.empty(0, dtype=np.int)
             valores_mejores_video = np.empty(0)
             indice_mejores_audio = np.empty(0, dtype=np.int)
             valores_mejores_audio = np.empty(0)
             # Los primeros los uso como inicializacion
-            for i in range(0, mejores):
-                indice_mejores_video = np.append(indice_mejores_video, modalidad_video[i])
-                valores_mejores_video = np.append(valores_mejores_video, float(resumen[2, modalidad_video[i]]))
-                indice_mejores_audio = np.append(indice_mejores_audio, modalidad_audio[i])
-                valores_mejores_audio = np.append(valores_mejores_audio, float(resumen[2, modalidad_audio[i]]))
+            for i in range(0, best_of):
+                indice_mejores_video = np.append(indice_mejores_video, video_modality[i])
+                valores_mejores_video = np.append(valores_mejores_video, float(summary[2, video_modality[i]]))
+                indice_mejores_audio = np.append(indice_mejores_audio, audio_modality[i])
+                valores_mejores_audio = np.append(valores_mejores_audio, float(summary[2, audio_modality[i]]))
             # Recien ahora recorro el resto
-            for i in range(mejores, int((resumen.shape[1] - 1) / 2)):
+            for i in range(best_of, int((summary.shape[1] - 1) / 2)):
                 # Si tiene mas uar que reemplace el menor tanto en indice como en valores
-                if float(resumen[2, modalidad_video[i]]) > min(valores_mejores_video):
-                    indice_mejores_video[valores_mejores_video.argmin()] = modalidad_video[i]
-                    valores_mejores_video[valores_mejores_video.argmin()] = float(resumen[2, modalidad_video[i]])
-                if float(resumen[2, modalidad_audio[i]]) > min(valores_mejores_audio):
-                    indice_mejores_audio[valores_mejores_audio.argmin()] = modalidad_audio[i]
-                    valores_mejores_audio[valores_mejores_audio.argmin()] = float(resumen[2, modalidad_audio[i]])
-            indice_mejores = np.concatenate([indice_mejores_audio, indice_mejores_video])
+                if float(summary[2, video_modality[i]]) > min(valores_mejores_video):
+                    indice_mejores_video[valores_mejores_video.argmin()] = video_modality[i]
+                    valores_mejores_video[valores_mejores_video.argmin()] = float(summary[2, video_modality[i]])
+                if float(summary[2, audio_modality[i]]) > min(valores_mejores_audio):
+                    indice_mejores_audio[valores_mejores_audio.argmin()] = audio_modality[i]
+                    valores_mejores_audio[valores_mejores_audio.argmin()] = float(summary[2, audio_modality[i]])
+            best_index = np.concatenate([indice_mejores_audio, indice_mejores_video])
         else:
             # Los primeros los uso como inicializacion
-            for i in range(1, mejores + 1):
-                valores_mejores = np.append(valores_mejores, float(resumen[2, i]))
-                indice_mejores = np.append(indice_mejores, i)
+            for i in range(1, best_of + 1):
+                best_values = np.append(best_values, float(summary[2, i]))
+                best_index = np.append(best_index, i)
             # Recien ahora recorro el resto
-            for i in range(mejores + 1, resumen.shape[1]):
+            for i in range(best_of + 1, summary.shape[1]):
                 # Si tiene mayor uar que reemplace el menor tanto en indice como en valores
-                if float(resumen[2, i]) > min(valores_mejores):
-                    indice_mejores[valores_mejores.argmin()] = i
-                    valores_mejores[valores_mejores.argmin()] = float(resumen[2, i])
+                if float(summary[2, i]) > min(best_values):
+                    best_index[best_values.argmin()] = i
+                    best_values[best_values.argmin()] = float(summary[2, i])
     else:
-        indice_mejores = np.array(range(1, resumen.shape[1]))
+        best_index = np.array(range(1, summary.shape[1]))
 
-    return indice_mejores
+    return best_index
 
-def Fusion(resumen, metodo, indice_mejores):
+
+def fusionClassifiers(summary, method, best_index):
     """
     Recibiendo el resumen de todas las predicciones, metricas y etiquetas fusiona las mejores con el metodo indicado
     """
     # Creo el resumen final
-    new_resu = np.array([np.array(['Etiqueta', metodo])])
+    new_summary = np.array([np.array(['Etiqueta', method])])
     # Agrego la fila con el error y el valor 0, despues este se tiene que reemplazar al calcular el error al final
-    new_resu = np.append(new_resu, np.array([np.array(['Accuracy', '0'])]), axis=0)
-    new_resu = np.append(new_resu, np.array([np.array(['UAR', '0'])]), axis=0)
+    new_summary = np.append(new_summary, np.array([np.array(['Accuracy', '0'])]), axis=0)
+    new_summary = np.append(new_summary, np.array([np.array(['UAR', '0'])]), axis=0)
 
-    new_resu[0, 1] = new_resu[0, 1] + ' M' + str(indice_mejores.size)
+    new_summary[0, 1] = new_summary[0, 1] + ' M' + str(best_index.size)
 
-    if metodo == 'Voto':
-        for j in range(3, resumen.shape[0]):
-            votos = list()
+    if method == 'Voto':
+        for j in range(3, summary.shape[0]):
+            votes = list()
             # Recorro solo las columnas con los mejores clasificadores
-            for i in indice_mejores:
+            for i in best_index:
                 # Busco la posicion de la clase que corresponde la etiqueta que predice
-                votos.append(resumen[j, i])
+                votes.append(summary[j, i])
             # Agrego a la fila del resumen final la etiqueta y la prediccion final despues del voto
-            mas_votado = max(set(votos), key=votos.count)
-            new_resu = np.append(new_resu, np.array([np.array([resumen[j, 0], mas_votado])]), axis=0)
+            most_voted = max(set(votes), key=votes.count)
+            new_summary = np.append(new_summary, np.array([np.array([summary[j, 0], most_voted])]), axis=0)
         # Luego de terminar de realizar la fusion calculo la metricas
-        new_resu[1, 1] = str(Accuracy(new_resu[3:, 0], new_resu[3:, 1]))
-        new_resu[2, 1] = str(UAR(new_resu[3:, 0], new_resu[3:, 1]))
+        new_summary[1, 1] = str(Accuracy(new_summary[3:, 0], new_summary[3:, 1]))
+        new_summary[2, 1] = str(UAR(new_summary[3:, 0], new_summary[3:, 1]))
 
-    return new_resu
+    return new_summary
 
 
-def VotoPorSegmento(resumen, instancias_intervalos, desfase=0):
+def voteForPeriod(summary, instances_for_interval, gap=0):
     """
     Aplica voto a los intervalos de tiempo contiguos, de manera que no se produzan cambios bruscos en las etiquetas por
     cada intervalo.
     """
-    new_resu = np.copy(resumen)
-    new_resu[0, 1] = new_resu[0, 1] + '-' + str(instancias_intervalos)
-    rango = list([3, 2 + desfase])
-    rango.extend(range(desfase + 2 + instancias_intervalos, resumen.shape[0], instancias_intervalos))
-    for i in rango:
-        votos = list()
-        if desfase == 0:
-            if i + instancias_intervalos < resumen.shape[0]:
-                hasta = i + instancias_intervalos
+    new_summary = np.copy(summary)
+    new_summary[0, 1] = new_summary[0, 1] + '-' + str(instances_for_interval)
+    periods_range = list([3, 2 + gap])
+    periods_range.extend(range(gap + 2 + instances_for_interval, summary.shape[0], instances_for_interval))
+    for i in periods_range:
+        votes = list()
+        if gap == 0:
+            if i + instances_for_interval < summary.shape[0]:
+                to = i + instances_for_interval
             else:
-                hasta = resumen.shape[0] - 1
+                to = summary.shape[0] - 1
         else:
-            hasta = i + desfase
-            desfase = 0
-        for j in range(i, hasta):
-            votos.append(resumen[j, 1])
-        if votos:
-            mas_votado = max(set(votos), key=votos.count)
-            for j in range(i, hasta):
-                new_resu[j, 1] = mas_votado
-    new_resu[1, 1] = str(Accuracy(new_resu[3:, 0], new_resu[3:, 1]))
-    new_resu[2, 1] = str(UAR(new_resu[3:, 0], new_resu[3:, 1]))
+            to = i + gap
+            gap = 0
+        for j in range(i, to):
+            votes.append(summary[j, 1])
+        if votes:
+            most_voted = max(set(votes), key=votes.count)
+            for j in range(i, to):
+                new_summary[j, 1] = most_voted
+    new_summary[1, 1] = str(Accuracy(new_summary[3:, 0], new_summary[3:, 1]))
+    new_summary[2, 1] = str(UAR(new_summary[3:, 0], new_summary[3:, 1]))
 
-    return new_resu
+    return new_summary
 
 
-def OrdenaInstancias(resumen, orden_instancias):
+def sortInstances(summary, instances_order):
     aux = np.empty(0, dtype=np.int)
-    for i in range(0, orden_instancias.size):
-        ind = np.where(orden_instancias == i)[0]
-        if ind >= orden_instancias.size - (resumen.shape[0] - 3):
+    for i in range(0, instances_order.size):
+        ind = np.where(instances_order == i)[0]
+        if ind >= instances_order.size - (summary.shape[0] - 3):
             aux = np.append(aux, ind)
     # Sobre lista de aux buscar el menor y ponerlo en primer indice de una nueva lista y asi
-    maximo = max(aux)
-    ordenado = np.empty(0, dtype=np.int)
-    desfase = 2
-    comienzo = True
+    maximum = max(aux)
+    sorted_data = np.empty(0, dtype=np.int)
+    gap = 2
+    begin = True
     for i in range(0, aux.size):
-        ordenado = np.append(ordenado, aux.argmin())
-        aux[aux.argmin()] = maximo + 1
-        if comienzo and i > 1:
-            if ordenado[i] - 1 == ordenado[i - 1]:
-                desfase = desfase + 1
+        sorted_data = np.append(sorted_data, aux.argmin())
+        aux[aux.argmin()] = maximum + 1
+        if begin and i > 1:
+            if sorted_data[i] - 1 == sorted_data[i - 1]:
+                gap = gap + 1
             else:
-                comienzo = False
-    aux_resumen = resumen[3:]
-    resumen[3:] = aux_resumen[ordenado]
-    return resumen, desfase
+                begin = False
+    aux_summary = summary[3:]
+    summary[3:] = aux_summary[sorted_data]
+    return summary, gap
 
 
-def Accuracy(ground_truth, prediccion):
-    return accuracy_score(ground_truth, prediccion)
+def Accuracy(ground_truth, prediction):
+    return accuracy_score(ground_truth, prediction)
 
 
-def UAR(ground_truth, prediccion):
+def UAR(ground_truth, prediction):
     # Unweighted average recall
-    return recall_score(ground_truth, prediccion, average='macro')
+    return recall_score(ground_truth, prediction, average='macro')
 
 
-def generaResumenFinal(vec_res, vec_res_fus, vec_res_fus_2):
+def createFinalSummary(vec_res, vec_res_fus, vec_res_fus_2):
     folds = vec_res.shape[0]
-    cant_metodos = vec_res.shape[2] - 1
-    resumen_final = np.empty((3, cant_metodos + 3), dtype='U20')
+    methods_number = vec_res.shape[2] - 1
+    final_summary = np.empty((3, methods_number + 3), dtype='U20')
     # Creo la cabecera
-    resumen_final[0, 0] = ''
-    resumen_final[1, 0] = 'Accuracy promedio'
-    resumen_final[2, 0] = 'UAR promedio'
-    resumen_final[0, 1] = vec_res_fus[0, 0, 1]
-    resumen_final[0, 2] = vec_res_fus_2[0, 0, 1]
-    resumen_final[0, 3:] = vec_res[0, 0, 1:]
+    final_summary[0, 0] = ''
+    final_summary[1, 0] = 'Accuracy promedio'
+    final_summary[2, 0] = 'UAR promedio'
+    final_summary[0, 1] = vec_res_fus[0, 0, 1]
+    final_summary[0, 2] = vec_res_fus_2[0, 0, 1]
+    final_summary[0, 3:] = vec_res[0, 0, 1:]
 
-    aux_res = np.zeros((2, cant_metodos + 2), dtype=np.float)
+    aux_summary = np.zeros((2, methods_number + 2), dtype=np.float)
     for i in range(0, folds):
         for k in range(0, 2):
-            aux_res[k, 0] = aux_res[k, 0] + float(vec_res_fus[i, k + 1, 1])
-            aux_res[k, 1] = aux_res[k, 1] + float(vec_res_fus_2[i, k + 1, 1])
-        for j in range(0, cant_metodos):
+            aux_summary[k, 0] = aux_summary[k, 0] + float(vec_res_fus[i, k + 1, 1])
+            aux_summary[k, 1] = aux_summary[k, 1] + float(vec_res_fus_2[i, k + 1, 1])
+        for j in range(0, methods_number):
             for k in range(0, 2):
-                aux_res[k, j + 2] = aux_res[k, j + 2] + float(vec_res[i, k + 1, j + 1])
-    aux_res = aux_res / folds
-    for i in range(0, aux_res.shape[0]):
-        for j in range(0, aux_res.shape[1]):
-            resumen_final[i + 1, j + 1] = str(aux_res[i, j])
-    return resumen_final
-
-# def muestraTabla(resultados):
-#     headers = resultados[0, :]
-#     table = tabulate(resultados[1:3, :], headers, tablefmt="fancy_grid")
-#     print(table)
-#     log.agrega(table)
+                aux_summary[k, j + 2] = aux_summary[k, j + 2] + float(vec_res[i, k + 1, j + 1])
+    aux_summary = aux_summary / folds
+    for i in range(0, aux_summary.shape[0]):
+        for j in range(0, aux_summary.shape[1]):
+            final_summary[i + 1, j + 1] = str(aux_summary[i, j])
+    return final_summary
 
 
-def muestraTabla(resultados):
-    for j in range(0, resultados.shape[0]):
-        fila = ''
-        for i in range(0, resultados.shape[1] - 1):
-            fila = fila + resultados[j, i] + ' | '
-        fila = fila + resultados[j, resultados.shape[1] - 1]
-        print(fila)
+def showTable(summary):
+    for j in range(0, summary.shape[0]):
+        file = ''
+        for i in range(0, summary.shape[1] - 1):
+            file = file + summary[j, i] + ' | '
+        file = file + summary[j, summary.shape[1] - 1]
+        print(file)
         if j < 3:
-            log.agrega(fila)
-        log.agregaATabla(fila)
+            Log.add(file)
+        Log.addToTable(file)
 
-def escriboLimites(limites_respuesta):
-    archivo = open(os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_limites' + '.txt'), 'a+', encoding="utf-8")
-    archivo.writelines(str(limites_respuesta))
+
+def writeLimits(persons_test, answers_limits_list):
+    aux_answer_limits_list = list()
+    offset_answers = 0
+    for i in persons_test:
+        aux_answer_limits = list()
+        for j in range(0, len(answers_limits_list[int(i)])):
+            aux_answer_limits.append(answers_limits_list[int(i)][j] + offset_answers)
+        aux_answer_limits_list.extend(aux_answer_limits)
+        offset_answers += answers_limits_list[int(i)][len(answers_limits_list[int(i)]) - 1]
+
+    file = open(os.path.join(Datos.PATH_LOGS, str(Datos.FOLD_ACTUAL) + '_limites' + '.txt'), 'a+', encoding="utf-8")
+    file.writelines(str(aux_answer_limits_list))

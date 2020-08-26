@@ -20,19 +20,25 @@ PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 # PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
 PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
+EXTENSION_VIDEO = '.mp4'
+EXTENSION_AUDIO = '.wav'
+
 EXPERIMENTO = ''
 # TEST con valor -1 indica que se usara la lista de personas y por tanto el ordena instancia.
-TEST = 1
-VAL = 2
+TEST = 3
+VAL = 4
 BINARIZO_ETIQUETA = False
 ELIMINA_SILENCIOS = False
 GUARDO_MODEL = False
 
 INSTANCIAS_POR_PERIODOS = 20
 VOTO_MEJORES_X = 4
-PORC_ATRIBS_PCA = 50
-PORC_ATRIBS_PSO = 10
-PORC_ATRIBS_BF = 10
+# PORC_ATRIBS_PCA = 50
+# PORC_ATRIBS_PSO = 10
+# PORC_ATRIBS_BF = 10
+PORC_ATRIBS_PCA = 2
+PORC_ATRIBS_PSO = 2
+PORC_ATRIBS_BF = 2
 PORC_ATRIBS_FINALES = 2
 ATRIBS_PCA = 0
 ATRIBS_PSO = 0
@@ -50,8 +56,10 @@ else:
 ETAPAS = np.array(['1', '2'])
 ZONAS = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])
 MET_EXTRACCION = np.array(['LBP', 'HOG', 'HOP', 'AUS'])
-MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
-MET_CLASIFICACION = np.array(['RF', 'SVM', 'J48', 'MLP'])
+MET_SELECCION = np.array(['BF', 'PSO'])
+# MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
+# MET_CLASIFICACION = np.array(['RF', 'SVM', 'J48', 'MLP'])
+MET_CLASIFICACION = np.array(['RF', 'J48'])
 
 FOLD_ACTUAL = -1
 
@@ -117,17 +125,17 @@ PARAMETROS_SELECCION_EVALUACION = {
 # weka.attributeSelection.PrincipalComponents -R 0.95 -A 5 -C
 
 
-def defineFoldActual(fold):
+def defineActualValidationFold(fold):
     global FOLD_ACTUAL
     FOLD_ACTUAL = fold
 
 
-def defineCarpetaLog(nombre):
+def defineLogFolder(nombre):
     global PATH_LOGS
     PATH_LOGS = os.path.join(ROOT_PATH, 'Logs', nombre)
 
 
-def calculaAtributosRecorte(atributos):
+def calculateAttributesToCut(atributos):
     global ATRIBS_BF, ATRIBS_PCA, ATRIBS_PSO, ATRIBS_FINALES, NUM_ATRIBS
     NUM_ATRIBS = atributos
     ATRIBS_BF = int(NUM_ATRIBS * (PORC_ATRIBS_BF / 100))
@@ -136,7 +144,7 @@ def calculaAtributosRecorte(atributos):
     ATRIBS_FINALES = int(NUM_ATRIBS * (PORC_ATRIBS_FINALES / 100))
 
 
-def parametrosClasificacion():
+def classificationParams():
     global PRUEBA_PARAMETROS_SELECCION
     PRUEBA_PARAMETROS_SELECCION = False
     global PRUEBA_PARAMETROS_CLASIFICACION
@@ -147,7 +155,7 @@ def parametrosClasificacion():
     MET_SELECCION = np.array(['BF'])
 
 
-def parametrosSeleccion():
+def selectionParams():
     global PRUEBA_PARAMETROS_CLASIFICACION
     PRUEBA_PARAMETROS_CLASIFICACION = False
     global PRUEBA_PARAMETROS_SELECCION
@@ -158,7 +166,7 @@ def parametrosSeleccion():
     MET_CLASIFICACION = np.array(['SVM', 'RF'])
 
 
-def actualizaParametrosMLP(atributos):
+def refreshParamsMLP(atributos):
     # Los 4 vienen de la cantidad de clases
     r1 = int(np.sqrt(atributos * 4))
     r2 = float((atributos / 4) ** (1 / 3))

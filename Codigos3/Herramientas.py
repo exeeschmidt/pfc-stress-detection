@@ -468,7 +468,7 @@ def muestraTabla(resultados):
             fila = fila + resultados[j, i] + ' | '
         fila = fila + resultados[j, resultados.shape[1] - 1]
         print(fila)
-        log.agregaATabla(fila)
+        log.addToTable(fila)
 
 def escriboLimites(limites_respuesta):
     archivo = open(os.path.join(datos.PATH_LOGS, str(datos.FOLD_ACTUAL) + '_limites' + '.txt'), 'a+', encoding="utf-8")

@@ -40,8 +40,8 @@ class OpenFace:
         self._aus = aus
 
     def __call__(self, persona, etapa, parte=-1):
-        nombre_video = hrm.buildVideoName(persona, etapa, parte)
-        path_video = hrm.buildPathVideo(persona, etapa, nombre_video)
+        nombre_video = hrm.buildFileName(persona, etapa, parte)
+        path_video = hrm.buildFilePath(persona, etapa, nombre_video)
         path_save = datos.PATH_PROCESADO
 
         # Comando base para ejecutar OpenFace
@@ -445,10 +445,10 @@ class FFMPEG:
     def __call__(self, persona, etapa, parte):
         # archivo = 'Sujeto 01'
         # parte = '1'
-        nombre_video = hrm.buildVideoName(persona, etapa, parte, extension=False)
+        nombre_video = hrm.buildFileName(persona, etapa, parte, extension=False)
 
         # Comando base
-        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', hrm.buildPathVideo(persona, etapa, nombre_video, extension=True),
+        comando = ['.' + os.sep + 'ffmpeg', '-y', '-i', hrm.buildFilePath(persona, etapa, nombre_video, extension=True),
                    '-ab', '195k', '-ac', '2', '-ar', '48000', '-vn',
                    os.path.join(datos.PATH_PROCESADO, nombre_video + '.wav')]
         # comando = ['.' + os.sep + 'ffmpeg', '-version']

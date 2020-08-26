@@ -10,7 +10,7 @@ import time
 
 
 def Unimodal():
-    log.crea()
+    log.create()
     start_total = time.time()
 
     personas = datos.PERSONAS
@@ -52,21 +52,21 @@ def Unimodal():
 
     orden_instancias = np.empty(0)
     for k in range(0, vueltas):
-        datos.defineFoldActual(k + 1)
+        datos.defineActualValidationFold(k + 1)
         if nro_test == -1:
-            data = am.Concatena(personas, etapas, 'VCom')
-            orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
-            data_ori = am.MezclaInstancias(data, orden_instancias)
-            train_ori, val_ori, test_ori = wek.ParticionaDatos(data_ori)
+            data = am.joinPersonStageData(personas, etapas, 'VCom')
+            orden_instancias = am.generateInstancesOrder(data, datos.INSTANCIAS_POR_PERIODOS)
+            data_ori = am.mixInstances(data, orden_instancias)
+            train_ori, val_ori, test_ori = wek.partitionData(data_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
+            log.add('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             personas_train, personas_val, personas_test = GeneraConjuntos(k, nro_val, nro_test)
-            train_ori = am.Concatena(personas_train, etapas, 'VCom')
-            val_ori = am.Concatena(personas_val, etapas, 'VCom')
-            test_ori = am.Concatena(personas_test, etapas, 'VCom')
+            train_ori = am.joinPersonStageData(personas_train, etapas, 'VCom')
+            val_ori = am.joinPersonStageData(personas_val, etapas, 'VCom')
+            test_ori = am.joinPersonStageData(personas_test, etapas, 'VCom')
 
-        datos.calculaAtributosRecorte(train_ori.num_attributes)
+        datos.calculateAttributesToCut(train_ori.num_attributes)
         vec_predicciones_val = np.array([])
         vec_predicciones_tst = np.array([])
         lista_metodos = list()
@@ -81,11 +81,11 @@ def Unimodal():
 
             if met_seleccion[i] != '':
                 print(met_seleccion[i])
-                log.agrega(met_seleccion[i])
+                log.add(met_seleccion[i])
                 metodo_actual = met_seleccion[i] + ' + '
-                train, val, test = wek.SeleccionCaracteristicas(train_ori, val_ori, test_ori, met_seleccion[i])
+                train, val, test = wek.featuresSelection(train_ori, val_ori, test_ori, met_seleccion[i])
                 print(time.time() - start2)
-                log.agrega(time.time() - start2)
+                log.add(time.time() - start2)
             else:
                 print('Sin selección de caracteristicas')
                 metodo_actual = ''
@@ -96,12 +96,12 @@ def Unimodal():
                 # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
                 if metodo_actual != '' or met_clasificacion[j] != 'MLP':
                     print(met_clasificacion[j])
-                    log.agrega(met_clasificacion[j])
+                    log.add(met_clasificacion[j])
                     start2 = time.time()
                     lista_metodos.append(metodo_actual + met_clasificacion[j])
-                    predi_csv_val, predi_csv_tst = wek.Clasificacion(train, val, test, met_clasificacion[j], met_seleccion[i])
-                    prediccion_val = hrm.prediccionCSVtoArray(predi_csv_val)
-                    prediccion_tst = hrm.prediccionCSVtoArray(predi_csv_tst)
+                    predi_csv_val, predi_csv_tst = wek.classification(train, val, test, met_clasificacion[j], met_seleccion[i])
+                    prediccion_val = hrm.predictionCSVtoArray(predi_csv_val)
+                    prediccion_tst = hrm.predictionCSVtoArray(predi_csv_tst)
                     lista_acu_val.append(hrm.Accuracy(prediccion_val[:, 1], prediccion_val[:, 2]))
                     lista_acu_tst.append(hrm.Accuracy(prediccion_tst[:, 1], prediccion_tst[:, 2]))
                     lista_uar_val.append(hrm.UAR(prediccion_val[:, 1], prediccion_val[:, 2]))
@@ -113,44 +113,44 @@ def Unimodal():
                         vec_predicciones_val = np.concatenate([vec_predicciones_val, np.array([prediccion_val])])
                         vec_predicciones_tst = np.concatenate([vec_predicciones_tst, np.array([prediccion_tst])])
                     print(time.time() - start2)
-                    log.agrega(time.time() - start2)
+                    log.add(time.time() - start2)
 
-        resultados_val = hrm.resumePredicciones(vec_predicciones_val, lista_metodos, lista_acu_val, lista_uar_val)
-        resultados_tst = hrm.resumePredicciones(vec_predicciones_tst, lista_metodos, lista_acu_tst, lista_uar_tst)
+        resultados_val = hrm.summarizePredictions(vec_predicciones_val, lista_metodos, lista_acu_val, lista_uar_val)
+        resultados_tst = hrm.summarizePredictions(vec_predicciones_tst, lista_metodos, lista_acu_tst, lista_uar_tst)
 
-        indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
+        indice_mejores = hrm.indexsBestClassifiers(resultados_val, best_of=datos.VOTO_MEJORES_X)
         aux_mejores_metodos = 'Mejores combinaciones para la fusion según la validación: '
         for i in range(0, indice_mejores.size):
             aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
         print(aux_mejores_metodos)
-        log.agrega(aux_mejores_metodos)
-        resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
+        log.add(aux_mejores_metodos)
+        resultados_fusionado = hrm.fusionClassifiers(resultados_tst, 'Voto', indice_mejores)
 
         if nro_test == -1:
-            resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
+            resultados_fusionado, desfase = hrm.sortInstances(resultados_fusionado, orden_instancias)
+            resultados_fusionado_2 = hrm.voteForPeriod(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
+            resultados_fusionado_2 = hrm.voteForPeriod(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
 
         vec_resultados = np.concatenate([vec_resultados,  np.array([resultados_tst[0:3, :]])], axis=0)
         vec_resultados_fusionado = np.concatenate([vec_resultados_fusionado, np.array([resultados_fusionado[0:3, :]])], axis=0)
         vec_resultados_fusionado_2 = np.concatenate([vec_resultados_fusionado_2, np.array([resultados_fusionado_2[0:3, :]])], axis=0)
 
-        hrm.muestraTabla(resultados_tst)
-        hrm.muestraTabla(resultados_fusionado)
-        hrm.muestraTabla(resultados_fusionado_2)
+        hrm.showTable(resultados_tst)
+        hrm.showTable(resultados_fusionado)
+        hrm.showTable(resultados_fusionado_2)
     if test != -1:
-        resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
-        hrm.muestraTabla(resumen_final)
+        resumen_final = hrm.createFinalSummary(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
+        hrm.showTable(resumen_final)
     print(time.time() - start_total)
-    log.agrega('Tiempo final')
-    log.agrega(time.time() - start_total)
+    log.add('Tiempo final')
+    log.add(time.time() - start_total)
     print('Fin de experimento')
-    log.agrega('Fin de experimento')
+    log.add('Fin de experimento')
 
 
 def PrimerMultimodal(elimino_silencios=False):
-    log.crea()
+    log.create()
     start_total = time.time()
     personas = datos.PERSONAS
     etapas = datos.ETAPAS
@@ -193,23 +193,23 @@ def PrimerMultimodal(elimino_silencios=False):
 
     orden_instancias = np.empty(0)
     for k in range(0, vueltas):
-        datos.defineFoldActual(k + 1)
+        datos.defineActualValidationFold(k + 1)
         if nro_test == -1:
-            data_v, data_a = am.Concatena(personas, etapas, 'VResp', 'AResp')
-            orden_instancias = am.GeneraOrdenInstancias(data_v, datos.INSTANCIAS_POR_PERIODOS)
-            data_v_ori = am.MezclaInstancias(data_v, orden_instancias)
-            data_a_ori = am.MezclaInstancias(data_a, orden_instancias)
-            train_v_ori, val_v_ori, test_v_ori = wek.ParticionaDatos(data_v_ori)
-            train_a_ori, val_a_ori, test_a_ori = wek.ParticionaDatos(data_a_ori)
+            data_v, data_a = am.joinPersonStageData(personas, etapas, 'VResp', 'AResp')
+            orden_instancias = am.generateInstancesOrder(data_v, datos.INSTANCIAS_POR_PERIODOS)
+            data_v_ori = am.mixInstances(data_v, orden_instancias)
+            data_a_ori = am.mixInstances(data_a, orden_instancias)
+            train_v_ori, val_v_ori, test_v_ori = wek.partitionData(data_v_ori)
+            train_a_ori, val_a_ori, test_a_ori = wek.partitionData(data_a_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
+            log.add('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             personas_train, personas_val, personas_test = GeneraConjuntos(k, nro_val, nro_test)
-            train_v_ori, train_a_ori = am.Concatena(personas_train, etapas, 'VResp', 'AResp')
-            val_v_ori, val_a_ori = am.Concatena(personas_val, etapas, 'VResp', 'AResp')
-            test_v_ori, test_a_ori = am.Concatena(personas_test, etapas, 'VResp', 'AResp')
+            train_v_ori, train_a_ori = am.joinPersonStageData(personas_train, etapas, 'VResp', 'AResp')
+            val_v_ori, val_a_ori = am.joinPersonStageData(personas_val, etapas, 'VResp', 'AResp')
+            test_v_ori, test_a_ori = am.joinPersonStageData(personas_test, etapas, 'VResp', 'AResp')
 
-        datos.calculaAtributosRecorte(train_v_ori.num_attributes)
+        datos.calculateAttributesToCut(train_v_ori.num_attributes)
         vec_predicciones_v_val = np.array([])
         vec_predicciones_v_tst = np.array([])
         vec_predicciones_a_val = np.array([])
@@ -230,16 +230,16 @@ def PrimerMultimodal(elimino_silencios=False):
 
             if met_seleccion[i] != '':
                 print(met_seleccion[i])
-                log.agrega(met_seleccion[i])
+                log.add(met_seleccion[i])
                 metodo_actual = met_seleccion[i] + ' + '
                 print('Video')
-                log.agrega('Video')
-                train_v, val_v, test_v = wek.SeleccionCaracteristicas(train_v_ori, val_v_ori, test_v_ori, met_seleccion[i])
+                log.add('Video')
+                train_v, val_v, test_v = wek.featuresSelection(train_v_ori, val_v_ori, test_v_ori, met_seleccion[i])
                 print('Audio')
-                log.agrega('Audio')
-                train_a, val_a, test_a = wek.SeleccionCaracteristicas(train_a_ori, val_a_ori, test_a_ori, met_seleccion[i])
+                log.add('Audio')
+                train_a, val_a, test_a = wek.featuresSelection(train_a_ori, val_a_ori, test_a_ori, met_seleccion[i])
                 print(time.time() - start2)
-                log.agrega(time.time() - start2)
+                log.add(time.time() - start2)
             else:
                 print('Sin selección de caracteristicas')
                 metodo_actual = ''
@@ -253,15 +253,15 @@ def PrimerMultimodal(elimino_silencios=False):
                 # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
                 if metodo_actual != '' or met_clasificacion[j] != 'MLP':
                     print(met_clasificacion[j])
-                    log.agrega(met_clasificacion[j])
+                    log.add(met_clasificacion[j])
                     start2 = time.time()
                     lista_metodos.append(metodo_actual + met_clasificacion[j])
-                    predi_csv_v_val, predi_csv_v_tst = wek.Clasificacion(train_v, val_v, test_v, met_clasificacion[j], met_seleccion[i])
-                    predi_csv_a_val, predi_csv_a_tst = wek.Clasificacion(train_a, val_a, test_a, met_clasificacion[j], met_seleccion[i])
-                    prediccion_v_val = hrm.prediccionCSVtoArray(predi_csv_v_val)
-                    prediccion_v_tst = hrm.prediccionCSVtoArray(predi_csv_v_tst)
-                    prediccion_a_val = hrm.prediccionCSVtoArray(predi_csv_a_val)
-                    prediccion_a_tst = hrm.prediccionCSVtoArray(predi_csv_a_tst)
+                    predi_csv_v_val, predi_csv_v_tst = wek.classification(train_v, val_v, test_v, met_clasificacion[j], met_seleccion[i])
+                    predi_csv_a_val, predi_csv_a_tst = wek.classification(train_a, val_a, test_a, met_clasificacion[j], met_seleccion[i])
+                    prediccion_v_val = hrm.predictionCSVtoArray(predi_csv_v_val)
+                    prediccion_v_tst = hrm.predictionCSVtoArray(predi_csv_v_tst)
+                    prediccion_a_val = hrm.predictionCSVtoArray(predi_csv_a_val)
+                    prediccion_a_tst = hrm.predictionCSVtoArray(predi_csv_a_tst)
                     lista_acu_v_val.append(hrm.Accuracy(prediccion_v_val[:, 1], prediccion_v_val[:, 2]))
                     lista_acu_a_val.append(hrm.Accuracy(prediccion_a_val[:, 1], prediccion_a_val[:, 2]))
                     lista_acu_v_tst.append(hrm.Accuracy(prediccion_v_tst[:, 1], prediccion_v_tst[:, 2]))
@@ -281,48 +281,48 @@ def PrimerMultimodal(elimino_silencios=False):
                         vec_predicciones_v_tst = np.concatenate([vec_predicciones_v_tst, np.array([prediccion_v_tst])])
                         vec_predicciones_a_tst = np.concatenate([vec_predicciones_a_tst, np.array([prediccion_a_tst])])
                     print(time.time() - start2)
-                    log.agrega(time.time() - start2)
+                    log.add(time.time() - start2)
 
-        resultados_v_val = hrm.resumePredicciones(vec_predicciones_v_val, lista_metodos, lista_acu_v_val, lista_uar_v_val)
-        resultados_a_val = hrm.resumePredicciones(vec_predicciones_a_val, lista_metodos, lista_acu_a_val, lista_uar_a_val)
-        resultados_v_tst = hrm.resumePredicciones(vec_predicciones_v_tst, lista_metodos, lista_acu_v_tst, lista_uar_v_tst)
-        resultados_a_tst = hrm.resumePredicciones(vec_predicciones_a_tst, lista_metodos, lista_acu_a_tst, lista_uar_a_tst)
+        resultados_v_val = hrm.summarizePredictions(vec_predicciones_v_val, lista_metodos, lista_acu_v_val, lista_uar_v_val)
+        resultados_a_val = hrm.summarizePredictions(vec_predicciones_a_val, lista_metodos, lista_acu_a_val, lista_uar_a_val)
+        resultados_v_tst = hrm.summarizePredictions(vec_predicciones_v_tst, lista_metodos, lista_acu_v_tst, lista_uar_v_tst)
+        resultados_a_tst = hrm.summarizePredictions(vec_predicciones_a_tst, lista_metodos, lista_acu_a_tst, lista_uar_a_tst)
 
-        resultados_val = hrm.uneResumenes(resultados_v_val, resultados_a_val)
-        resultados_tst = hrm.uneResumenes(resultados_v_tst, resultados_a_tst)
+        resultados_val = hrm.joinSummaries(resultados_v_val, resultados_a_val)
+        resultados_tst = hrm.joinSummaries(resultados_v_tst, resultados_a_tst)
 
-        indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
+        indice_mejores = hrm.indexsBestClassifiers(resultados_val, best_of=datos.VOTO_MEJORES_X)
         aux_mejores_metodos = 'Mejores combinaciones para la fusion: '
         for i in range(0, indice_mejores.size):
             aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
         print(aux_mejores_metodos)
-        log.agrega(aux_mejores_metodos)
+        log.add(aux_mejores_metodos)
 
-        resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
+        resultados_fusionado = hrm.fusionClassifiers(resultados_tst, 'Voto', indice_mejores)
 
         if nro_test == -1:
-            resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
+            resultados_fusionado, desfase = hrm.sortInstances(resultados_fusionado, orden_instancias)
+            resultados_fusionado_2 = hrm.voteForPeriod(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
+            resultados_fusionado_2 = hrm.voteForPeriod(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
 
         vec_resultados = np.concatenate([vec_resultados,  np.array([resultados_tst[0:3, :]])], axis=0)
         vec_resultados_fusionado = np.concatenate([vec_resultados_fusionado, np.array([resultados_fusionado[0:3, :]])], axis=0)
         vec_resultados_fusionado_2 = np.concatenate([vec_resultados_fusionado_2, np.array([resultados_fusionado_2[0:3, :]])], axis=0)
 
-        hrm.muestraTabla(resultados_tst)
-        hrm.muestraTabla(resultados_fusionado)
-        hrm.muestraTabla(resultados_fusionado_2)
+        hrm.showTable(resultados_tst)
+        hrm.showTable(resultados_fusionado)
+        hrm.showTable(resultados_fusionado_2)
     if nro_test != -1:
-        resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
-        hrm.muestraTabla(resumen_final)
+        resumen_final = hrm.createFinalSummary(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
+        hrm.showTable(resumen_final)
     print(time.time() - start_total)
-    log.agrega('Tiempo final')
-    log.agrega(time.time() - start_total)
+    log.add('Tiempo final')
+    log.add(time.time() - start_total)
 
 
 def SegundoMultimodal(elimino_silencios=False):
-    log.crea()
+    log.create()
     start_total = time.time()
     personas = datos.PERSONAS
     etapas = datos.ETAPAS
@@ -365,21 +365,21 @@ def SegundoMultimodal(elimino_silencios=False):
 
     orden_instancias = np.empty(0)
     for k in range(0, vueltas):
-        datos.defineFoldActual(k + 1)
+        datos.defineActualValidationFold(k + 1)
         if nro_test == -1:
-            data = am.Concatena(personas, etapas, 'VResp', 'AResp', une=True)
-            orden_instancias = am.GeneraOrdenInstancias(data, datos.INSTANCIAS_POR_PERIODOS)
-            data_ori = am.MezclaInstancias(data, orden_instancias)
-            train_ori, val_ori, test_ori = wek.ParticionaDatos(data_ori)
+            data = am.joinPersonStageData(personas, etapas, 'VResp', 'AResp', join=True)
+            orden_instancias = am.generateInstancesOrder(data, datos.INSTANCIAS_POR_PERIODOS)
+            data_ori = am.mixInstances(data, orden_instancias)
+            train_ori, val_ori, test_ori = wek.partitionData(data_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
-            log.agrega('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
+            log.add('Vuelta: ' + str(k + 1) + '/' + str(vueltas))
             personas_train, personas_val, personas_test = GeneraConjuntos(k, nro_val, nro_test)
-            train_ori = am.Concatena(personas_train, etapas, 'VResp', 'AResp', une=True)
-            val_ori = am.Concatena(personas_val, etapas, 'VResp', 'AResp', une=True)
-            test_ori = am.Concatena(personas_test, etapas, 'VResp', 'AResp', une=True)
+            train_ori = am.joinPersonStageData(personas_train, etapas, 'VResp', 'AResp', join=True)
+            val_ori = am.joinPersonStageData(personas_val, etapas, 'VResp', 'AResp', join=True)
+            test_ori = am.joinPersonStageData(personas_test, etapas, 'VResp', 'AResp', join=True)
 
-        datos.calculaAtributosRecorte(train_ori.num_attributes)
+        datos.calculateAttributesToCut(train_ori.num_attributes)
         vec_predicciones_val = np.array([])
         vec_predicciones_tst = np.array([])
         lista_metodos = list()
@@ -394,11 +394,11 @@ def SegundoMultimodal(elimino_silencios=False):
 
             if met_seleccion[i] != '':
                 print(met_seleccion[i])
-                log.agrega(met_seleccion[i])
+                log.add(met_seleccion[i])
                 metodo_actual = met_seleccion[i] + ' + '
-                train, val, test = wek.SeleccionCaracteristicas(train_ori, val_ori, test_ori, met_seleccion[i])
+                train, val, test = wek.featuresSelection(train_ori, val_ori, test_ori, met_seleccion[i])
                 print(time.time() - start2)
-                log.agrega(time.time() - start2)
+                log.add(time.time() - start2)
             else:
                 print('Sin selección de caracteristicas')
                 metodo_actual = ''
@@ -409,12 +409,12 @@ def SegundoMultimodal(elimino_silencios=False):
                 # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
                 if metodo_actual != '' or met_clasificacion[j] != 'MLP':
                     print(met_clasificacion[j])
-                    log.agrega(met_clasificacion[j])
+                    log.add(met_clasificacion[j])
                     start2 = time.time()
                     lista_metodos.append(metodo_actual + met_clasificacion[j])
-                    predi_csv_val, predi_csv_tst = wek.Clasificacion(train, val, test, met_clasificacion[j], met_seleccion[i])
-                    prediccion_val = hrm.prediccionCSVtoArray(predi_csv_val)
-                    prediccion_tst = hrm.prediccionCSVtoArray(predi_csv_tst)
+                    predi_csv_val, predi_csv_tst = wek.classification(train, val, test, met_clasificacion[j], met_seleccion[i])
+                    prediccion_val = hrm.predictionCSVtoArray(predi_csv_val)
+                    prediccion_tst = hrm.predictionCSVtoArray(predi_csv_tst)
                     lista_acu_val.append(hrm.Accuracy(prediccion_val[:, 1], prediccion_val[:, 2]))
                     lista_acu_tst.append(hrm.Accuracy(prediccion_tst[:, 1], prediccion_tst[:, 2]))
                     lista_uar_val.append(hrm.UAR(prediccion_val[:, 1], prediccion_val[:, 2]))
@@ -426,45 +426,45 @@ def SegundoMultimodal(elimino_silencios=False):
                         vec_predicciones_val = np.concatenate([vec_predicciones_val, np.array([prediccion_val])])
                         vec_predicciones_tst = np.concatenate([vec_predicciones_tst, np.array([prediccion_tst])])
                     print(time.time() - start2)
-                    log.agrega(time.time() - start2)
+                    log.add(time.time() - start2)
 
-        resultados_val = hrm.resumePredicciones(vec_predicciones_val, lista_metodos, lista_acu_val, lista_uar_val)
-        resultados_tst = hrm.resumePredicciones(vec_predicciones_tst, lista_metodos, lista_acu_tst, lista_uar_tst)
+        resultados_val = hrm.summarizePredictions(vec_predicciones_val, lista_metodos, lista_acu_val, lista_uar_val)
+        resultados_tst = hrm.summarizePredictions(vec_predicciones_tst, lista_metodos, lista_acu_tst, lista_uar_tst)
 
-        indice_mejores = hrm.EleccionFusion(resultados_val, mejores=datos.VOTO_MEJORES_X)
+        indice_mejores = hrm.indexsBestClassifiers(resultados_val, best_of=datos.VOTO_MEJORES_X)
         aux_mejores_metodos = 'Mejores combinaciones para la fusion: '
         for i in range(0, indice_mejores.size):
             aux_mejores_metodos = aux_mejores_metodos + '[' + str(resultados_tst[0, indice_mejores[i]]) + ']'
         print(aux_mejores_metodos)
-        log.agrega(aux_mejores_metodos)
-        resultados_fusionado = hrm.Fusion(resultados_tst, 'Voto', indice_mejores)
+        log.add(aux_mejores_metodos)
+        resultados_fusionado = hrm.fusionClassifiers(resultados_tst, 'Voto', indice_mejores)
 
         if nro_test == -1:
-            resultados_fusionado, desfase = hrm.OrdenaInstancias(resultados_fusionado, orden_instancias)
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
+            resultados_fusionado, desfase = hrm.sortInstances(resultados_fusionado, orden_instancias)
+            resultados_fusionado_2 = hrm.voteForPeriod(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS, desfase)
         else:
-            resultados_fusionado_2 = hrm.VotoPorSegmento(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
+            resultados_fusionado_2 = hrm.voteForPeriod(resultados_fusionado, datos.INSTANCIAS_POR_PERIODOS)
 
         vec_resultados = np.concatenate([vec_resultados,  np.array([resultados_tst[0:3, :]])], axis=0)
         vec_resultados_fusionado = np.concatenate([vec_resultados_fusionado, np.array([resultados_fusionado[0:3, :]])], axis=0)
         vec_resultados_fusionado_2 = np.concatenate([vec_resultados_fusionado_2, np.array([resultados_fusionado_2[0:3, :]])], axis=0)
 
-        hrm.muestraTabla(resultados_tst)
-        hrm.muestraTabla(resultados_fusionado)
-        hrm.muestraTabla(resultados_fusionado_2)
+        hrm.showTable(resultados_tst)
+        hrm.showTable(resultados_fusionado)
+        hrm.showTable(resultados_fusionado_2)
     if nro_test != -1:
-        resumen_final = hrm.generaResumenFinal(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
-        hrm.muestraTabla(resumen_final)
+        resumen_final = hrm.createFinalSummary(vec_resultados, vec_resultados_fusionado, vec_resultados_fusionado_2)
+        hrm.showTable(resumen_final)
     print(time.time() - start_total)
-    log.agrega('Tiempo final')
-    log.agrega(time.time() - start_total)
+    log.add('Tiempo final')
+    log.add(time.time() - start_total)
 
 
 def ExtractorDeCaracteristicas(personas, etapas, zonas):
     start_total = time.time()
     jvm.start()
     print('Extracción de caracteristicas en progreso')
-    features = carac.CaracteristicasVideo(zonas)
+    features = carac.VideoFeaturesExtraction(zonas)
     for i in personas:
         for j in etapas:
             # if i != '09' or j != '1':

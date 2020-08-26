@@ -55,15 +55,15 @@ class Video:
         for i in range(0, self.bool_metodos.size):
             if self.bool_metodos[i]:
                 atrib = self.nombres_metodos[i]
-                data_aux = am.CargaYFiltrado(hrm.buildPathSub(persona, etapa, atrib))
+                data_aux = am.loadAndFiltered(hrm.buildSubFilePath(persona, etapa, atrib))
                 data_vec = np.append(data_vec, data_aux)
 
-        data = am.Une(data_vec)
-        data = am.FiltraZonas(data, self.zonas)
-        ini_Aus, fin_Aus = am.RangoAUs(data)
+        data = am.joinDatasetByInstances(data_vec)
+        data = am.filterZones(data, self.zonas)
+        ini_Aus, fin_Aus = am.ausRange(data)
 
         # Cargo el archivo con las etiquetas
-        arch_etiquetas = hrm.leeCSV(datos.PATH_ETIQUETAS)
+        arch_etiquetas = hrm.readCSVFile(datos.PATH_ETIQUETAS)
 
         if int(etapa) == 1:
             partes = 7
@@ -79,8 +79,8 @@ class Video:
         # Numero de instancia desde la que recorro
         # instancia_desde = 0
         # Diferencias en los nombres de archivo y llamada a open face
-        nombre = hrm.buildVideoName(persona, etapa)
-        path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
+        nombre = hrm.buildFileName(persona, etapa)
+        path = hrm.buildFilePath(persona, etapa, nombre, extension=True)
 
         if not os.path.exists(path):
             raise Exception("Ruta de archivo incorrecta o no válida")
@@ -93,24 +93,24 @@ class Video:
         # esto está en segundos
         tiempos = np.zeros(partes)
         for i in range(0, partes):
-            tiempos[i] = hrm.leeTiemposRespuesta(arch_etiquetas, persona, etapa, str(i+1))
+            tiempos[i] = hrm.readAnswersTime(arch_etiquetas, persona, etapa, str(i + 1))
         # Permite saber en que respuesta voy para saber cuando cambiar la etiqueta
         nro_intervalo = 1
 
         # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
         # respuesta en el caso
-        etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(1))
+        etiqueta = hrm.readLabel(arch_etiquetas, persona, etapa, str(1))
         if self.binarizar_etiquetas:
             if etiqueta != 'N':
                 etiqueta = self.clases[1]
 
         # Numero de instancia hasta la que recorro
-        instancia_hasta = am.NroInstancias(data)
+        instancia_hasta = am.instancesNumber(data)
 
         if instancia_hasta != (frames_totales - 1):
             print('Instancias diferentes a numero de frames:', instancia_hasta, frames_totales)
 
-        data = am.AgregaAtributoClase(data, self.clases)
+        data = am.addClassAttribute(data, self.clases)
 
         for i in range(0, instancia_hasta):
             # Para definir intervalo de etiqueta
@@ -123,16 +123,16 @@ class Video:
             # no existe
             if (i >= tiempos[nro_intervalo - 1] * fps) and (nro_intervalo != -1):
                 nro_intervalo = nro_intervalo + 1
-                etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, nro_intervalo)
+                etiqueta = hrm.readLabel(arch_etiquetas, persona, etapa, nro_intervalo)
                 # Paso a usar nro_intervalo como bandera por si es la última etiqueta de la última parte
                 if nro_intervalo == partes:
                     nro_intervalo = -1
                 if self.binarizar_etiquetas:
                     if etiqueta != 'N':
                         etiqueta = self.clases[1]
-            data = am.AgregaEtiqueta(data, i, np.where(self.clases == etiqueta)[0][0])
-        am.CambiarRelationName(data, 'VideoFeatures Completos')
-        am.Guarda(persona, etapa, 'VCom', data)
+            data = am.addLabel(data, i, np.where(self.clases == etiqueta)[0][0])
+        am.changeRelationName(data, 'VideoFeatures Completos')
+        am.saveInSubfolder(persona, etapa, 'VCom', data)
         return data
 
     def VideoRespuestas(self, persona, etapa, partes, rangos_audibles, data, arch_etiquetas, ini_AUs, fin_AUs):
@@ -149,9 +149,9 @@ class Video:
         nro_instancia = 1
         for j in range(0, partes):
             # Diferencias en los nombres de archivo y llamada a open face
-            nombre = hrm.buildVideoName(persona, etapa, str(j + 1))
+            nombre = hrm.buildFileName(persona, etapa, str(j + 1))
 
-            path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
+            path = hrm.buildFilePath(persona, etapa, nombre, extension=True)
 
             if not os.path.exists(path):
                 raise Exception("Ruta de archivo incorrecta o no válida")
@@ -197,20 +197,20 @@ class Video:
 
             # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
             # respuesta en el caso
-            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j + 1))
+            etiqueta = hrm.readLabel(arch_etiquetas, persona, etapa, str(j + 1))
             if self.binarizar_etiquetas:
                 if etiqueta != 'N':
                     etiqueta = self.clases[1]
 
-            data_actual = am.NuevaData(data)
-            data_actual = am.AgregaAtributoClase(data_actual, self.clases)
+            data_actual = am.newDataset(data)
+            data_actual = am.addClassAttribute(data_actual, self.clases)
             for i in range(instancia_desde, instancia_hasta):
                 # Si no está eliminando silencios o encuentra que el frame se encuentra de los frames audibles
                 # se extraen las caracteristicas.  Verfico también que la confidencialidad encuentra que se detecto
                 # una cara en el cuadro segun un umbral interno
                 if (not elimina_silencio) or (cuadros_audibles.count(nro_instancia) > 0):
                     # Concateno todas las caracteristicas en un solo vector
-                    vec_caracteristicas = am.getValores(data, i)
+                    vec_caracteristicas = am.getValues(data, i)
 
                     # Como puede que entre por no eliminar silencios pero en esa instancia no habia caras por
                     # confidencialidad, verifico si no esta vacio
@@ -257,7 +257,7 @@ class Video:
                                 vec_aprox = (vec_prom + vec_prom_ant) / 2
                                 etiqueta_aprox = self._voto(list([etiqueta_ant, etiqueta_prom]), self.clases)
                             for k in range(0, invalidos):
-                                data_actual = am.AgregaInstanciaClase(data_actual, vec_aprox,
+                                data_actual = am.addInstanceWithLabel(data_actual, vec_aprox,
                                                                       np.where(self.clases == etiqueta_aprox)[0][0])
                         # Reemplazo las aus promediadas con el maximo de las aus
                         vec_prom[ini_AUs:fin_AUs] = vec_aus
@@ -266,7 +266,7 @@ class Video:
                         etiqueta_ant = etiqueta_prom
                         invalidos = 0
                         # Recien ahora agrego la fila del periodo actual despues de agregar las anteriores aproximadas
-                        data_actual = am.AgregaInstanciaClase(data_actual, vec_prom,
+                        data_actual = am.addInstanceWithLabel(data_actual, vec_prom,
                                                               np.where(self.clases == etiqueta_prom)[0][0])
                     else:
                         invalidos = invalidos + 1
@@ -301,17 +301,17 @@ class Video:
             # Si termino el video y tengo periodos de tiempo invalidos tengo que igualarlos con el ultimo periodo valido que hubo
             if invalidos > 0:
                 for i in range(0, invalidos):
-                    data_actual = am.AgregaInstanciaClase(data_actual, vec_prom_ant,
+                    data_actual = am.addInstanceWithLabel(data_actual, vec_prom_ant,
                                                           np.where(self.clases == etiqueta_ant)[0][0])
             # Actualizo para tomar las instancias equivalentes a la proxima respuesta
             instancia_desde = instancia_hasta
             data_vec_general = np.append(data_vec_general, data_actual)
 
-        data_final = am.Unev2(data_vec_general)
+        data_final = am.joinDatasetByAttributes(data_vec_general)
         if elimina_silencio:
-            am.Guarda(persona, etapa, 'VSil', data_final)
+            am.saveInSubfolder(persona, etapa, 'VSil', data_final)
         else:
-            am.Guarda(persona, etapa, 'VResp', data_final)
+            am.saveInSubfolder(persona, etapa, 'VResp', data_final)
 
     @staticmethod
     def _voto(etiquetas, clases):
@@ -338,9 +338,9 @@ class Audio:
 
         # Inicializaciones de los métodos
         ffmpeg = met.FFMPEG()
-        open_smile = met.OpenSmile(salida_csv=False, ventaneo=True)
-        eli_silencios = met.EliminaSilencios(plotear=False)
-        arch_etiquetas = hrm.leeCSV(datos.PATH_ETIQUETAS)
+        open_smile = met.OpenSmile(csv_output=False, window=True)
+        eli_silencios = met.removeSilences(plotear=False)
+        arch_etiquetas = hrm.readCSVFile(datos.PATH_ETIQUETAS)
 
         # Según la etapa, distinta cantidad de partes
         if int(etapa) == 1:
@@ -354,13 +354,13 @@ class Audio:
         data_vec_general = np.empty(0)
         for j in range(0, partes):
             # Me fijo si existe el archivo
-            nombre = hrm.buildVideoName(persona, etapa, str(j+1))
-            path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
+            nombre = hrm.buildFileName(persona, etapa, str(j + 1))
+            path = hrm.buildFilePath(persona, etapa, nombre, extension=True)
             if not os.path.exists(path):
                 raise Exception("Ruta de archivo incorrecta o no válida")
 
             # Leo la etiqueta correspondiente
-            etiqueta = hrm.leeEtiqueta(arch_etiquetas, persona, etapa, str(j+1))
+            etiqueta = hrm.readLabel(arch_etiquetas, persona, etapa, str(j + 1))
             if self.binarizar_etiquetas:
                 if etiqueta != 'N':
                     etiqueta = clases[1]
@@ -378,32 +378,32 @@ class Audio:
                 for i in range(0, rango.shape[0]):
                     nombre_archivo = nombre + '_' + str(i + 1) + '.wav'
                     open_smile(nombre_archivo, paso_ventaneo=str(self.tiempo_micro))
-                    data_aux = am.CargaYFiltrado(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'))
+                    data_aux = am.loadAndFiltered(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'))
                     os.remove(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'))
                     # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                    data_aux = am.AgregaAtributoClase(data_aux, clases)
-                    for k in range(0, am.NroInstancias(data_aux)):
-                        data_aux = am.AgregaEtiqueta(data_aux, k, np.where(clases == etiqueta)[0][0])
+                    data_aux = am.addClassAttribute(data_aux, clases)
+                    for k in range(0, am.instancesNumber(data_aux)):
+                        data_aux = am.addLabel(data_aux, k, np.where(clases == etiqueta)[0][0])
                     data_vec = np.append(data_vec, data_aux)
                 # Lo agrego a la lista con los rangos de segmentos de cada respuesta
                 rangos_silencios.append(rango)
                 # Concateno todas las subpartes en un arff por respuesta
-                data = am.Une(data_vec)
+                data = am.joinDatasetByInstances(data_vec)
             else:
                 open_smile(nombre + '.wav', paso_ventaneo=str(self.tiempo_micro))
-                data = am.CargaYFiltrado(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.wav.arff'))
+                data = am.loadAndFiltered(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.wav.arff'))
                 os.remove(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.wav.arff'))
                 # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                data = am.AgregaAtributoClase(data, clases)
-                for i in range(0, am.NroInstancias(data)):
-                    data = am.AgregaEtiqueta(data, i, np.where(clases == etiqueta)[0][0])
+                data = am.addClassAttribute(data, clases)
+                for i in range(0, am.instancesNumber(data)):
+                    data = am.addLabel(data, i, np.where(clases == etiqueta)[0][0])
             data_vec_general = np.append(data_vec_general, data)
 
-        data_final = am.Unev2(data_vec_general)
+        data_final = am.joinDatasetByAttributes(data_vec_general)
         if eliminar_silencios:
-            am.Guarda(persona, etapa, 'ASil', data_final)
+            am.saveInSubfolder(persona, etapa, 'ASil', data_final)
         else:
-            am.Guarda(persona, etapa, 'AResp', data_final)
+            am.saveInSubfolder(persona, etapa, 'AResp', data_final)
         return rangos_silencios
 
 
@@ -422,16 +422,16 @@ class CaracteristicasVideo:
         nro_zonas = len(self.zonas)
 
         # Inicializo y ejecuto openface
-        op_fa = met.OpenFace(cara=False, hog=False, landmarks=True, aus=True)
+        op_fa = met.OpenFace(face=False, hog=False, landmarks=True, aus=True)
         op_fa(persona, etapa)
 
-        nombre = hrm.buildVideoName(persona, etapa)
-        path = hrm.buildPathVideo(persona, etapa, nombre, extension=True)
+        nombre = hrm.buildFileName(persona, etapa)
+        path = hrm.buildFilePath(persona, etapa, nombre, extension=True)
         if not os.path.exists(path):
             raise Exception("Ruta de archivo incorrecta o no válida")
         video = cv.VideoCapture(path)
 
-        arch_openface = hrm.leeCSV(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
+        arch_openface = hrm.readCSVFile(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
 
         # Del 0 al 67 son los landmarks, guardo los índices de inicio y fin de cada coordenada de estos
         LimLandmarksX1 = arch_openface[0].index('x_0')
@@ -446,7 +446,7 @@ class CaracteristicasVideo:
 
         # Inicializo las clases de los métodos de extracción
         lbp = met.OriginalLBP()
-        hop = met.HistogramOfPhase(plotear=False, resize=False)
+        hop = met.HistogramOfPhase(plot=False, resize=False)
         winSize = (64, 64)
         blockSize = (8, 8)
         blockStride = (8, 8)
@@ -496,7 +496,7 @@ class CaracteristicasVideo:
                         roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i])
 
                         # Obtengo los patrones locales binarios y sus histogramas
-                        aux_lbp = np.array(hrm.Histograma(lbp(roi)))
+                        aux_lbp = np.array(hrm.generateHistogram(lbp(roi)))
                         if primer_frame:
                             # A partir del anterior, le voy sumando el tamaño de este
                             lbp_range.append(lbp_range[len(lbp_range) - 1] + len(aux_lbp))
@@ -522,16 +522,16 @@ class CaracteristicasVideo:
 
                     # Agrego la cabecera del archivo arff en el caso de ser el primer frame
                     if primer_frame:
-                        data_lbp = am.Cabecera('LBP', lbp_range, self.zonas)
-                        data_hop = am.Cabecera('HOP', hop_range, self.zonas)
-                        data_hog = am.Cabecera('HOG', hog_range, self.zonas)
-                        data_aus = am.Cabecera('AUs', len(AUs), self.zonas)
+                        data_lbp = am.createHeader('LBP', lbp_range, self.zonas)
+                        data_hop = am.createHeader('HOP', hop_range, self.zonas)
+                        data_hog = am.createHeader('HOG', hog_range, self.zonas)
+                        data_aus = am.createHeader('AUs', len(AUs), self.zonas)
                         primer_frame = False
                 elif not primer_frame:
-                    lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
-                    hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
-                    hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
-                    AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
+                    lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.missingValue()
+                    hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.missingValue()
+                    hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.missingValue()
+                    AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.missingValue()
                 else:
                     instancias_invalidas = instancias_invalidas + 1
 
@@ -539,31 +539,31 @@ class CaracteristicasVideo:
                     # Al no tener antes el numero de atributos al tener el primer frame ya valido agrego todas las instancias
                     # que habian sido invalidas al principio
                     if instancias_invalidas > 0:
-                        lbp_hist_aux = np.zeros(lbp_range[len(lbp_range) - 1]) * am.valorFaltante()
-                        hop_hist_aux = np.zeros(hop_range[len(hop_range) - 1]) * am.valorFaltante()
-                        hog_hist_aux = np.zeros(hog_range[len(hog_range) - 1]) * am.valorFaltante()
-                        AUs_aux = np.zeros(LimIntAUs2 - LimIntAUs1) * am.valorFaltante()
+                        lbp_hist_aux = np.zeros(lbp_range[len(lbp_range) - 1]) * am.missingValue()
+                        hop_hist_aux = np.zeros(hop_range[len(hop_range) - 1]) * am.missingValue()
+                        hog_hist_aux = np.zeros(hog_range[len(hog_range) - 1]) * am.missingValue()
+                        AUs_aux = np.zeros(LimIntAUs2 - LimIntAUs1) * am.missingValue()
                         for i in range(0, instancias_invalidas):
                             # Agrego la instancia con todas las caracteristicas de los frames invalidos
-                            data_lbp = am.AgregaInstancia(data_lbp, lbp_hist_aux)
-                            data_hop = am.AgregaInstancia(data_hop, hop_hist_aux)
-                            data_hog = am.AgregaInstancia(data_hog, hog_hist_aux)
-                            data_aus = am.AgregaInstancia(data_aus, AUs_aux)
+                            data_lbp = am.addInstance(data_lbp, lbp_hist_aux)
+                            data_hop = am.addInstance(data_hop, hop_hist_aux)
+                            data_hog = am.addInstance(data_hog, hog_hist_aux)
+                            data_aus = am.addInstance(data_aus, AUs_aux)
                         instancias_invalidas = 0
                     # Agrego la instancia con todas las caracteristicas del frame actual
-                    data_lbp = am.AgregaInstancia(data_lbp, lbp_hist)
-                    data_hop = am.AgregaInstancia(data_hop, hop_hist)
-                    data_hog = am.AgregaInstancia(data_hog, hog_hist)
-                    data_aus = am.AgregaInstancia(data_aus, AUs)
+                    data_lbp = am.addInstance(data_lbp, lbp_hist)
+                    data_hop = am.addInstance(data_hop, hop_hist)
+                    data_hog = am.addInstance(data_hog, hog_hist)
+                    data_aus = am.addInstance(data_aus, AUs)
 
                 # print(nro_frame)
                 nro_frame = nro_frame + 1
                 progreso_frames.update(1)
 
-        am.Guarda(persona, etapa, 'LBP', data_lbp)
-        am.Guarda(persona, etapa, 'HOP', data_hop)
-        am.Guarda(persona, etapa, 'HOG', data_hog)
-        am.Guarda(persona, etapa, 'AUS', data_aus)
+        am.saveInSubfolder(persona, etapa, 'LBP', data_lbp)
+        am.saveInSubfolder(persona, etapa, 'HOP', data_hop)
+        am.saveInSubfolder(persona, etapa, 'HOG', data_hog)
+        am.saveInSubfolder(persona, etapa, 'AUS', data_aus)
 
     @staticmethod
     def _confidencialidad(img):

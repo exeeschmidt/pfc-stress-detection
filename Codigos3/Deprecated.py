@@ -441,7 +441,7 @@ def BinarizoPorPersonas(sujetos, etapas):
     for i in sujetos:
         for j in etapas:
             path_final = os.path.join(datos.PATH_CARACTERISTICAS, datos.buildVideoName(sujetos[i], etapas[j]))
-            hrm.BinarizoEtiquetas(path_final)
+            hrm.binarizeLabels(path_final)
 
 
 # ================================================= ArffManager ========================================================

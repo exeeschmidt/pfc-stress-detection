@@ -63,7 +63,7 @@ def SeleccionCaracteristicas(data_train, data_val, data_test, metodo_seleccion):
     data_vld_filtrada = flter.filter(data_vld)
     data_tst_filtrada = flter.filter(data_tst)
     print('Atributos ', metodo_seleccion, ' :', data_trn_filtrada.num_attributes, '/', data_trn.num_attributes)
-    log.agrega('Atributos ' + metodo_seleccion + ' :' + str(data_trn_filtrada.num_attributes) + '/' + str(data_trn.num_attributes))
+    log.add('Atributos ' + metodo_seleccion + ' :' + str(data_trn_filtrada.num_attributes) + '/' + str(data_trn.num_attributes))
     # saver = Saver()
     # saver.save_file(data_f, "filtrado.arff")
     # saver.save_file(data_v_f, "filtrado_v.arff")
@@ -88,7 +88,7 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
         opciones = datos.PARAMETROS_CLASIFICADOR.get(metodo_clasificacion + ' 1')
     else:
         met_clasificacion = traduccion_clasificadores.get(metodo_clasificacion[0: len(metodo_clasificacion) - 2])
-        datos.actualizaParametrosMLP(data_train.num_attributes)
+        datos.refreshParamsMLP(data_train.num_attributes)
         opciones = datos.PARAMETROS_CLASIFICADOR.get(metodo_clasificacion)
 
 
@@ -117,8 +117,8 @@ def Clasificacion(data_train, data_val, data_test, metodo_clasificacion, metodo_
         wf.writelines(attrib_list_m)
         wf.close()
 
-        hrm.escribeCSV(nombre_archivo + '(VAL).csv', pout_val.buffer_content())
-        hrm.escribeCSV(nombre_archivo + '(TEST).csv', pout_tst.buffer_content())
+        hrm.writeCSVFile(nombre_archivo + '(VAL).csv', pout_val.buffer_content())
+        hrm.writeCSVFile(nombre_archivo + '(TEST).csv', pout_tst.buffer_content())
 
     if sumario:
         print(evl.summary())

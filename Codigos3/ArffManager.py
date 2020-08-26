@@ -23,7 +23,7 @@ def CargaYFiltrado(path):
 
 
 def Guarda(persona, etapa, sub, data):
-    path = hrm.buildPathSub(persona, etapa, sub)
+    path = hrm.buildSubFilePath(persona, etapa, sub)
     saver = Saver()
     saver.save_file(data, path)
 
@@ -61,10 +61,10 @@ def Concatena(personas, etapas, sub, sub2='', une=False, es_test=False):
     acu_limites = 0
     for i in personas:
         for j in etapas:
-            path = hrm.buildPathSub(i, j, sub)
+            path = hrm.buildSubFilePath(i, j, sub)
             data1 = CargaYFiltrado(path)
             if sub2 != '':
-                path = hrm.buildPathSub(i, j, sub2)
+                path = hrm.buildSubFilePath(i, j, sub2)
                 data2 = CargaYFiltrado(path)
                 data_vec_norm = Normaliza(np.array([data1, data2]))
                 data_vec1 = np.append(data_vec1, data_vec_norm[0])
@@ -74,7 +74,7 @@ def Concatena(personas, etapas, sub, sub2='', une=False, es_test=False):
             acu_limites = acu_limites + data1.num_instances
             limites_respuesta.append(acu_limites)
     if (es_test):
-        hrm.escriboLimites(limites_respuesta)
+        hrm.writeLimits(limites_respuesta)
     data_sub1 = Unev2(data_vec1)
     if sub2 != '':
         data_sub2 = Unev2(data_vec2)

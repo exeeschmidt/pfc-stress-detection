@@ -32,7 +32,7 @@ def main():
     # exp.SegundoMultimodal()
 
     print('Fin de ejecucion')
-    log.agrega('Fin de ejecucion')
+    log.add('Fin de ejecucion')
     jvm.stop()
 
 
