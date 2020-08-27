@@ -51,7 +51,7 @@ def joinDatasetByAttributes(data_vec):
     return data
 
 
-def joinPersonStageData(persons, stages, sub, optional_sub=None, join=False, answer_limits_list=None):
+def joinPersonStageData(persons, stages, sub, optional_sub='', join=False, answer_limits_list=None):
     # Levanta y une los dataset de multiples personas y etapas
     # Sub cambia segun el conjunto de caracteristicas, si se presenta sub2 es por si hay que concatenar el audio y video
     # entre sí también
@@ -63,10 +63,12 @@ def joinPersonStageData(persons, stages, sub, optional_sub=None, join=False, ans
             file_name = Hrm.buildFileName(i, j)
             path = Hrm.buildSubFilePath(file_name, sub)
             data1 = loadAndFiltered(path)
-            if optional_sub is not None:
+            if optional_sub != '':
                 path = Hrm.buildSubFilePath(file_name, optional_sub)
                 data2 = loadAndFiltered(path)
                 data_vec_norm = normalizeDatasets(np.array([data1, data2]))
+                print('Instancias video: ' + str(instancesNumber(data_vec_norm[0])))
+                print('Instancias audio: ' + str(instancesNumber(data_vec_norm[1])))
                 data_vec1 = np.append(data_vec1, data_vec_norm[0])
                 data_vec2 = np.append(data_vec2, data_vec_norm[1])
                 if answer_limits_list is not None:
@@ -87,7 +89,7 @@ def joinPersonStageData(persons, stages, sub, optional_sub=None, join=False, ans
             else:
                 data_vec1 = np.append(data_vec1, data1)
     data_sub1 = joinDatasetByAttributes(data_vec1)
-    if optional_sub is not None:
+    if optional_sub != '':
         data_sub2 = joinDatasetByAttributes(data_vec2)
         if join:
             data_sub1.no_class()

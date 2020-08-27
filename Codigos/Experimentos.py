@@ -175,31 +175,31 @@ def PrimerMultimodal():
     num_to_validation = Datos.VAL
     num_to_test = Datos.TEST
 
-    print('Adaptación de caracteristicas en progreso')
-    Log.add('Adaptación de caracteristicas en progreso')
-    video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
-    answers_limits_list = list()
-    for i in persons:
-        for j in stages:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            Log.add('Persona ' + i + ' -> Etapa ' + j)
-            video_name = Hrm.buildFileName(i, j)
-            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
-
-            labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
-            audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
-            final_answer_limits = video_features(video_name, video_path, labels_list, complete_mode=False)
-            answers_limits_list.append(final_answer_limits)
-
-            print(time.time() - start2)
-            Log.add(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    Log.add('Completada adaptación de caracteristicas')
-    Log.add(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # Log.add('Adaptación de caracteristicas en progreso')
+    # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    # answers_limits_list = list()
+    # for i in persons:
+    #     for j in stages:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         Log.add('Persona ' + i + ' -> Etapa ' + j)
+    #         video_name = Hrm.buildFileName(i, j)
+    #         video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+    #
+    #         labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
+    #         audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
+    #         final_answer_limits = video_features(video_name, video_path, labels_list, complete_mode=False)
+    #         answers_limits_list.append(final_answer_limits)
+    #
+    #         print(time.time() - start2)
+    #         Log.add(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # Log.add('Completada adaptación de caracteristicas')
+    # Log.add(time.time() - start_total)
 
     result_raw_vector = np.empty((0, 3, 2 * selection_methods.size * classification_methods.size + 1))
     result_first_fusion_vector = np.empty((0, 3, 2))
@@ -225,19 +225,28 @@ def PrimerMultimodal():
             print('Vuelta: ' + str(k + 1) + '/' + str(laps))
             Log.add('Vuelta: ' + str(k + 1) + '/' + str(laps))
             persons_train, persons_validation, persons_test = generateSetsOwnBD(k, num_to_validation, num_to_test)
+            # train_v_ori, train_a_ori, new_answers_limits_list = \
+            #     Am.joinPersonStageData(persons_train, stages,
+            #                            'VResp', 'AResp', join=False,
+            #                            answer_limits_list=answers_limits_list)
+            # val_v_ori, val_a_ori, new_answers_limits_list = \
+            #     Am.joinPersonStageData(persons_validation, stages,
+            #                            'VResp', 'AResp', join=False,
+            #                            answer_limits_list=new_answers_limits_list)
+            # test_v_ori, test_a_ori, new_answers_limits_list = \
+            #     Am.joinPersonStageData(persons_test, stages,
+            #                            'VResp', 'AResp', join=False,
+            #                            answer_limits_list=new_answers_limits_list)
             train_v_ori, train_a_ori, new_answers_limits_list = \
                 Am.joinPersonStageData(persons_train, stages,
-                                       'VResp', 'AResp', join=False,
-                                       answer_limits_list=answers_limits_list)
+                                       'VResp', 'AResp', join=False)
             val_v_ori, val_a_ori, new_answers_limits_list = \
                 Am.joinPersonStageData(persons_validation, stages,
-                                       'VResp', 'AResp', join=False,
-                                       answer_limits_list=new_answers_limits_list)
+                                       'VResp', 'AResp', join=False)
             test_v_ori, test_a_ori, new_answers_limits_list = \
                 Am.joinPersonStageData(persons_test, stages,
-                                       'VResp', 'AResp', join=False,
-                                       answer_limits_list=new_answers_limits_list)
-            Hrm.writeLimitsOwnBD(persons_test, new_answers_limits_list)
+                                       'VResp', 'AResp', join=False)
+            # Hrm.writeLimitsOwnBD(persons_test, new_answers_limits_list)
 
         Datos.calculateAttributesToCut(train_v_ori.num_attributes)
         validation_predic_vector_v = np.array([])
@@ -379,31 +388,31 @@ def SegundoMultimodal():
     num_to_validation = Datos.VAL
     num_to_test = Datos.TEST
 
-    print('Adaptación de caracteristicas en progreso')
-    Log.add('Adaptación de caracteristicas en progreso')
-    video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
-    answers_limits_list = list()
-    for i in persons:
-        for j in stages:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            Log.add('Persona ' + i + ' -> Etapa ' + j)
-            video_name = Hrm.buildFileName(i, j)
-            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
-
-            labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
-            audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
-            final_answer_limits = video_features(video_name, video_path, labels_list, complete_mode=False)
-            answers_limits_list.append(final_answer_limits)
-
-            print(time.time() - start2)
-            Log.add(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    Log.add('Completada adaptación de caracteristicas')
-    Log.add(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # Log.add('Adaptación de caracteristicas en progreso')
+    # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    # answers_limits_list = list()
+    # for i in persons:
+    #     for j in stages:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         Log.add('Persona ' + i + ' -> Etapa ' + j)
+    #         video_name = Hrm.buildFileName(i, j)
+    #         video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+    #
+    #         labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
+    #         audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
+    #         final_answer_limits = video_features(video_name, video_path, labels_list, complete_mode=False)
+    #         answers_limits_list.append(final_answer_limits)
+    #
+    #         print(time.time() - start2)
+    #         Log.add(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # Log.add('Completada adaptación de caracteristicas')
+    # Log.add(time.time() - start_total)
 
     result_raw_vector = np.empty((0, 3, selection_methods.size * classification_methods.size + 1))
     result_first_fusion_vector = np.empty((0, 3, 2))
@@ -427,16 +436,22 @@ def SegundoMultimodal():
             print('Vuelta: ' + str(k + 1) + '/' + str(laps))
             Log.add('Vuelta: ' + str(k + 1) + '/' + str(laps))
             persons_train, persons_validation, persons_test = generateSetsOwnBD(k, num_to_validation, num_to_test)
+            # train_ori, new_answers_limits_list = Am.joinPersonStageData(persons_train, stages,
+            #                                                             'VResp', 'AResp', join=True,
+            #                                                             answer_limits_list=answers_limits_list)
+            # val_ori, new_answers_limits_list = Am.joinPersonStageData(persons_validation, stages,
+            #                                                           'VResp', 'AResp', join=True,
+            #                                                           answer_limits_list=new_answers_limits_list)
+            # test_ori, new_answers_limits_list = Am.joinPersonStageData(persons_test, stages,
+            #                                                            'VResp', 'AResp', join=True,
+            #                                                            answer_limits_list=new_answers_limits_list)
             train_ori, new_answers_limits_list = Am.joinPersonStageData(persons_train, stages,
-                                                                        'VResp', 'AResp', join=True,
-                                                                        answer_limits_list=answers_limits_list)
+                                               'VResp', 'AResp', join=True)
             val_ori, new_answers_limits_list = Am.joinPersonStageData(persons_validation, stages,
-                                                                      'VResp', 'AResp', join=True,
-                                                                      answer_limits_list=new_answers_limits_list)
-            test_ori, new_answers_limits_list = Am.joinPersonStageData(persons_test, stages,
-                                                                       'VResp', 'AResp', join=True,
-                                                                       answer_limits_list=new_answers_limits_list)
-            Hrm.writeLimitsOwnBD(persons_test, new_answers_limits_list)
+                                             'VResp', 'AResp', join=True)
+            test_ori, new_answers_limits_list  = Am.joinPersonStageData(persons_test, stages,
+                                              'VResp', 'AResp', join=True)
+            # Hrm.writeLimitsOwnBD(persons_test, new_answers_limits_list)
 
         Datos.calculateAttributesToCut(train_ori.num_attributes)
         validation_predic_vector = np.array([])
@@ -603,7 +618,7 @@ def testMSPImprov():
         file_name = row_file[0]
         video_path = row_file[1]
         audio_path = row_file[2]
-        video_features(file_name, video_path, labels_list, complete_mode=True)
+        video_features(file_name, video_path, labels_list, complete_mode=True, for_frames=False)
         audio_features(file_name, audio_path, labels_list, complete_mode=True, extract_from_video=False)
         print(time.time() - start2)
 

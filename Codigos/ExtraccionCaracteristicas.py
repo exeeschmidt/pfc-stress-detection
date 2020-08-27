@@ -45,7 +45,7 @@ class VideoFeaturesUnification:
 
         self.zones_number = len(self.zones)
 
-    def __call__(self, video_name, video_path, labels_list, complete_mode=False):
+    def __call__(self, video_name, video_path, labels_list, complete_mode=False, for_frames=True):
         # Segun que metodo utilice concateno la data de cada arff que sea necesario
         data_vector = np.empty(0)
         for i in range(0, self.bool_methods.size):
@@ -59,12 +59,16 @@ class VideoFeaturesUnification:
         au_begin, au_end = Am.ausRange(data)
 
         if complete_mode:
-            self.complete(video_name, video_path, data, labels_list)
+            if for_frames:
+                self.completeForFrame(video_name, video_path, data, labels_list)
+            else:
+                self.completeFusionFrames(video_name, video_path, data, labels_list,
+                                                                  au_begin, au_end)
         else:
             processed_labels_list = self.forAnswer(video_name, data, labels_list, au_begin, au_end)
             return processed_labels_list
 
-    def complete(self, video_name, video_path, data, labels_list):
+    def completeForFrame(self, video_name, video_path, data, labels_list):
         # Numero de instancia desde la que recorro
         # instancia_desde = 0
 
@@ -93,6 +97,139 @@ class VideoFeaturesUnification:
         Am.saveInSubfolder(video_name, 'VCom', data)
         return data
 
+    def completeFusionFrames(self, video_name, video_path, data, labels_list, au_begin, au_end):
+        if not os.path.exists(video_path):
+            raise Exception("Ruta de archivo incorrecta o no válida")
+
+        video = cv.VideoCapture(video_path)
+        total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+        fps = int(video.get(cv.CAP_PROP_FPS))
+        frame_duration = 1 / fps
+
+        # Si es por respuesta necesito segmentar por el tiempo de las micro expresiones, en el completo el
+        # análisis se hace por cuadro
+
+        # Acumulador para indicar cuanto tiempo transcurre desde que empece a contar los frames para un segmento
+        accumulated_time = 0
+        # Vector para acumular las caracteristicas y luego promediarlas
+        vector_features_to_promediate = np.empty(0)
+        # Para ir guardando el ultimo vector de promedio valido en caso de tener periodos de tiempo invalidos
+        vector_features_to_promediate_previous = np.empty(0)
+        # Va guardando las maximas intensidades de cada AU
+        vector_maximum_au = np.zeros((1, au_end - au_begin))
+        # Para guardar la ultima etiqueta valida
+        last_valid_label = ''
+        # Vector para guardar las etiquetas y aplicar voto
+        vector_label_to_vote = list()
+        # Cuadros por segmento
+        frames_per_segment = 0
+        # Numero de periodos consecutivos invalidos en caso que se den
+        invalids_count = 0
+
+        new_data = Am.newDataset(data)
+        new_data = Am.addClassAttribute(new_data, self.classes)
+
+        # Numero de instancia hasta la que recorro
+        instances_number = Am.instancesNumber(data)
+        for i in range(0, instances_number):
+            # Si no está eliminando silencios o encuentra que el frame se encuentra de los frames audibles
+            # se extraen las caracteristicas.  Verfico también que la confidencialidad encuentra que se detecto
+            # una cara en el cuadro segun un umbral interno
+            if i < len(labels_list):
+                label = labels_list[i]
+            else:
+                label = labels_list[len(labels_list) - 1]
+
+            features_vector = Am.getValues(data, i)
+            # Como puede que entre por no eliminar silencios pero en esa instancia no habia caras por
+            # confidencialidad, verifico si no esta vacio
+            if features_vector.size != 0:
+                # Agrego las caracteristicas al vector que luego se promedia, la etiqueta
+                # a la lista para luego hacer voto, y el contador de cuadros por segmento
+                for k in range(0, au_end - au_begin):
+                    if vector_maximum_au[0, k] < features_vector[k + au_begin]:
+                        vector_maximum_au[0, k] = features_vector[k + au_begin]
+                if vector_features_to_promediate.size == 0:
+                    vector_features_to_promediate = features_vector
+                else:
+                    vector_features_to_promediate = vector_features_to_promediate + features_vector
+                vector_label_to_vote.append(label)
+                frames_per_segment = frames_per_segment + 1
+            else:
+                # Si no obtuve caracteristicas el vector queda vacio, para luego comprobar su tamaño
+                features_vector = np.empty(0)
+
+            accumulated_time = accumulated_time + frame_duration
+            # Aunque no se extraigan caracteristicas si se hace análisis por períodos se debe verificar si termina
+            # algun segmento de tiempo y se deba guardar
+            if accumulated_time >= self.microexpression_duration:
+                # Verifico si termino el segmento, si es asi debo promediar y agregar al arff
+                if vector_features_to_promediate.size != 0:
+                    vector_features_to_promediate = vector_features_to_promediate / frames_per_segment
+                    voted_label = self.voting(vector_label_to_vote, self.classes)
+
+                    # Si tengo el contador de invalidos hay que completar esas fila promediando el actual valido
+                    # con el ultimo valido que hubo
+                    if invalids_count > 0:
+                        if vector_features_to_promediate_previous.size == 0:
+                            # En caso de empezar con periodos invalidos simplemente lo igual al primer valido que
+                            # se encuentre
+                            approximate_features_vector = vector_features_to_promediate
+                            approximate_label = voted_label
+                        else:
+                            # Creo el vector aproximando promediando
+                            approximate_features_vector = (vector_features_to_promediate +
+                                                           vector_features_to_promediate_previous) / 2
+                            approximate_label = self.voting(list([last_valid_label, voted_label]), self.classes)
+                        for k in range(0, invalids_count):
+                            new_data = Am.addInstanceWithLabel(new_data,
+                                                               approximate_features_vector,
+                                                               np.where(self.classes == approximate_label)
+                                                               [0][0])
+                    # Reemplazo las aus promediadas con el maximo de las aus
+                    vector_features_to_promediate[au_begin:au_end] = vector_maximum_au
+                    vector_maximum_au = np.zeros((1, au_end - au_begin))
+                    vector_features_to_promediate_previous = vector_features_to_promediate
+                    last_valid_label = voted_label
+                    invalids_count = 0
+                    # Recien ahora agrego la fila del periodo actual despues de agregar las anteriores aproximadas
+                    new_data = Am.addInstanceWithLabel(new_data, vector_features_to_promediate,
+                                                       np.where(self.classes == voted_label)[0][0])
+                else:
+                    invalids_count = invalids_count + 1
+                if accumulated_time > self.microexpression_duration:
+                    # A su vez si es mayor es porque un cuadro se "corto" por lo que sus caracteristicas van a
+                    # formar parte tambien del promediado del proximo segmento
+                    accumulated_time = accumulated_time - self.microexpression_duration
+                    # Verifico que se hayan extraido caracteristicas en el ultimo cuadro, y si se eliminan silencios
+                    # que el proximo cuadro se encuentre dentro de lo audible, sino significaria que cambia de rango
+                    # por lo que no serian cuadros consecutivos y no deberia tenerse en cuenta para el proximo
+                    # segmento
+                    if features_vector.size != 0:
+                        # Si se extrajeron caracteristicas las tiene en cuenta
+                        vector_features_to_promediate = features_vector
+                        vector_label_to_vote = list(label)
+                        frames_per_segment = 1
+                    else:
+                        # Si el cuadro era invalido que reinicie como si comenzara de cero
+                        vector_features_to_promediate = np.empty(0)
+                        vector_label_to_vote = list()
+                        frames_per_segment = 0
+                else:
+                    # Si el segmento corta justo con el cuadro reinicio
+                    accumulated_time = 0
+                    vector_features_to_promediate = np.empty(0)
+                    vector_label_to_vote = list()
+                    frames_per_segment = 0
+
+        # Si termino el video y tengo periodos de tiempo invalidos tengo que igualarlos con el ultimo periodo valido
+        # que hubo
+        if invalids_count > 0:
+            for i in range(0, invalids_count):
+                new_data = Am.addInstanceWithLabel(new_data, vector_features_to_promediate_previous,
+                                                   np.where(self.classes == last_valid_label)[0][0])
+        Am.saveInSubfolder(video_name, 'VCompProm', new_data)
+
     def forAnswer(self, video_name, data, labels_list, au_begin, au_end):
         data_parts_vector = np.empty(0)
 
@@ -106,8 +243,6 @@ class VideoFeaturesUnification:
         from_instance = 0
         # Debo generar una nueva lista de limites por la fusion de cuadros
         final_answer_limits = list()
-        # Número de instancia que va recorriendo
-        actual_instance = 1
         for j in range(0, parts):
             # Diferencias en los nombres de archivo y llamada a open face
             video_name_part = Hrm.buildFileName(person, stage, part=(j + 1))
@@ -236,8 +371,6 @@ class VideoFeaturesUnification:
                         vector_label_to_vote = list()
                         frames_per_segment = 0
 
-                # print(nro_instancia)
-                actual_instance = actual_instance + 1
             # Si termino el video y tengo periodos de tiempo invalidos tengo que igualarlos con el ultimo periodo valido
             # que hubo
             if invalids_count > 0:
@@ -252,7 +385,8 @@ class VideoFeaturesUnification:
             if len(final_answer_limits) == 0:
                 final_answer_limits.append(Am.instancesNumber(data_current_part))
             else:
-                final_answer_limits.append(final_answer_limits[len(final_answer_limits) - 1] + Am.instancesNumber(data_current_part))
+                final_answer_limits.append(
+                    final_answer_limits[len(final_answer_limits) - 1] + Am.instancesNumber(data_current_part))
 
         data_final = Am.joinDatasetByAttributes(data_parts_vector)
         Am.saveInSubfolder(video_name, 'VResp', data_final)

@@ -29,7 +29,6 @@ EXPERIMENTO = ''
 TEST = 1
 VAL = 2
 BINARIZO_ETIQUETA = False
-ELIMINA_SILENCIOS = False
 GUARDO_INFO_CLASIFICACION = True
 
 INSTANCIAS_POR_PERIODOS = 20
@@ -107,7 +106,7 @@ PARAMETROS_SELECCION_BUSQUEDA = {
 }
 
 PARAMETROS_SELECCION_EVALUACION = {
-    'PCA': ['-R', '0.95', '-A', '10', '-C'],
+    'PCA': ['-R', '0.95', '-A', '10', '-C', '-O'],
     'CFS': ['-Z', '-P', '4', '-E', '8']
 }
 

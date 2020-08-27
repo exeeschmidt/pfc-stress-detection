@@ -47,7 +47,8 @@ class OpenFace:
 
         # Cambio al directorio de OpenFace, ejecuto el comando y luego vuelvo al directorio donde están los códigos
         os.chdir(Datos.PATH_OPENFACE)
-        subprocess.run(command, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        results = subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # print("The exit code was: %d" % results.returncode)
         os.chdir(Datos.PATH_CODIGOS)
 
 
@@ -114,7 +115,8 @@ class OpenSmile:
 
         # Cambio al directorio de OpenSmile, ejecuto el comando y luego vuelvo al directorio donde están los códigos
         os.chdir(Datos.PATH_OPENSMILE)
-        subprocess.run(command, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        results = subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # print("The exit code was: %d" % results.returncode)
         os.chdir(Datos.PATH_CODIGOS)
 
     @staticmethod
@@ -282,5 +284,6 @@ class FFMPEG:
 
         # Cambio al directorio de ffmpeg, ejecuto el comando y luego vuelvo al directorio donde están los códigos
         os.chdir(Datos.PATH_FFMPEG)
-        subprocess.run(command, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        results = subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # print("The exit code was: %d" % results.returncode)
         os.chdir(Datos.PATH_CODIGOS)

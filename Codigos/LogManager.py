@@ -23,7 +23,6 @@ def create():
         log_file.write('Leave-' + str(Datos.TEST) + ' -out' + '\n')
         log_file.write('Validación con ' + str(Datos.VAL) + ' personas' + '\n')
     log_file.write('Binarización de etiquetas: ' + str(Datos.BINARIZO_ETIQUETA) + '\n')
-    log_file.write('Eliminación de silencios: ' + str(Datos.ELIMINA_SILENCIOS) + '\n')
 
     log_file.write('Instancias por periodos: ' + str(Datos.INSTANCIAS_POR_PERIODOS) + '\n')
     log_file.write('Votos entre mejores ' + str(Datos.VOTO_MEJORES_X) + '\n')
