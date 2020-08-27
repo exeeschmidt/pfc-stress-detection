@@ -12,7 +12,7 @@ import LogManager as log
 def main():
     # exp.ExtractorDeCaracteristicas()
 
-    jvm.start(max_heap_size="8G", packages=True)
+    jvm.start(max_heap_size="32G", packages=True)
     # packages.install_package('LibSVM')
     # packages.install_package('PSOSearch')
     # datos.parametrosSeleccion()
@@ -26,18 +26,18 @@ def main():
     #     datos.EXPERIMENTO = 'Segundo multimodal'
     #     exp.SegundoMultimodal()
 
-    # datos.EXPERIMENTO = 'Unimodal'
-    # exp.Unimodal()
-    # datos.EXPERIMENTO = 'Primer multimodal'
-    # exp.PrimerMultimodal()
+    datos.EXPERIMENTO = 'Unimodal'
+    exp.Unimodal()
+    datos.EXPERIMENTO = 'Primer multimodal'
+    exp.PrimerMultimodal()
     datos.EXPERIMENTO = 'Segundo multimodal'
     exp.SegundoMultimodal()
 
     print('Fin de ejecucion')
     log.add('Fin de ejecucion')
-    # jvm.stop()
+    jvm.stop()
     # Para los casos que matlab crea su propia JVM, para que se detengan todas
-    os._exit(0)
+    # os._exit(0)
 
 
 if __name__ == '__main__':

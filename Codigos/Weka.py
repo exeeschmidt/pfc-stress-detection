@@ -101,10 +101,9 @@ def classification(data_train, data_val, data_test, classification_method, selec
     evl = Evaluation(data_test)
     evl.test_model(classifier, data_test, output=pout_tst)
 
-    if Datos.GUARDO_MODEL:
+    if Datos.GUARDO_INFO_CLASIFICACION:
         file_name = os.path.join(Datos.PATH_LOGS, str(Datos.FOLD_ACTUAL) + '_' + selection_method + '-' +
                                  classification_method)
-        serialization.write_all(file_name + '.model', [classifier])
 
         attributes_list = list()
         for i in range(0, data_train.num_attributes - 1):
@@ -125,6 +124,44 @@ def classification(data_train, data_val, data_test, classification_method, selec
     return pout_val.buffer_content(), pout_tst.buffer_content()
 
 
+def classificationOnlyTrain(data_train, classification_method, selection_method):
+    translate_classifier_name = {
+        'J48': 'weka.classifiers.trees.J48',
+        'RF': 'weka.classifiers.trees.RandomForest',
+        'RT': 'weka.classifiers.trees.RandomTree',
+        'SVM': 'weka.classifiers.functions.LibSVM',
+        'LR': 'weka.classifiers.functions.LinearRegression',
+        'MLP': 'weka.classifiers.functions.MultilayerPerceptron'
+    }
+    method = translate_classifier_name.get(classification_method)
+    options = Datos.PARAMETROS_CLASIFICADOR.get(classification_method + ' 1')
+    classifier = Classifier(classname=method, options=options)
+    classifier.build_classifier(data_train)
+    file_name = os.path.join(Datos.PATH_LOGS, str(Datos.FOLD_ACTUAL) + '_' + selection_method + '-' +
+                             classification_method)
+    serialization.write_all(file_name + '.model', [classifier])
+
+    attributes_list = list()
+    for i in range(0, data_train.num_attributes - 1):
+        attributes_list.append(data_train.attribute(i).name)
+
+    wf = open(file_name + '.txt', 'w')
+    attrib_list_m = map(lambda x: x + '\n', attributes_list)
+    wf.writelines(attrib_list_m)
+    wf.close()
+
+
+def classificationOnlyTest(data_test, file_model_name, filter_attributes=False):
+    file_model_path = os.path.join(Datos.PATH_PROCESADO, file_model_name)
+    classifier = readModel(file_model_path)
+    if filter_attributes is True:
+        data_test = filterModelAttributes(file_model_path, data_test)
+    pout_tst = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
+    evl = Evaluation(data_test)
+    evl.test_model(classifier, data_test, output=pout_tst)
+    return pout_tst.buffer_content()
+
+
 def partitionData(data):
     # El rnd None permite que no los mezcle ni desordene al dividirlo
     val_train, test = data.train_test_split(Datos.PORCENTAJE_VAL + Datos.PORCENTAJE_TRAIN, rnd=None)
@@ -133,13 +170,16 @@ def partitionData(data):
     return train, val, test
 
 
-def readModel(file_name, data_val, data_tst):
+def readModel(file_path):
     # Permite leer tanto el clasificador entrenado como los atributos del conjunto con el cual se entreno, luego con
     # esto filtra los datos de validacion y test para aplicar la misma seleccion de caracteristicas
-    objects = serialization.read(file_name + '.model')
+    objects = serialization.read(file_path + '.model')
     classifier = Classifier(objects[0])
+    return classifier
 
-    rf = open(file_name + '.txt', 'r')
+
+def filterModelAttributes(file_path, data_tst, data_val=None):
+    rf = open(file_path + '.txt', 'r')
     read_attributes = rf.read().splitlines()
     rf.close()
 
@@ -148,18 +188,20 @@ def readModel(file_name, data_val, data_tst):
     # Voy guardando los indices donde se encuentran los atributos que quiero quedarme
     indexs_keep = ""
     while np.size(read_attributes) != 0:
-        attrib = data_val.attribute_by_name(read_attributes.pop())
+        attrib = data_tst.attribute_by_name(read_attributes.pop())
         indexs_keep = indexs_keep + str(attrib.index + 1) + ','
-    indexs_keep = indexs_keep + str(data_val.class_attribute.index + 1)
+    indexs_keep = indexs_keep + str(data_tst.class_attribute.index + 1)
 
     # Uso el filtro para remover de forma invertida con tal de quedarme solo con los indices de los que les paso
     flter = Filter(classname="weka.filters.unsupervised.attribute.Remove")
     flter.set_property("attributeIndices", indexs_keep)
     flter.set_property("invertSelection", True)
-    flter.inputformat(data_val)
-    data_val_f = flter.filter(data_val)
+    flter.inputformat(data_tst)
     data_tst_f = flter.filter(data_tst)
-    data_val_f.class_is_last()
     data_tst_f.class_is_last()
-
-    return data_val_f, data_tst_f, classifier
+    if data_val is not None:
+        data_val_f = flter.filter(data_val)
+        data_val_f.class_is_last()
+        return data_tst_f, data_val_f
+    else:
+        return data_tst_f

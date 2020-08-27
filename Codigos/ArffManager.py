@@ -51,7 +51,7 @@ def joinDatasetByAttributes(data_vec):
     return data
 
 
-def joinPersonStageData(persons, stages, sub, optional_sub='', join=False):
+def joinPersonStageData(persons, stages, sub, optional_sub='', join=False, answer_limits_list=None):
     # Levanta y une los dataset de multiples personas y etapas
     # Sub cambia segun el conjunto de caracteristicas, si se presenta sub2 es por si hay que concatenar el audio y video
     # entre sí también
@@ -69,6 +69,21 @@ def joinPersonStageData(persons, stages, sub, optional_sub='', join=False):
                 data_vec_norm = normalizeDatasets(np.array([data1, data2]))
                 data_vec1 = np.append(data_vec1, data_vec_norm[0])
                 data_vec2 = np.append(data_vec2, data_vec_norm[1])
+                if answer_limits_list is not None:
+                    # El nuevo limite lo establece el numero de instancias luego de la normalizacion
+                    new_limit = instancesNumber(data_vec_norm[0])
+                    new_limit_index = 0
+                    actual_index = int(i) * 2 + int(j)
+                    # Busco donde tengo un limite mayor al nuevo limite, esto por si recorta un intervalo mayor al
+                    # del ultimo limite (no deberia pasar nunca, y si lo hace igual seria bastante malo)
+                    for k in range(0, len(answer_limits_list[actual_index])):
+                        if answer_limits_list[actual_index][k] > new_limit:
+                            new_limit_index = k
+                            break
+                    # Recorto por si es necesario, que tampoco deberia recortarse si anda bien
+                    answer_limits_list[actual_index] = answer_limits_list[actual_index][0:new_limit_index + 1]
+                    # Defino el nuevo limite reemplazando el ultimo limite puesto
+                    answer_limits_list[actual_index][new_limit_index] = new_limit
             else:
                 data_vec1 = np.append(data_vec1, data1)
     data_sub1 = joinDatasetByAttributes(data_vec1)
@@ -78,11 +93,39 @@ def joinPersonStageData(persons, stages, sub, optional_sub='', join=False):
             data_sub1.no_class()
             data_sub1.delete_last_attribute()
             data_final = joinDatasetByInstances(np.array([data_sub1, data_sub2]))
-            return data_final
+            return data_final, answer_limits_list
         else:
-            return data_sub1, data_sub2
+            return data_sub1, data_sub2, answer_limits_list
     else:
         return data_sub1
+
+
+def joinListData(file_list):
+
+    data_vec1 = np.empty(0)
+    data_vec2 = np.empty(0)
+    answer_limits_list = list()
+    for row_file in file_list:
+        file_name = row_file[0]
+        path = Hrm.buildSubFilePath(file_name, 'VCom')
+        data1 = loadAndFiltered(path)
+        path = Hrm.buildSubFilePath(file_name, 'VResp')
+        data2 = loadAndFiltered(path)
+        data_vec_norm = normalizeDatasets(np.array([data1, data2]))
+        data_vec1 = np.append(data_vec1, data_vec_norm[0])
+        data_vec2 = np.append(data_vec2, data_vec_norm[1])
+
+        if len(answer_limits_list) == 0:
+            answer_limits_list.append(instancesNumber(data_vec_norm[0]))
+        else:
+            answer_limits_list.append(answer_limits_list[len(answer_limits_list) - 1] +
+                                      instancesNumber(data_vec_norm[0]))
+    data_sub1 = joinDatasetByAttributes(data_vec1)
+    data_sub2 = joinDatasetByAttributes(data_vec2)
+    data_sub1.no_class()
+    data_sub1.delete_last_attribute()
+    data_final = joinDatasetByInstances(np.array([data_sub1, data_sub2]))
+    return data_final, answer_limits_list
 
 
 def normalizeDatasets(data_vec):

@@ -1,3 +1,5 @@
+import os
+
 from weka.core import jvm, packages
 
 import Experimentos as exp
@@ -34,6 +36,8 @@ def main():
     print('Fin de ejecucion')
     log.add('Fin de ejecucion')
     jvm.stop()
+    # Para los casos que matlab crea su propia JVM, para que se detengan todas
+    # os._exit(0)
 
 
 if __name__ == '__main__':

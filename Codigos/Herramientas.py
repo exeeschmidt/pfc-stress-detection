@@ -223,13 +223,13 @@ def readAnswersTime(file, person, stage, part):
     return seconds
 
 
-def mapLabels(person, stage, label_binarization, complete_mode=False):
+def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
     """
     Se encarga de generar un vector con la etiqueta que deberia ir por cada instancia, ademas se incorpo la devolucion
     de los limites de respuesta, mapeando los tiempos de este con las instancias
     """
     # Defino los nombres de la clase según si se binariza o no
-    if label_binarization:
+    if binarize_labels:
         labels = np.array(['N', 'E'])
     else:
         labels = np.array(['N', 'B', 'M', 'A'])
@@ -258,7 +258,7 @@ def mapLabels(person, stage, label_binarization, complete_mode=False):
         # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
         # respuesta segpun el caso
         actual_label = readLabel(data_labels, person, stage, str(1))
-        if label_binarization:
+        if binarize_labels:
             if actual_label != 'N':
                 actual_label = labels[1]
 
@@ -282,7 +282,7 @@ def mapLabels(person, stage, label_binarization, complete_mode=False):
                 # Paso a usar nro_intervalo como bandera por si es la última etiqueta de la última parte
                 if interval_number == parts:
                     interval_number = -1
-                if label_binarization:
+                if binarize_labels:
                     if actual_label != 'N':
                         actual_label = labels[1]
             labels_list.append(actual_label)
@@ -301,12 +301,29 @@ def mapLabels(person, stage, label_binarization, complete_mode=False):
                 answers_limits.append(instances_number)
             else:
                 answers_limits.append(answers_limits[len(answers_limits) - 1] + instances_number)
-            if label_binarization:
+            if binarize_labels:
                 if actual_label != 'N':
                     actual_label = labels[1]
             for i in range(0, instances_number):
                 labels_list.append(actual_label)
     return labels_list, answers_limits
+
+
+def mapLabelsMSPImprov(row_file, binarize_labels):
+    labels_list = list()
+    # Leo el video solo para saber el total de frames, este es igual a la cantidad de instancias para el etiquetado
+    video_path = row_file[1]
+    video = cv.VideoCapture(video_path)
+    instances_number = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+
+    label = row_file[3]
+    if binarize_labels:
+        if row_file[3] != 'N':
+            label = 'E'
+    for i in range(0, instances_number):
+        labels_list.append(label)
+
+    return labels_list
 
 
 def predictionCSVtoArray(prediction, from_csv_file=False):
@@ -579,7 +596,7 @@ def showTable(summary):
         Log.addToTable(file)
 
 
-def writeLimits(persons_test, answers_limits_list):
+def writeLimitsOwnBD(persons_test, answers_limits_list):
     aux_answer_limits_list = list()
     offset_answers = 0
     for i in persons_test:
@@ -589,5 +606,46 @@ def writeLimits(persons_test, answers_limits_list):
         aux_answer_limits_list.extend(aux_answer_limits)
         offset_answers += answers_limits_list[int(i)][len(answers_limits_list[int(i)]) - 1]
 
-    file = open(os.path.join(Datos.PATH_LOGS, str(Datos.FOLD_ACTUAL) + '_limites' + '.txt'), 'a+', encoding="utf-8")
+    file = open(os.path.join(Datos.PATH_LOGS, str(Datos.FOLD_ACTUAL) + '_limites.txt'), 'a+', encoding="utf-8")
     file.writelines(str(aux_answer_limits_list))
+
+
+def wirteLimitsMSPImprov(answers_limits_list):
+    aux_answer_limits_list= list()
+    offset_answers = 0
+    for instance_per_answer in answers_limits_list:
+        aux_answer_limits_list.append(instance_per_answer + offset_answers)
+        offset_answers += instance_per_answer
+    file = open(os.path.join(Datos.PATH_LOGS, 'limites.txt'), 'a+', encoding="utf-8")
+    file.writelines(str(aux_answer_limits_list))
+
+
+def processEvalutionFile():
+    complete_list = readCSVFile(os.path.join(Datos.PATH_BD, 'Evalution.txt'), delimiter=';')
+    new_list = list()
+    for row in complete_list:
+        if len(row) != 0:
+            if row[0].find('.avi') != -1:
+                label = defineLabelFromValenceAndArousal(row[3][2:len(row[3])], row[4][2:len(row[4])])
+                aux_list = processFileHeader(row[0])
+                aux_list.append(label)
+                new_list.append(aux_list)
+    return new_list
+
+
+def processFileHeader(fileheader):
+    # Example: UTD-IMPROV-S01A-F02-R-FF01.avi
+    filename = 'MSP' + fileheader[3:26]
+    session = 'session' + fileheader[18]
+    sentence = fileheader[11:15]
+    type = fileheader[20]
+    video_path = os.path.join(Datos.PATH_BD, 'Video', session, sentence, type, filename + '.avi')
+    audio_path = os.path.join(Datos.PATH_BD, 'Audio', session, sentence, type, filename + '.wav')
+    return list([filename, video_path, audio_path])
+
+
+def defineLabelFromValenceAndArousal(valence, arousal):
+    if float(valence) < 2.5 < float(arousal):
+        return 'Stress'
+    else:
+        return 'Neutral'

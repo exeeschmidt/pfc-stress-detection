@@ -3,28 +3,28 @@ import cv2 as cv
 import numpy as np
 from tqdm import tqdm
 from colorama import Fore
-import ArffManager as am
-import Metodos as met
-import Herramientas as hrm
-import Datos as datos
+import ArffManager as Am
+import Metodos as Met
+import Herramientas as Hrm
+import Datos
 
 
 # ======================================================= VIDEO ========================================================
 
-class Video:
-    def __init__(self, binarizar_etiquetas, zonas, metodos, ):
-        self.binarizar_etiquetas = binarizar_etiquetas
-        self.tiempo_micro = datos.TIEMPO_MICROEXPRESION
+class VideoFeaturesUnification:
+    def __init__(self, label_binarization, zones, extract_methods):
+        self.label_binarization = label_binarization
+        self.microexpression_duration = Datos.TIEMPO_MICROEXPRESION
 
         # Defino las zonas donde quiero calcular lbp y hop, las opciones son las de abajo
         # cejas, cejaizq, cejader, ojos, ojoizq, ojoder, cara, nariz, boca
         # zonas = np.array(['cejaizq', 'cejader', 'ojoizq', 'ojoder', 'boca'])
-        self.zonas = zonas
+        self.zones = zones
 
         # Defino cuáles características quiero utilizar
         # metodos = np.array(['LBP', 'HOP', 'HOG', 'AUS'])
         # Creo un vector booleano donde cada posición significa si un método va a ser o no tenido en cuenta
-        self.bool_metodos = np.zeros(4, dtype=bool)
+        self.bool_methods = np.zeros(4, dtype=bool)
         # El switch define que método se relaciona con que posicion del vector booleano
         switcher = {
             'LBP': 0,
@@ -32,446 +32,405 @@ class Video:
             'HOG': 2,
             'AUS': 3
         }
-        self.nombres_metodos = metodos
+        self.extract_methods = extract_methods
         # Si encuentro el método, uso el switch para definir la posición del vector que pasa a ser verdadera
-        for i in metodos:
-            self.bool_metodos[switcher.get(i)] = True
+        for i in extract_methods:
+            self.bool_methods[switcher.get(i)] = True
 
         # Defino los nombres de la clase según si se binariza o no
-        if self.binarizar_etiquetas:
-            self.clases = np.array(['N', 'E'])
+        if self.label_binarization:
+            self.classes = np.array(['N', 'E'])
         else:
-            self.clases = np.array(['N', 'B', 'M', 'A'])
+            self.classes = np.array(['N', 'B', 'M', 'A'])
 
-        self.nro_zonas = len(self.zonas)
+        self.zones_number = len(self.zones)
 
-    def __call__(self, persona, etapa, completo=False, rangos_audibles=None):
-        # start = time.time()
-        if rangos_audibles is None:
-            rangos_audibles = list()
-
+    def __call__(self, video_name, video_path, labels_list, complete_mode=False):
         # Segun que metodo utilice concateno la data de cada arff que sea necesario
-        data_vec = np.empty(0)
-        for i in range(0, self.bool_metodos.size):
-            if self.bool_metodos[i]:
-                atrib = self.nombres_metodos[i]
-                data_aux = am.loadAndFiltered(hrm.buildSubFilePath(persona, etapa, atrib))
-                data_vec = np.append(data_vec, data_aux)
+        data_vector = np.empty(0)
+        for i in range(0, self.bool_methods.size):
+            if self.bool_methods[i]:
+                method = self.extract_methods[i]
+                data_aux = Am.loadAndFiltered(Hrm.buildSubFilePath(video_name, method))
+                data_vector = np.append(data_vector, data_aux)
 
-        data = am.joinDatasetByInstances(data_vec)
-        data = am.filterZones(data, self.zonas)
-        ini_Aus, fin_Aus = am.ausRange(data)
+        data = Am.joinDatasetByInstances(data_vector)
+        data = Am.filterZones(data, self.zones)
+        au_begin, au_end = Am.ausRange(data)
 
-        # Cargo el archivo con las etiquetas
-        arch_etiquetas = hrm.readCSVFile(datos.PATH_ETIQUETAS)
-
-        if int(etapa) == 1:
-            partes = 7
+        if complete_mode:
+            self.complete(video_name, video_path, data, labels_list)
         else:
-            partes = 6
+            processed_labels_list = self.forAnswer(video_name, data, labels_list, au_begin, au_end)
+            return processed_labels_list
 
-        if completo:
-            self.VideoCompleto(persona, etapa, partes, data, arch_etiquetas)
-        else:
-            self.VideoRespuestas(persona, etapa, partes, rangos_audibles, data, arch_etiquetas, ini_Aus, fin_Aus)
-
-    def VideoCompleto(self, persona, etapa, partes, data, arch_etiquetas):
+    def complete(self, video_name, video_path, data, labels_list):
         # Numero de instancia desde la que recorro
         # instancia_desde = 0
-        # Diferencias en los nombres de archivo y llamada a open face
-        nombre = hrm.buildFileName(persona, etapa)
-        path = hrm.buildFilePath(persona, etapa, nombre, extension=True)
 
-        if not os.path.exists(path):
+        if not os.path.exists(video_path):
             raise Exception("Ruta de archivo incorrecta o no válida")
 
-        video = cv.VideoCapture(path)
+        video = cv.VideoCapture(video_path)
         frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
-        fps = int(video.get(cv.CAP_PROP_FPS))
-
-        # Cargo los tiempos donde termina cada respuesta, para saber en que intervalos va cada etiqueta,
-        # esto está en segundos
-        tiempos = np.zeros(partes)
-        for i in range(0, partes):
-            tiempos[i] = hrm.readAnswersTime(arch_etiquetas, persona, etapa, str(i + 1))
-        # Permite saber en que respuesta voy para saber cuando cambiar la etiqueta
-        nro_intervalo = 1
-
-        # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
-        # respuesta en el caso
-        etiqueta = hrm.readLabel(arch_etiquetas, persona, etapa, str(1))
-        if self.binarizar_etiquetas:
-            if etiqueta != 'N':
-                etiqueta = self.clases[1]
 
         # Numero de instancia hasta la que recorro
-        instancia_hasta = am.instancesNumber(data)
+        instances_number = Am.instancesNumber(data)
 
-        if instancia_hasta != (frames_totales - 1):
-            print('Instancias diferentes a numero de frames:', instancia_hasta, frames_totales)
+        if (frames_totales - 1) != instances_number:
+            print('Frames totales distintos a numero de instancias: ' + str(frames_totales - 1) + ' - '
+                  + str(instances_number))
 
-        data = am.addClassAttribute(data, self.clases)
+        data = Am.addClassAttribute(data, self.classes)
 
-        for i in range(0, instancia_hasta):
-            # Para definir intervalo de etiqueta
+        for i in range(0, instances_number):
+            if i < len(labels_list):
+                data = Am.addLabel(data, i, np.where(self.classes == labels_list[i])[0][0])
+            else:
+                data = Am.addLabel(data, i, np.where(self.classes == labels_list[len(labels_list) - 1])[0][0])
 
-            # Si paso el tiempo donde termina la respuesta, leo la siguiente etiqueta
-            # Me fijo también si el nro de intervalo no es el último, en ese caso debe etiquetarse hasta el
-            # final. Por esa razón no debe cambiar más de etiqueta. Esta verificación está por si hay error
-            # numérico al calcular los fps y se detecte un cambio de etiqueta unos cuadros antes de la
-            # última etiqueta, lo que provocaría que quiera leer la etiqueta de un número de intervalo que
-            # no existe
-            if (i >= tiempos[nro_intervalo - 1] * fps) and (nro_intervalo != -1):
-                nro_intervalo = nro_intervalo + 1
-                etiqueta = hrm.readLabel(arch_etiquetas, persona, etapa, nro_intervalo)
-                # Paso a usar nro_intervalo como bandera por si es la última etiqueta de la última parte
-                if nro_intervalo == partes:
-                    nro_intervalo = -1
-                if self.binarizar_etiquetas:
-                    if etiqueta != 'N':
-                        etiqueta = self.clases[1]
-            data = am.addLabel(data, i, np.where(self.clases == etiqueta)[0][0])
-        am.changeRelationName(data, 'VideoFeatures Completos')
-        am.saveInSubfolder(persona, etapa, 'VCom', data)
+        Am.changeRelationName(data, 'VideoFeatures Completos')
+        Am.saveInSubfolder(video_name, 'VCom', data)
         return data
 
-    def VideoRespuestas(self, persona, etapa, partes, rangos_audibles, data, arch_etiquetas, ini_AUs, fin_AUs):
-        # Si no hay rangos audibles especificados o se analiza el video completo no existe la eliminacion de silencios
-        if len(rangos_audibles) == 0:
-            elimina_silencio = False
+    def forAnswer(self, video_name, data, labels_list, au_begin, au_end):
+        data_parts_vector = np.empty(0)
+
+        person = Hrm.extractPersonFromVideoName(video_name)
+        stage = Hrm.extractStageFromFileName(video_name)
+        if int(stage) == 1:
+            parts = 7
         else:
-            elimina_silencio = True
+            parts = 6
 
-        data_vec_general = np.empty(0)
-
-        instancia_desde = 0
+        from_instance = 0
+        # Debo generar una nueva lista de limites por la fusion de cuadros
+        final_answer_limits = list()
         # Número de instancia que va recorriendo
-        nro_instancia = 1
-        for j in range(0, partes):
+        actual_instance = 1
+        for j in range(0, parts):
             # Diferencias en los nombres de archivo y llamada a open face
-            nombre = hrm.buildFileName(persona, etapa, str(j + 1))
+            video_name_part = Hrm.buildFileName(person, stage, part=(j + 1))
+            video_path_part = Hrm.buildFilePath(person, stage, video_name_part, extension=Datos.EXTENSION_VIDEO)
 
-            path = hrm.buildFilePath(persona, etapa, nombre, extension=True)
-
-            if not os.path.exists(path):
+            if not os.path.exists(video_path_part):
                 raise Exception("Ruta de archivo incorrecta o no válida")
 
-            video = cv.VideoCapture(path)
-            frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+            video = cv.VideoCapture(video_path_part)
+            total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
             fps = int(video.get(cv.CAP_PROP_FPS))
-            duracion_cuadro = 1 / fps
-
-            # Se toman los porcentajes de los segmentos audibles ya que al multiplicarlos por el número de frames
-            # totales, se obtiene la equivalencia al rango de cuadros
-            if elimina_silencio:
-                # rangos audibles es una lista que en cada posicion tiene un vector de vectores por respuesta
-                rangos_cuadros = rangos_audibles[j] * frames_totales
-                rangos_cuadros = rangos_cuadros.astype(int)
-                cuadros_audibles = list()
-                # Convierto los rangos en una lista de cuadros
-                for i in rangos_cuadros:
-                    # Al ser rangos cuadros un vector de vectores, i en cada ciclo es un vector de dos componentes
-                    cuadros_audibles.extend(range(i[0], i[1] + 1))
+            frame_duration = 1 / fps
 
             # Si es por respuesta necesito segmentar por el tiempo de las micro expresiones, en el completo el
             # análisis se hace por cuadro
 
             # Numero de instancia hasta la que recorro
-            instancia_hasta = instancia_desde + frames_totales + 1
+            to_instance = from_instance + total_frames + 1
             # Acumulador para indicar cuanto tiempo transcurre desde que empece a contar los frames para un segmento
-            acu_tiempos = 0
+            accumulated_time = 0
             # Vector para acumular las caracteristicas y luego promediarlas
-            vec_prom = np.empty(0)
+            vector_features_to_promediate = np.empty(0)
             # Para ir guardando el ultimo vector de promedio valido en caso de tener periodos de tiempo invalidos
-            vec_prom_ant = np.empty(0)
+            vector_features_to_promediate_previous = np.empty(0)
             # Va guardando las maximas intensidades de cada AU
-            vec_aus = np.zeros((1, fin_AUs - ini_AUs))
+            vector_maximum_au = np.zeros((1, au_end - au_begin))
             # Para guardar la ultima etiqueta valida
-            etiqueta_ant = ''
+            last_valid_label = ''
             # Vector para guardar las etiquetas y aplicar voto
-            vec_etiquetas = list()
+            vector_label_to_vote = list()
             # Cuadros por segmento
-            cps = 0
+            frames_per_segment = 0
             # Numero de periodos consecutivos invalidos en caso que se den
-            invalidos = 0
+            invalids_count = 0
 
-            # Leo la etiqueta correspondiente a la primera parte para empezar en caso de ser completo, o la de la
-            # respuesta en el caso
-            etiqueta = hrm.readLabel(arch_etiquetas, persona, etapa, str(j + 1))
-            if self.binarizar_etiquetas:
-                if etiqueta != 'N':
-                    etiqueta = self.clases[1]
-
-            data_actual = am.newDataset(data)
-            data_actual = am.addClassAttribute(data_actual, self.clases)
-            for i in range(instancia_desde, instancia_hasta):
+            data_current_part = Am.newDataset(data)
+            data_current_part = Am.addClassAttribute(data_current_part, self.classes)
+            for i in range(from_instance, to_instance):
                 # Si no está eliminando silencios o encuentra que el frame se encuentra de los frames audibles
                 # se extraen las caracteristicas.  Verfico también que la confidencialidad encuentra que se detecto
                 # una cara en el cuadro segun un umbral interno
-                if (not elimina_silencio) or (cuadros_audibles.count(nro_instancia) > 0):
-                    # Concateno todas las caracteristicas en un solo vector
-                    vec_caracteristicas = am.getValues(data, i)
-
-                    # Como puede que entre por no eliminar silencios pero en esa instancia no habia caras por
-                    # confidencialidad, verifico si no esta vacio
-                    if vec_caracteristicas.size != 0:
-                        # Agrego las caracteristicas al vector que luego se promedia, la etiqueta
-                        # a la lista para luego hacer voto, y el contador de cuadros por segmento
-                        for k in range(0, fin_AUs - ini_AUs):
-                            if vec_aus[0, k] < vec_caracteristicas[k + ini_AUs]:
-                                vec_aus[0, k] = vec_caracteristicas[k + ini_AUs]
-                        if vec_prom.size == 0:
-                            vec_prom = vec_caracteristicas
-                        else:
-                            vec_prom = vec_prom + vec_caracteristicas
-                        vec_etiquetas.append(etiqueta)
-                        cps = cps + 1
+                if i < len(labels_list):
+                    label = labels_list[i]
                 else:
-                    # Si no obtuve caracteristicas doy valores vacios al vector este por el promediado
-                    vec_caracteristicas = np.empty(0)
+                    label = labels_list[len(labels_list) - 1]
 
+                features_vector = Am.getValues(data, i)
+                # Como puede que entre por no eliminar silencios pero en esa instancia no habia caras por
+                # confidencialidad, verifico si no esta vacio
+                if features_vector.size != 0:
+                    # Agrego las caracteristicas al vector que luego se promedia, la etiqueta
+                    # a la lista para luego hacer voto, y el contador de cuadros por segmento
+                    for k in range(0, au_end - au_begin):
+                        if vector_maximum_au[0, k] < features_vector[k + au_begin]:
+                            vector_maximum_au[0, k] = features_vector[k + au_begin]
+                    if vector_features_to_promediate.size == 0:
+                        vector_features_to_promediate = features_vector
+                    else:
+                        vector_features_to_promediate = vector_features_to_promediate + features_vector
+                    vector_label_to_vote.append(label)
+                    frames_per_segment = frames_per_segment + 1
+                else:
+                    # Si no obtuve caracteristicas el vector queda vacio, para luego comprobar su tamaño
+                    features_vector = np.empty(0)
+
+                accumulated_time = accumulated_time + frame_duration
                 # Aunque no se extraigan caracteristicas si se hace análisis por períodos se debe verificar si termina
                 # algun segmento de tiempo y se deba guardar
-
-                # Solo avanzo en el acumulador de tiempo si no estoy eliminando silencios o el cuadro es audible
-                # En el caso de eliminar silencios los cuadros silenciosos deberian equivaler a no existir
-                if not elimina_silencio or cuadros_audibles.count(nro_instancia) > 0:
-                    acu_tiempos = acu_tiempos + duracion_cuadro
-
-                # Verifico si termino el periodo, si es asi debo promediar y agregar al arff
-                if acu_tiempos >= self.tiempo_micro:
-                    if vec_prom.size != 0:
-                        vec_prom = vec_prom / cps
-                        etiqueta_prom = self._voto(vec_etiquetas, self.clases)
+                if accumulated_time >= self.microexpression_duration:
+                    # Verifico si termino el segmento, si es asi debo promediar y agregar al arff
+                    if vector_features_to_promediate.size != 0:
+                        vector_features_to_promediate = vector_features_to_promediate / frames_per_segment
+                        voted_label = self.voting(vector_label_to_vote, self.classes)
 
                         # Si tengo el contador de invalidos hay que completar esas fila promediando el actual valido
                         # con el ultimo valido que hubo
-                        if invalidos > 0:
-                            if vec_prom_ant.size == 0:
+                        if invalids_count > 0:
+                            if vector_features_to_promediate_previous.size == 0:
                                 # En caso de empezar con periodos invalidos simplemente lo igual al primer valido que
                                 # se encuentre
-                                vec_aprox = vec_prom
-                                etiqueta_aprox = etiqueta_prom
+                                approximate_features_vector = vector_features_to_promediate
+                                approximate_label = voted_label
                             else:
                                 # Creo el vector aproximando promediando
-                                vec_aprox = (vec_prom + vec_prom_ant) / 2
-                                etiqueta_aprox = self._voto(list([etiqueta_ant, etiqueta_prom]), self.clases)
-                            for k in range(0, invalidos):
-                                data_actual = am.addInstanceWithLabel(data_actual, vec_aprox,
-                                                                      np.where(self.clases == etiqueta_aprox)[0][0])
+                                approximate_features_vector = (vector_features_to_promediate +
+                                                               vector_features_to_promediate_previous) / 2
+                                approximate_label = self.voting(list([last_valid_label, voted_label]), self.classes)
+                            for k in range(0, invalids_count):
+                                data_current_part = Am.addInstanceWithLabel(data_current_part,
+                                                                            approximate_features_vector,
+                                                                            np.where(self.classes == approximate_label)
+                                                                            [0][0])
                         # Reemplazo las aus promediadas con el maximo de las aus
-                        vec_prom[ini_AUs:fin_AUs] = vec_aus
-                        vec_aus = np.zeros((1, fin_AUs - ini_AUs))
-                        vec_prom_ant = vec_prom
-                        etiqueta_ant = etiqueta_prom
-                        invalidos = 0
+                        vector_features_to_promediate[au_begin:au_end] = vector_maximum_au
+                        vector_maximum_au = np.zeros((1, au_end - au_begin))
+                        vector_features_to_promediate_previous = vector_features_to_promediate
+                        last_valid_label = voted_label
+                        invalids_count = 0
                         # Recien ahora agrego la fila del periodo actual despues de agregar las anteriores aproximadas
-                        data_actual = am.addInstanceWithLabel(data_actual, vec_prom,
-                                                              np.where(self.clases == etiqueta_prom)[0][0])
+                        data_current_part = Am.addInstanceWithLabel(data_current_part, vector_features_to_promediate,
+                                                                    np.where(self.classes == voted_label)[0][0])
                     else:
-                        invalidos = invalidos + 1
-                    if acu_tiempos > self.tiempo_micro:
+                        invalids_count = invalids_count + 1
+                    if accumulated_time > self.microexpression_duration:
                         # A su vez si es mayor es porque un cuadro se "corto" por lo que sus caracteristicas van a
                         # formar parte tambien del promediado del proximo segmento
-                        acu_tiempos = acu_tiempos - self.tiempo_micro
+                        accumulated_time = accumulated_time - self.microexpression_duration
                         # Verifico que se hayan extraido caracteristicas en el ultimo cuadro, y si se eliminan silencios
                         # que el proximo cuadro se encuentre dentro de lo audible, sino significaria que cambia de rango
                         # por lo que no serian cuadros consecutivos y no deberia tenerse en cuenta para el proximo
                         # segmento
-                        if (vec_caracteristicas.size != 0) or (
-                                elimina_silencio and cuadros_audibles.count(nro_instancia + 1) == 0):
-                            # Si se extrajeron las tiene en cuenta
-                            vec_prom = vec_caracteristicas
-                            vec_etiquetas = list(etiqueta)
-                            cps = 1
+                        if features_vector.size != 0:
+                            # Si se extrajeron caracteristicas las tiene en cuenta
+                            vector_features_to_promediate = features_vector
+                            vector_label_to_vote = list(label)
+                            frames_per_segment = 1
                         else:
-                            # Si el cuadro era invalido que reinicie todo a cero tambien
-                            vec_prom = np.empty(0)
-                            vec_etiquetas = list()
-                            cps = 0
+                            # Si el cuadro era invalido que reinicie como si comenzara de cero
+                            vector_features_to_promediate = np.empty(0)
+                            vector_label_to_vote = list()
+                            frames_per_segment = 0
                     else:
-                        # Si el segmento corta justo con el cuadro reinicio todo
-                        acu_tiempos = 0
-                        vec_prom = np.empty(0)
-                        vec_etiquetas = list()
-                        cps = 0
+                        # Si el segmento corta justo con el cuadro reinicio
+                        accumulated_time = 0
+                        vector_features_to_promediate = np.empty(0)
+                        vector_label_to_vote = list()
+                        frames_per_segment = 0
 
                 # print(nro_instancia)
-                nro_instancia = nro_instancia + 1
-            # Si termino el video y tengo periodos de tiempo invalidos tengo que igualarlos con el ultimo periodo valido que hubo
-            if invalidos > 0:
-                for i in range(0, invalidos):
-                    data_actual = am.addInstanceWithLabel(data_actual, vec_prom_ant,
-                                                          np.where(self.clases == etiqueta_ant)[0][0])
+                actual_instance = actual_instance + 1
+            # Si termino el video y tengo periodos de tiempo invalidos tengo que igualarlos con el ultimo periodo valido
+            # que hubo
+            if invalids_count > 0:
+                for i in range(0, invalids_count):
+                    data_current_part = Am.addInstanceWithLabel(data_current_part,
+                                                                vector_features_to_promediate_previous,
+                                                                np.where(self.classes == last_valid_label)[0][0])
             # Actualizo para tomar las instancias equivalentes a la proxima respuesta
-            instancia_desde = instancia_hasta
-            data_vec_general = np.append(data_vec_general, data_actual)
+            from_instance = to_instance
+            data_parts_vector = np.append(data_parts_vector, data_current_part)
+            # Agrego el numero de instancias de los datos de la parte actual a los limites
+            if len(final_answer_limits) == 0:
+                final_answer_limits.append(Am.instancesNumber(data_current_part))
+            else:
+                final_answer_limits.append(final_answer_limits[len(final_answer_limits) - 1] + Am.instancesNumber(data_current_part))
 
-        data_final = am.joinDatasetByAttributes(data_vec_general)
-        if elimina_silencio:
-            am.saveInSubfolder(persona, etapa, 'VSil', data_final)
-        else:
-            am.saveInSubfolder(persona, etapa, 'VResp', data_final)
+        data_final = Am.joinDatasetByAttributes(data_parts_vector)
+        Am.saveInSubfolder(video_name, 'VResp', data_final)
+        return final_answer_limits
 
     @staticmethod
-    def _voto(etiquetas, clases):
+    def voting(labels, classes):
         # Simple algoritmo de votacion que devuelve la clase con mas etiquetas presentes
-        votos = np.zeros(clases.shape)
-        for i in range(0, clases.size):
-            votos[i] = etiquetas.count(clases[i])
-        return clases[votos.argmax()]
+        votes = np.zeros(classes.shape)
+        for i in range(0, classes.size):
+            votes[i] = labels.count(classes[i])
+        return classes[votes.argmax()]
 
 
 # ======================================================= AUDIO ========================================================
 
-class Audio:
-    def __init__(self, binarizar_etiquetas):
-        self.binarizar_etiquetas = binarizar_etiquetas
-        self.tiempo_micro = datos.TIEMPO_MICROEXPRESION
+class AudioFeaturesExtraction:
+    def __init__(self, binarize_labels):
+        self.binarize_labels = binarize_labels
+        self.microexpression_duration = Datos.TIEMPO_MICROEXPRESION
 
-    def __call__(self, persona, etapa, eliminar_silencios=False):
+    def __call__(self, file_name, file_path, labels_list, complete_mode=False, extract_from_video=True):
         # Defino los nombres de la clase según si binarizo o no
-        if self.binarizar_etiquetas:
-            clases = np.array(['N', 'E'])
+        if self.binarize_labels:
+            self.classes = np.array(['N', 'E'])
         else:
-            clases = np.array(['N', 'B', 'M', 'A'])
+            self.classes = np.array(['N', 'B', 'M', 'A'])
 
+        if complete_mode:
+            self.complete(file_name, file_path, labels_list, extract_from_video)
+        else:
+            self.forAnswer(file_name, labels_list)
+
+    def complete(self, file_name, file_path, labels_list, extract_from_video):
+        if not os.path.exists(file_path):
+            raise Exception("Ruta de archivo incorrecta o no válida")
+
+        # En el caso de extraer la pista de audio del video lo hago a traves de FFMPEG, sino utilizo el path pasado
+        if extract_from_video:
+            # Ejecuto el método para extraer el wav del video
+            ffmpeg = Met.FFMPEG()
+            ffmpeg(file_name, file_path + Datos.EXTENSION_VIDEO)
+            audio_path = Hrm.buildOutputPathFFMPEG(file_name)
+        else:
+            audio_path = file_path
+
+        # Ejecuto el método para extraer las caracteristicas del video
+        open_smile = Met.OpenSmile(window=True)
+        open_smile(file_name, audio_path, window_size=str(self.microexpression_duration))
+        if extract_from_video:
+            os.remove(Hrm.buildOutputPathFFMPEG(file_name))
+
+        data = Am.loadAndFiltered(Hrm.buildOpenSmileFilePath(file_name))
+        os.remove(Hrm.buildOpenSmileFilePath(file_name))
+        # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
+        data = Am.addClassAttribute(data, self.classes)
+        for i in range(0, Am.instancesNumber(data)):
+            if i < len(labels_list):
+                data = Am.addLabel(data, i, np.where(self.classes ==
+                                                     labels_list[i])[0][0])
+            else:
+                data = Am.addLabel(data, i, np.where(self.classes ==
+                                                     labels_list[len(labels_list) - 1])[0][0])
+        Am.saveInSubfolder(file_name, 'AComp', data)
+
+    def forAnswer(self, file_name_general, labels_list):
         # Inicializaciones de los métodos
-        ffmpeg = met.FFMPEG()
-        open_smile = met.OpenSmile(csv_output=False, window=True)
-        eli_silencios = met.removeSilences(plotear=False)
-        arch_etiquetas = hrm.readCSVFile(datos.PATH_ETIQUETAS)
+        ffmpeg = Met.FFMPEG()
+        open_smile = Met.OpenSmile(window=True)
+
+        person = Hrm.extractPersonFromVideoName(file_name_general)
+        stage = Hrm.extractStageFromFileName(file_name_general)
 
         # Según la etapa, distinta cantidad de partes
-        if int(etapa) == 1:
-            partes = 7
+        if int(stage) == 1:
+            parts = 7
         else:
-            partes = 6
+            parts = 6
 
-        # Parámetro a retornar, en caso que no se eliminen los silencios quedará la lista vacía como retorno
-        rangos_silencios = list()
-
-        data_vec_general = np.empty(0)
-        for j in range(0, partes):
+        # Llevo el numero de instancias actual contando todas las respuestas acumuladas
+        accumulate_instances = 0
+        data_parts_vector = np.empty(0)
+        for j in range(0, parts):
             # Me fijo si existe el archivo
-            nombre = hrm.buildFileName(persona, etapa, str(j + 1))
-            path = hrm.buildFilePath(persona, etapa, nombre, extension=True)
-            if not os.path.exists(path):
+            file_name = Hrm.buildFileName(person, stage, part=(j + 1))
+            file_path = Hrm.buildFilePath(person, stage, file_name, extension=Datos.EXTENSION_VIDEO)
+            if not os.path.exists(file_path):
                 raise Exception("Ruta de archivo incorrecta o no válida")
 
-            # Leo la etiqueta correspondiente
-            etiqueta = hrm.readLabel(arch_etiquetas, persona, etapa, str(j + 1))
-            if self.binarizar_etiquetas:
-                if etiqueta != 'N':
-                    etiqueta = clases[1]
-
             # Ejecuto los métodos para extraer el wav del video y luego el extractor de características
-            ffmpeg(persona, etapa, str(j+1))
+            ffmpeg(file_name, file_path)
+            audio_path = Hrm.buildOutputPathFFMPEG(file_name)
+            open_smile(file_name, audio_path, window_size=str(self.microexpression_duration))
+            os.remove(Hrm.buildOutputPathFFMPEG(file_name))
 
-            if eliminar_silencios:
-                # Obtengo los rangos donde hay segmentos audibles
-                rango = eli_silencios(os.path.join(datos.PATH_PROCESADO, nombre + '.wav'), tam_ventana=self.tiempo_micro)
-                # rango es un vector de vectores, cada fila tiene un vector de dos componente con el principio y fin
+            data = Am.loadAndFiltered(Hrm.buildOpenSmileFilePath(file_name))
+            os.remove(Hrm.buildOpenSmileFilePath(file_name))
+            # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
+            data = Am.addClassAttribute(data, self.classes)
+            for i in range(0, Am.instancesNumber(data)):
+                accumulate_instances += 1
+                if accumulate_instances < len(labels_list):
+                    data = Am.addLabel(data, i, np.where(self.classes ==
+                                                         labels_list[accumulate_instances])[0][0])
+                else:
+                    data = Am.addLabel(data, i, np.where(self.classes ==
+                                                         labels_list[len(labels_list) - 1])[0][0])
+            data_parts_vector = np.append(data_parts_vector, data)
 
-                # Utilizo la cantidad de segmentos para saber cuantos archivos se generaron
-                data_vec = np.empty(0)
-                for i in range(0, rango.shape[0]):
-                    nombre_archivo = nombre + '_' + str(i + 1) + '.wav'
-                    open_smile(nombre_archivo, paso_ventaneo=str(self.tiempo_micro))
-                    data_aux = am.loadAndFiltered(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'))
-                    os.remove(os.path.join(datos.PATH_CARACTERISTICAS, nombre_archivo + '.arff'))
-                    # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                    data_aux = am.addClassAttribute(data_aux, clases)
-                    for k in range(0, am.instancesNumber(data_aux)):
-                        data_aux = am.addLabel(data_aux, k, np.where(clases == etiqueta)[0][0])
-                    data_vec = np.append(data_vec, data_aux)
-                # Lo agrego a la lista con los rangos de segmentos de cada respuesta
-                rangos_silencios.append(rango)
-                # Concateno todas las subpartes en un arff por respuesta
-                data = am.joinDatasetByInstances(data_vec)
-            else:
-                open_smile(nombre + '.wav', paso_ventaneo=str(self.tiempo_micro))
-                data = am.loadAndFiltered(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.wav.arff'))
-                os.remove(os.path.join(datos.PATH_CARACTERISTICAS, nombre + '.wav.arff'))
-                # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-                data = am.addClassAttribute(data, clases)
-                for i in range(0, am.instancesNumber(data)):
-                    data = am.addLabel(data, i, np.where(clases == etiqueta)[0][0])
-            data_vec_general = np.append(data_vec_general, data)
-
-        data_final = am.joinDatasetByAttributes(data_vec_general)
-        if eliminar_silencios:
-            am.saveInSubfolder(persona, etapa, 'ASil', data_final)
-        else:
-            am.saveInSubfolder(persona, etapa, 'AResp', data_final)
-        return rangos_silencios
+        data_final = Am.joinDatasetByAttributes(data_parts_vector)
+        Am.saveInSubfolder(file_name_general, 'AResp', data_final)
 
 
-# =========================================== CARACTERISTICSA VIDEO ====================================================
+# =========================================== CARACTERISTICAS VIDEO ====================================================
 
-class CaracteristicasVideo:
-    def __init__(self, zonas, tiempo_micro=0.25):
+class VideoFeaturesExtraction:
+    def __init__(self, zones, tiempo_micro=0.25):
         self.tiempo_micro = tiempo_micro
+        self.conf_threshold = 0.7
 
         # Defino las zonas donde quiero calcular lbp y hop, las opciones son
         # cejas, cejaizq, cejader, ojos, ojoizq, ojoder, cara, nariz, boca
         # zonas = np.array(['cejaizq', 'cejader', 'ojoizq', 'ojoder', 'boca'])
-        self.zonas = zonas
+        self.zones = zones
 
-    def __call__(self, persona, etapa):
-        nro_zonas = len(self.zonas)
+    def __call__(self, video_name, video_path):
+        zones_number = len(self.zones)
+
+        if not os.path.exists(video_path):
+            raise Exception("Ruta de archivo incorrecta o no válida")
+        video = cv.VideoCapture(video_path)
 
         # Inicializo y ejecuto openface
-        op_fa = met.OpenFace(face=False, hog=False, landmarks=True, aus=True)
-        op_fa(persona, etapa)
-
-        nombre = hrm.buildFileName(persona, etapa)
-        path = hrm.buildFilePath(persona, etapa, nombre, extension=True)
-        if not os.path.exists(path):
-            raise Exception("Ruta de archivo incorrecta o no válida")
-        video = cv.VideoCapture(path)
-
-        arch_openface = hrm.readCSVFile(os.path.join(datos.PATH_PROCESADO, nombre + '.csv'))
+        op_fa = Met.OpenFace(face=False, hog=False, landmarks=True, aus=True)
+        op_fa(video_path)
+        openface_data = Hrm.readCSVFile(os.path.join(Datos.PATH_PROCESADO, video_name + '.csv'))
+        os.remove(Hrm.buildOutputPathFFMPEG(os.path.join(Datos.PATH_PROCESADO, video_name + '.csv')))
+        os.remove(Hrm.buildOutputPathFFMPEG(os.path.join(Datos.PATH_PROCESADO, video_name + '_of_details.txt')))
 
         # Del 0 al 67 son los landmarks, guardo los índices de inicio y fin de cada coordenada de estos
-        LimLandmarksX1 = arch_openface[0].index('x_0')
-        LimLandmarksX2 = arch_openface[0].index('x_67')
-        LimLandmarksY1 = arch_openface[0].index('y_0')
-        dif_landmarks = LimLandmarksX2 - LimLandmarksX1
+        lim_landmarks_x1 = openface_data[0].index('x_0')
+        lim_landmarks_x2 = openface_data[0].index('x_67')
+        lim_landmarks_y1 = openface_data[0].index('y_0')
+        dif_landmarks = lim_landmarks_x2 - lim_landmarks_x1
 
-        AUs = np.array([])
+        au = np.array([])
         # Lo mismo con las intensidades de los AUs
-        LimIntAUs1 = arch_openface[0].index('AU01_r')
-        LimIntAUs2 = arch_openface[0].index('AU45_r')
+        lim_aus_intensity_1 = openface_data[0].index('AU01_r')
+        lim_aus_intensity_2 = openface_data[0].index('AU45_r')
 
         # Inicializo las clases de los métodos de extracción
-        lbp = met.OriginalLBP()
-        hop = met.HistogramOfPhase(plot=False, resize=False)
-        winSize = (64, 64)
-        blockSize = (8, 8)
-        blockStride = (8, 8)
-        cellSize = (8, 8)
+        lbp = Met.OriginalLBP()
+        hop = Met.HistogramOfPhase(plot=False, resize=False)
+        win_size = (64, 64)
+        block_size = (8, 8)
+        block_stride = (8, 8)
+        cell_size = (8, 8)
         nbins = 9
-        hog = cv.HOGDescriptor(winSize, blockSize, blockStride, cellSize, nbins)
+        hog = cv.HOGDescriptor(win_size, block_size, block_stride, cell_size, nbins)
 
         # Inicializo los rangos donde indican el inicio y fin de las características en cada zona según el método
         # Esto sirve para darles el nombre de zonas al guardar las características en los arff
-        lbp_range = list([0])
-        hop_range = list([0])
-        hog_range = list([0])
+        lbp_length = list([0])
+        hop_length = list([0])
+        hog_length = list([0])
 
         # Número de cuadro que va recorriendo
         nro_frame = 1
         # Booleano para saber si es el primer frame que extraigo características
-        primer_frame = True
+        first_frame = True
         # Comienzo a recorrer el video por cada cuadro
-        instancias_invalidas = 0
+        invalids_instances = 0
 
         # Inicialización de la barra de progreso
         total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
         bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.GREEN)
-        with tqdm(total=total_frames, unit='frame', desc="Frames", bar_format=bar_format) as progreso_frames:
-            progreso_frames.update(1)
+        with tqdm(total=total_frames, unit='frame', desc="Frames", bar_format=bar_format) as frames_progress:
+            frames_progress.update(1)
 
             while video.isOpened():
                 ret, frame = video.read()
@@ -479,10 +438,10 @@ class CaracteristicasVideo:
                     break
 
                 # Extraigo solo si la confidencialidad encuentra que se detecto una cara en el cuadro
-                if self._confidencialidad(frame):
-                    # Obtengo los landmarks del archivo
-                    lm_x = arch_openface[nro_frame][LimLandmarksX1:LimLandmarksX1 + dif_landmarks]
-                    lm_y = arch_openface[nro_frame][LimLandmarksY1:LimLandmarksY1 + dif_landmarks]
+                if self.confidenciality(frame):
+                    # Obtengo los landmarks de los datos devueltos por openface
+                    lm_x = openface_data[nro_frame][lim_landmarks_x1:lim_landmarks_x1 + dif_landmarks]
+                    lm_y = openface_data[nro_frame][lim_landmarks_y1:lim_landmarks_y1 + dif_landmarks]
 
                     # Inicializo los vectores donde se van a ir concatenando las características de todas las zonas
                     lbp_hist = np.array([])
@@ -490,88 +449,81 @@ class CaracteristicasVideo:
                     hog_hist = np.array([])
 
                     # Por cada zona repito
-                    for i in range(0, nro_zonas):
+                    for i in range(0, zones_number):
                         # Recorto las roi, las expando y aplico un resize para que tengan tamaño constante en todos
                         # los frames
-                        roi = hrm.ROI(frame, lm_x, lm_y, self.zonas[i])
+                        roi = Hrm.ROI(frame, lm_x, lm_y, self.zones[i])
 
-                        # Obtengo los patrones locales binarios y sus histogramas
-                        aux_lbp = np.array(hrm.generateHistogram(lbp(roi)))
-                        if primer_frame:
-                            # A partir del anterior, le voy sumando el tamaño de este
-                            lbp_range.append(lbp_range[len(lbp_range) - 1] + len(aux_lbp))
-                        lbp_hist = np.concatenate([lbp_hist, aux_lbp])
-
-                        # Obtengo los histogramas de fase, ravel lo uso para que quede en una sola fila
+                        # Calculo las distintas características
+                        aux_lbp = np.array(Hrm.generateHistogram(lbp(roi)))
+                        # Ravel lo uso para redimensionarlo en una sola fila
                         aux_hop = np.ravel(hop(roi))
-                        if primer_frame:
-                            # A partir del anterior, le voy sumando el tamaño de este
-                            hop_range.append(hop_range[len(hop_range) - 1] + len(aux_hop))
-                        hop_hist = np.concatenate([hop_hist, aux_hop])
-                        # print("Tiempo HOP " + zonas[i] + ' ', time.time() - start2)
-
-                        # Obtengo los histogramas de gradiente
                         aux_hog = np.ravel(hog.compute(cv.resize(roi, (64, 64))))
-                        if primer_frame:
-                            # A partir del anterior, le voy sumando el tamaño de este
-                            hog_range.append(hog_range[len(hog_range) - 1] + len(aux_hog))
+
+                        if first_frame:
+                            # Agrego el indice hasta donde llegan las características de esta zona
+                            lbp_length.append(lbp_length[len(lbp_length) - 1] + len(aux_lbp))
+                            hop_length.append(hop_length[len(hop_length) - 1] + len(aux_hop))
+                            hog_length.append(hog_length[len(hog_length) - 1] + len(aux_hog))
+
+                        lbp_hist = np.concatenate([lbp_hist, aux_lbp])
+                        hop_hist = np.concatenate([hop_hist, aux_hop])
                         hog_hist = np.concatenate([hog_hist, aux_hog])
 
-                    # Obtengo las intensidades de las AUs de OpenFace
-                    AUs = arch_openface[nro_frame][LimIntAUs1:LimIntAUs2]
+                    # Obtengo las intensidades de las AUs de los datos de openface
+                    au = openface_data[nro_frame][lim_aus_intensity_1:lim_aus_intensity_2]
 
                     # Agrego la cabecera del archivo arff en el caso de ser el primer frame
-                    if primer_frame:
-                        data_lbp = am.createHeader('LBP', lbp_range, self.zonas)
-                        data_hop = am.createHeader('HOP', hop_range, self.zonas)
-                        data_hog = am.createHeader('HOG', hog_range, self.zonas)
-                        data_aus = am.createHeader('AUs', len(AUs), self.zonas)
-                        primer_frame = False
-                elif not primer_frame:
-                    lbp_hist = np.zeros(lbp_range[len(lbp_range) - 1]) * am.missingValue()
-                    hop_hist = np.zeros(hop_range[len(hop_range) - 1]) * am.missingValue()
-                    hog_hist = np.zeros(hog_range[len(hog_range) - 1]) * am.missingValue()
-                    AUs = np.zeros(LimIntAUs2 - LimIntAUs1) * am.missingValue()
+                    if first_frame:
+                        data_lbp = Am.createHeader('LBP', lbp_length, self.zones)
+                        data_hop = Am.createHeader('HOP', hop_length, self.zones)
+                        data_hog = Am.createHeader('HOG', hog_length, self.zones)
+                        data_aus = Am.createHeader('AUs', len(au), self.zones)
+                        first_frame = False
+                # En caso de no pasar la prueba de confidencialidad y no ser el primer frame, se definen las
+                # características como valores faltantes
+                elif not first_frame:
+                    lbp_hist = np.zeros(lbp_length[len(lbp_length) - 1]) * Am.missingValue()
+                    hop_hist = np.zeros(hop_length[len(hop_length) - 1]) * Am.missingValue()
+                    hog_hist = np.zeros(hog_length[len(hog_length) - 1]) * Am.missingValue()
+                    au = np.zeros(lim_aus_intensity_2 - lim_aus_intensity_1) * Am.missingValue()
                 else:
-                    instancias_invalidas = instancias_invalidas + 1
+                    invalids_instances = invalids_instances + 1
 
-                if not primer_frame:
-                    # Al no tener antes el numero de atributos al tener el primer frame ya valido agrego todas las instancias
-                    # que habian sido invalidas al principio
-                    if instancias_invalidas > 0:
-                        lbp_hist_aux = np.zeros(lbp_range[len(lbp_range) - 1]) * am.missingValue()
-                        hop_hist_aux = np.zeros(hop_range[len(hop_range) - 1]) * am.missingValue()
-                        hog_hist_aux = np.zeros(hog_range[len(hog_range) - 1]) * am.missingValue()
-                        AUs_aux = np.zeros(LimIntAUs2 - LimIntAUs1) * am.missingValue()
-                        for i in range(0, instancias_invalidas):
+                if not first_frame:
+                    # Al no tener antes el numero de atributos al tener el primer frame ya valido agrego todas
+                    # las instancias que habian sido invalidas en los primeros frames
+                    if invalids_instances > 0:
+                        lbp_hist_aux = np.zeros(lbp_length[len(lbp_length) - 1]) * Am.missingValue()
+                        hop_hist_aux = np.zeros(hop_length[len(hop_length) - 1]) * Am.missingValue()
+                        hog_hist_aux = np.zeros(hog_length[len(hog_length) - 1]) * Am.missingValue()
+                        au_aux = np.zeros(lim_aus_intensity_2 - lim_aus_intensity_1) * Am.missingValue()
+                        for i in range(0, invalids_instances):
                             # Agrego la instancia con todas las caracteristicas de los frames invalidos
-                            data_lbp = am.addInstance(data_lbp, lbp_hist_aux)
-                            data_hop = am.addInstance(data_hop, hop_hist_aux)
-                            data_hog = am.addInstance(data_hog, hog_hist_aux)
-                            data_aus = am.addInstance(data_aus, AUs_aux)
-                        instancias_invalidas = 0
+                            data_lbp = Am.addInstance(data_lbp, lbp_hist_aux)
+                            data_hop = Am.addInstance(data_hop, hop_hist_aux)
+                            data_hog = Am.addInstance(data_hog, hog_hist_aux)
+                            data_aus = Am.addInstance(data_aus, au_aux)
+                        invalids_instances = 0
                     # Agrego la instancia con todas las caracteristicas del frame actual
-                    data_lbp = am.addInstance(data_lbp, lbp_hist)
-                    data_hop = am.addInstance(data_hop, hop_hist)
-                    data_hog = am.addInstance(data_hog, hog_hist)
-                    data_aus = am.addInstance(data_aus, AUs)
+                    data_lbp = Am.addInstance(data_lbp, lbp_hist)
+                    data_hop = Am.addInstance(data_hop, hop_hist)
+                    data_hog = Am.addInstance(data_hog, hog_hist)
+                    data_aus = Am.addInstance(data_aus, au)
 
-                # print(nro_frame)
                 nro_frame = nro_frame + 1
-                progreso_frames.update(1)
+                frames_progress.update(1)
 
-        am.saveInSubfolder(persona, etapa, 'LBP', data_lbp)
-        am.saveInSubfolder(persona, etapa, 'HOP', data_hop)
-        am.saveInSubfolder(persona, etapa, 'HOG', data_hog)
-        am.saveInSubfolder(persona, etapa, 'AUS', data_aus)
+        Am.saveInSubfolder(video_name, 'LBP', data_lbp)
+        Am.saveInSubfolder(video_name, 'HOP', data_hop)
+        Am.saveInSubfolder(video_name, 'HOG', data_hog)
+        Am.saveInSubfolder(video_name, 'AUS', data_aus)
 
-    @staticmethod
-    def _confidencialidad(img):
-        conf_threshold = 0.7
+    def confidenciality(self, img):
         frame = np.copy(img)
-        modelFile = os.path.join(datos.ROOT_PATH, 'opencv_face_detector_uint8.pb')
-        configFile = os.path.join(datos.ROOT_PATH, 'opencv_face_detector.pbtxt')
-        net = cv.dnn.readNetFromTensorflow(modelFile, configFile)
+        model_file = os.path.join(Datos.ROOT_PATH, 'opencv_face_detector_uint8.pb')
+        config_file = os.path.join(Datos.ROOT_PATH, 'opencv_face_detector.pbtxt')
+        net = cv.dnn.readNetFromTensorflow(model_file, config_file)
 
         # blobFromImage realiza un pequeño preprocesamiento, el tercer argumento es el nuevo tamaño de imagen,
         # el cuarto son las medias de cada canal de color para hacer la media - el valor de cada canal en cada pixel
@@ -584,6 +536,6 @@ class CaracteristicasVideo:
         # ya consideramos que la cara esta presente
         for i in range(detections.shape[2]):
             confidence = detections[0, 0, i, 2]
-            if confidence > conf_threshold:
+            if confidence > self.conf_threshold:
                 return True
         return False

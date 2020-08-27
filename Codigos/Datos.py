@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT_PATH = Path(__file__).parent.parent
 PATH_BD = os.path.join(ROOT_PATH, 'Base de datos')
+# PATH_BD = os.path.join(ROOT_PATH, 'MSP-IMPROV')
 PATH_CARACTERISTICAS = os.path.join(ROOT_PATH, 'Caracteristicas')
 PATH_CODIGOS = os.path.join(ROOT_PATH, 'Codigos')
 PATH_LIBRERIAS = os.path.join(ROOT_PATH, 'Librerias')
@@ -17,28 +18,28 @@ PATH_OPENSMILE = os.path.join(PATH_LIBRERIAS, 'opensmile')
 PATH_FFMPEG = os.path.join(PATH_LIBRERIAS, 'ffmpeg', 'bin')
 PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
 
-# PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
-PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
+PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
+# PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
 
 EXTENSION_VIDEO = '.mp4'
 EXTENSION_AUDIO = '.wav'
 
 EXPERIMENTO = ''
 # TEST con valor -1 indica que se usara la lista de personas y por tanto el ordena instancia.
-TEST = 3
-VAL = 4
+TEST = 1
+VAL = 2
 BINARIZO_ETIQUETA = False
 ELIMINA_SILENCIOS = False
-GUARDO_MODEL = False
+GUARDO_INFO_CLASIFICACION = True
 
 INSTANCIAS_POR_PERIODOS = 20
 VOTO_MEJORES_X = 4
-# PORC_ATRIBS_PCA = 50
-# PORC_ATRIBS_PSO = 10
-# PORC_ATRIBS_BF = 10
-PORC_ATRIBS_PCA = 2
-PORC_ATRIBS_PSO = 2
-PORC_ATRIBS_BF = 2
+PORC_ATRIBS_PCA = 50
+PORC_ATRIBS_PSO = 10
+PORC_ATRIBS_BF = 10
+# PORC_ATRIBS_PCA = 2
+# PORC_ATRIBS_PSO = 2
+# PORC_ATRIBS_BF = 2
 PORC_ATRIBS_FINALES = 2
 ATRIBS_PCA = 0
 ATRIBS_PSO = 0
@@ -56,10 +57,14 @@ else:
 ETAPAS = np.array(['1', '2'])
 ZONAS = np.array(['ojoizq', 'ojoder', 'cejaizq', 'cejader', 'boca', 'nariz'])
 MET_EXTRACCION = np.array(['LBP', 'HOG', 'HOP', 'AUS'])
-MET_SELECCION = np.array(['BF', 'PSO'])
-# MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
-# MET_CLASIFICACION = np.array(['RF', 'SVM', 'J48', 'MLP'])
-MET_CLASIFICACION = np.array(['RF', 'J48'])
+MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
+MET_CLASIFICACION = np.array(['RF', 'SVM', 'J48', 'MLP'])
+
+MEJORES_CONFIGURACIONES = np.array([
+    np.array(['PCA', 'RF']),
+    np.array(['BF', 'RF']),
+    np.array(['PSO', 'RF'])
+])
 
 FOLD_ACTUAL = -1
 

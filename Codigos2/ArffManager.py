@@ -1,13 +1,13 @@
 import os
 import numpy as np
-import Datos as datos
-import Herramientas as hrm
+import Datos
+import Herramientas as Hrm
 from weka.core.converters import Loader, Saver
 from weka.filters import Filter
 from weka.core.dataset import Instances, Attribute, Instance
 
 
-def CargaYFiltrado(path):
+def loadAndFiltered(path):
     # Cargo los datos
     loader = Loader("weka.core.converters.ArffLoader")
     data = loader.load_file(path)
@@ -22,18 +22,18 @@ def CargaYFiltrado(path):
     return data
 
 
-def Guarda(persona, etapa, sub, data):
-    path = hrm.buildSubFilePath(persona, etapa, sub)
+def saveInSubfolder(file_name, sub_name, data):
+    path = Hrm.buildSubFilePath(file_name, sub_name)
     saver = Saver()
     saver.save_file(data, path)
 
 
-def Guardav2(path, data):
+def save(path, data):
     saver = Saver()
     saver.save_file(data, path)
 
 
-def Une(data_vec):
+def joinDatasetByInstances(data_vec):
     # Une varios datasets que pueden tener o no diferentes atributos pero igual numero de instancias
     data = Instances.copy_instances(data_vec[0])
     for i in range(1, data_vec.size):
@@ -42,7 +42,7 @@ def Une(data_vec):
     return data
 
 
-def Unev2(data_vec):
+def joinDatasetByAttributes(data_vec):
     # Une varios datasets con los mismos atributos pero con distinto numero de instancias
     data = Instances.copy_instances(data_vec[0])
     for i in range(1, data_vec.size):
@@ -51,243 +51,280 @@ def Unev2(data_vec):
     return data
 
 
-def Concatena(personas, etapas, sub, sub2='', une=False, es_test=False):
+def joinPersonStageData(persons, stages, sub, optional_sub='', join=False, answer_limits_list=None):
     # Levanta y une los dataset de multiples personas y etapas
     # Sub cambia segun el conjunto de caracteristicas, si se presenta sub2 es por si hay que concatenar el audio y video
     # entre sí también
     data_vec1 = np.empty(0)
     data_vec2 = np.empty(0)
-    limites_respuesta = list()
-    acu_limites = 0
-    for i in personas:
-        for j in etapas:
-            path = hrm.buildSubFilePath(i, j, sub)
-            data1 = CargaYFiltrado(path)
-            if sub2 != '':
-                path = hrm.buildSubFilePath(i, j, sub2)
-                data2 = CargaYFiltrado(path)
-                data_vec_norm = Normaliza(np.array([data1, data2]))
+
+    for i in persons:
+        for j in stages:
+            file_name = Hrm.buildFileName(i, j)
+            path = Hrm.buildSubFilePath(file_name, sub)
+            data1 = loadAndFiltered(path)
+            if optional_sub != '':
+                path = Hrm.buildSubFilePath(file_name, optional_sub)
+                data2 = loadAndFiltered(path)
+                data_vec_norm = normalizeDatasets(np.array([data1, data2]))
                 data_vec1 = np.append(data_vec1, data_vec_norm[0])
                 data_vec2 = np.append(data_vec2, data_vec_norm[1])
+                if answer_limits_list is not None:
+                    # El nuevo limite lo establece el numero de instancias luego de la normalizacion
+                    new_limit = instancesNumber(data_vec_norm[0])
+                    new_limit_index = 0
+                    actual_index = int(i) * 2 + int(j)
+                    # Busco donde tengo un limite mayor al nuevo limite, esto por si recorta un intervalo mayor al
+                    # del ultimo limite (no deberia pasar nunca, y si lo hace igual seria bastante malo)
+                    for k in range(0, len(answer_limits_list[actual_index])):
+                        if answer_limits_list[actual_index][k] > new_limit:
+                            new_limit_index = k
+                            break
+                    # Recorto por si es necesario, que tampoco deberia recortarse si anda bien
+                    answer_limits_list[actual_index] = answer_limits_list[actual_index][0:new_limit_index + 1]
+                    # Defino el nuevo limite reemplazando el ultimo limite puesto
+                    answer_limits_list[actual_index][new_limit_index] = new_limit
             else:
                 data_vec1 = np.append(data_vec1, data1)
-            acu_limites = acu_limites + data1.num_instances
-            limites_respuesta.append(acu_limites)
-    if (es_test):
-        hrm.writeLimits(limites_respuesta)
-    data_sub1 = Unev2(data_vec1)
-    if sub2 != '':
-        data_sub2 = Unev2(data_vec2)
-    if une:
-        data_sub1.no_class()
-        data_sub1.delete_last_attribute()
-        data_final = Une(np.array([data_sub1, data_sub2]))
-        return data_final
-    else:
-        if sub2 != '':
-            return data_sub1, data_sub2
+    data_sub1 = joinDatasetByAttributes(data_vec1)
+    if optional_sub != '':
+        data_sub2 = joinDatasetByAttributes(data_vec2)
+        if join:
+            data_sub1.no_class()
+            data_sub1.delete_last_attribute()
+            data_final = joinDatasetByInstances(np.array([data_sub1, data_sub2]))
+            return data_final, answer_limits_list
         else:
-            return data_sub1
+            return data_sub1, data_sub2, answer_limits_list
+    else:
+        return data_sub1
 
 
-def Normaliza(data_vec):
+def joinListData(file_list):
+
+    data_vec1 = np.empty(0)
+    data_vec2 = np.empty(0)
+    answer_limits_list = list()
+    for row_file in file_list:
+        file_name = row_file[0]
+        path = Hrm.buildSubFilePath(file_name, 'VCom')
+        data1 = loadAndFiltered(path)
+        path = Hrm.buildSubFilePath(file_name, 'VResp')
+        data2 = loadAndFiltered(path)
+        data_vec_norm = normalizeDatasets(np.array([data1, data2]))
+        data_vec1 = np.append(data_vec1, data_vec_norm[0])
+        data_vec2 = np.append(data_vec2, data_vec_norm[1])
+
+        if len(answer_limits_list) == 0:
+            answer_limits_list.append(instancesNumber(data_vec_norm[0]))
+        else:
+            answer_limits_list.append(answer_limits_list[len(answer_limits_list) - 1] +
+                                      instancesNumber(data_vec_norm[0]))
+    data_sub1 = joinDatasetByAttributes(data_vec1)
+    data_sub2 = joinDatasetByAttributes(data_vec2)
+    data_sub1.no_class()
+    data_sub1.delete_last_attribute()
+    data_final = joinDatasetByInstances(np.array([data_sub1, data_sub2]))
+    return data_final, answer_limits_list
+
+
+def normalizeDatasets(data_vec):
     # Deja todos los dataset presentes en el vector con el numero de instancias del menor
-    instancias = np.empty(0)
+    instances = np.empty(0)
     for i in range(0, data_vec.size):
-        instancias = np.append(instancias, NroInstancias(data_vec[i]))
+        instances = np.append(instances, instancesNumber(data_vec[i]))
 
     for i in range(0, data_vec.size):
-        if instancias[i] > min(instancias):
-            data_vec[i] = Instances.copy_instances(data_vec[i], 0, min(instancias))
+        if instances[i] > min(instances):
+            data_vec[i] = Instances.copy_instances(data_vec[i], 0, min(instances))
 
     return data_vec
 
 
-def NuevaData(data_raiz):
+def newDataset(root_data):
     # Crea un nuevo dataset apartir de los atributos de otro
-    data_new = Instances.template_instances(data_raiz, 0)
-    return data_new
+    new_data = Instances.template_instances(root_data, 0)
+    return new_data
 
 
-def Cabecera(nombre_atrib, range_atrib, zonas):
+def createHeader(attrib_name, attrib_length, zones):
     # Crea la cabecera del arff con los nombres, la cantidad segun cada metodo y las distintas zonas del video
     atrib = list()
     # Recorro dentro de los intervalos pasados por el rango seleccionando la zona correspondiente
-    if type(range_atrib) == list:
-        for j in range(0, len(range_atrib) - 1):
+    if type(attrib_length) == list:
+        for j in range(0, len(attrib_length) - 1):
             cont = 1
-            for i in range(range_atrib[j], range_atrib[j + 1]):
-                atrib.append(Attribute.create_numeric(nombre_atrib + '_' + zonas[j] + '[' + str(cont) + ']'))
+            for i in range(attrib_length[j], attrib_length[j + 1]):
+                atrib.append(Attribute.create_numeric(attrib_name + '_' + zones[j] + '[' + str(cont) + ']'))
                 cont = cont + 1
     else:
-        for j in range(0, range_atrib):
-            atrib.append(Attribute.create_numeric(nombre_atrib + '[' + str(j + 1) + ']'))
+        for j in range(0, attrib_length):
+            atrib.append(Attribute.create_numeric(attrib_name + '[' + str(j + 1) + ']'))
 
-    data = Instances.create_instances(nombre_atrib + "features", atrib, 0)
+    data = Instances.create_instances(attrib_name + "features", atrib, 0)
     return data
 
 
-def AgregaInstancia(data_t, valores):
+def addInstance(data_t, values):
     data = Instances.copy_instances(data_t)
-    inst = Instance.create_instance(valores)
+    inst = Instance.create_instance(values)
     data.add_instance(inst)
     return data
 
 
-def AgregaInstanciaClase(data_t, valores, indice_clase):
+def addInstanceWithLabel(data_t, values, class_index):
     data = Instances.copy_instances(data_t)
-    inst = Instance.create_instance(np.append(valores, indice_clase))
+    inst = Instance.create_instance(np.append(values, class_index))
     data.add_instance(inst)
     return data
 
 
-def getValores(data_t, indice):
+def addLabel(data_t, index, class_index):
     data = Instances.copy_instances(data_t)
-    # Si aparecen faltantes devuelvo los valores como vacios
-    if data.get_instance(indice).has_missing():
-        valores = np.empty(0)
-    else:
-        valores = np.array(data.get_instance(indice).values)
-        # Le saco la clase
-        valores = valores[0:valores.size - 1]
-    return valores
+    inst = data.get_instance(index)
+    inst.set_value(inst.class_index, class_index)
+    data.set_instance(index, inst)
+    return data
 
 
-def AgregaAtributoClase(data_t, clases):
+def addClassAttribute(data_t, classes):
     data = Instances.copy_instances(data_t)
-    atrib_class = Attribute.create_nominal('class', clases)
+    class_attrib = Attribute.create_nominal('class', classes)
     if data.has_class:
         data.no_class()
         data.delete_last_attribute()
-    data.insert_attribute(atrib_class, data.num_attributes)
+    data.insert_attribute(class_attrib, data.num_attributes)
     data.class_is_last()
     return data
 
 
-def AgregaEtiqueta(data_t, indice, indice_etiqueta):
+def getValues(data_t, index):
     data = Instances.copy_instances(data_t)
-    inst = data.get_instance(indice)
-    inst.set_value(inst.class_index, indice_etiqueta)
-    # inst = Instance.create_instance(np.append(data.get_instance(indice).values, indice_etiqueta))
-    data.set_instance(indice, inst)
-    return data
+    # Si aparecen faltantes devuelvo los valores como vacios
+    if data.get_instance(index).has_missing():
+        values = np.empty(0)
+    else:
+        values = np.array(data.get_instance(index).values)
+        # Le saco la clase
+        values = values[0:values.size - 1]
+    return values
 
 
-def FiltraZonas(data_t, zonas):
+def filterZones(data_t, zones):
     # Se le pasa un vector con las zonas, si en el atributo no detecta que pertenezca a ninguna de las zonas, lo elimina
-    zonas = np.append(zonas, 'AUs')
+    zones = np.append(zones, 'AUs')
     data = Instances.copy_instances(data_t)
     for i in range(data.num_attributes - 1, -1, -1):
-        elimina = True
-        for j in range(0, zonas.size):
-            if data.attribute(i).name.find(zonas[j]) != -1:
-                elimina = False
-        if elimina:
+        delete = True
+        for j in range(0, zones.size):
+            if data.attribute(i).name.find(zones[j]) != -1:
+                delete = False
+        if delete:
             data.delete_attribute(i)
     return data
 
 
-def RangoAUs(data):
-    comienzo = 0
-    fin = 0
+def ausRange(data):
+    begin = 0
+    end = 0
     for i in range(0, data.num_attributes):
         if data.attribute(i).name.find('AUs') != -1:
-            if comienzo == 0:
-                comienzo = i
-        elif comienzo != 0:
-            fin = i - 1
+            if begin == 0:
+                begin = i
+        elif begin != 0:
+            end = i - 1
             break
-    if fin == 0:
-        fin = data.num_attributes - 1
-    return comienzo, fin
+    if end == 0:
+        end = data.num_attributes - 1
+    return begin, end
 
 
-def CambiarRelationName(data_t, nombre):
+def changeRelationName(data_t, name):
     data = Instances.copy_instances(data_t)
-    data.relationname = nombre
+    data.relationname = name
     return data
 
 
-def NroInstancias(data):
+def instancesNumber(data):
     return data.num_instances
 
 
-def valorFaltante():
+def missingValue():
     return Instance.missing_value()
 
 
-def BinarizoEtiquetas(path_archivo):
+def binarizeLabels(file_path):
     # Abro el archivo para lectura y escritura
-    archivo = open(os.path.join(datos.PATH_CARACTERISTICAS, path_archivo + '.arff'), 'r+')
+    file = open(os.path.join(Datos.PATH_CARACTERISTICAS, file_path + '.arff'), 'r+')
 
     # Recorro todas las líneas del archivo
-    lineas = archivo.readlines()
-    nuevas_lineas = list()
-    for linea in lineas:
+    lines = file.readlines()
+    new_lines = list()
+    for line in lines:
         # Si encuentro la línea donde está definida el atributo clase, la reemplazo por la línea creada antes
-        if linea == '@attribute class {N, B, M, A}\n':
+        if line == '@attribute class {N, B, M, A}\n':
             aux = '@attribute class {N, E}' + '\n'
-        elif linea[0] != '@' and linea[0] != '\n':
-            aux = linea.replace('B', 'E')
+        elif line[0] != '@' and line[0] != '\n':
+            aux = line.replace('B', 'E')
             aux = aux.replace('M', 'E')
             aux = aux.replace('A', 'E')
         else:
-            aux = linea
-        nuevas_lineas.append(aux)
+            aux = line
+        new_lines.append(aux)
     # Borro, llevo el puntero al principio y escribo las líneas ya modificadas
-    archivo.truncate(0)
-    archivo.seek(0)
-    archivo.writelines(nuevas_lineas)
-    archivo.close()
+    file.truncate(0)
+    file.seek(0)
+    file.writelines(new_lines)
+    file.close()
 
 
-def MezclaInstancias(data, orden):
-    path = os.path.join(datos.PATH_CARACTERISTICAS, 'Resultado' + '.arff')
-    Guardav2(path, data)
-    arch = open(path, 'r+')
+def mixInstances(data, order):
+    path = os.path.join(Datos.PATH_CARACTERISTICAS, 'Resultado' + '.arff')
+    save(path, data)
+    file = open(path, 'r+')
 
-    pos_data = 2
-    linea = arch.readline()
+    data_begin_position = 2
+    line = file.readline()
     # Busco donde comienza data recien
-    while linea[0:5] != '@data':
-        linea = arch.readline()
-        # Esta variable guarda en que numero de linea empiezan los datoa
-        pos_data = pos_data + 1
-    arch.readline()
-    pos_data = pos_data - 1
+    while line[0:5] != '@data':
+        line = file.readline()
+        # Esta variable guarda en que numero de linea empiezan los datos
+        data_begin_position = data_begin_position + 1
+    file.readline()
+    data_begin_position = data_begin_position - 1
 
-    arch.seek(0)
+    file.seek(0)
     # Leo todas las lineas para usarlo como vector
-    lineas = arch.readlines()
+    lines = file.readlines()
     # Extraigo las correspondientes a los datos
-    lineas_datos = np.array(lineas[pos_data:len(lineas)])
+    data_lines = np.array(lines[data_begin_position:len(lines)])
     # A la ultima linea actual, que no tiene salto de carro, le agrego por si deja de quedar ultima
     # lineas_datos[len(lineas_datos) - 1] = lineas_datos[len(lineas_datos) - 1] + '\n'
     # Mezclo las lineas
-    lineas_datos = lineas_datos[orden]
+    data_lines = data_lines[order]
     # Uno al resto de las lineas las nuevas instancias mezcladas
-    lineas = lineas[0:pos_data] + list(lineas_datos)
+    lines = lines[0:data_begin_position] + list(data_lines)
     # A la ultima nueva linea le extraigo el salto de carro
-    ultimo_indice = len(lineas) - 1
-    lineas[ultimo_indice] = lineas[ultimo_indice][0:len(lineas[ultimo_indice]) - 1]
+    last_index = len(lines) - 1
+    lines[last_index] = lines[last_index][0:len(lines[last_index]) - 1]
     # Limpio el archivo, voy al inicio y escribo las lineas nuevas
-    arch.truncate(0)
-    arch.seek(0)
-    arch.writelines(lineas)
-    arch.close()
+    file.truncate(0)
+    file.seek(0)
+    file.writelines(lines)
+    file.close()
 
-    data_f = CargaYFiltrado(path)
+    data_f = loadAndFiltered(path)
     return data_f
 
 
-def GeneraOrdenInstancias(data, instancias_intervalos):
-    numero_intervalos = int(NroInstancias(data) / instancias_intervalos)
-    orden_intervalos = np.array(range(0, numero_intervalos))
-    np.random.shuffle(orden_intervalos)
-    orden_instancias = np.empty(0, dtype=np.int)
-    for i in orden_intervalos:
-        for j in range(0, instancias_intervalos):
-            orden_instancias = np.append(orden_instancias, i * instancias_intervalos + j)
-    for i in range(numero_intervalos * instancias_intervalos, NroInstancias(data)):
-        orden_instancias = np.append(orden_instancias, i)
-    return orden_instancias
+def generateInstancesOrder(data, instances_intervals):
+    interval_number = int(instancesNumber(data) / instances_intervals)
+    interval_order = np.array(range(0, interval_number))
+    np.random.shuffle(interval_order)
+    instance_order = np.empty(0, dtype=np.int)
+    for i in interval_order:
+        for j in range(0, instances_intervals):
+            instance_order = np.append(instance_order, i * instances_intervals + j)
+    for i in range(interval_number * instances_intervals, instancesNumber(data)):
+        instance_order = np.append(instance_order, i)
+    return instance_order

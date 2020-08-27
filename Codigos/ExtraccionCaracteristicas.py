@@ -61,7 +61,8 @@ class VideoFeaturesUnification:
         if complete_mode:
             self.complete(video_name, video_path, data, labels_list)
         else:
-            self.forAnswer(video_name, data, labels_list, au_begin, au_end)
+            processed_labels_list = self.forAnswer(video_name, data, labels_list, au_begin, au_end)
+            return processed_labels_list
 
     def complete(self, video_name, video_path, data, labels_list):
         # Numero de instancia desde la que recorro
@@ -103,6 +104,8 @@ class VideoFeaturesUnification:
             parts = 6
 
         from_instance = 0
+        # Debo generar una nueva lista de limites por la fusion de cuadros
+        final_answer_limits = list()
         # Número de instancia que va recorriendo
         actual_instance = 1
         for j in range(0, parts):
@@ -245,9 +248,15 @@ class VideoFeaturesUnification:
             # Actualizo para tomar las instancias equivalentes a la proxima respuesta
             from_instance = to_instance
             data_parts_vector = np.append(data_parts_vector, data_current_part)
+            # Agrego el numero de instancias de los datos de la parte actual a los limites
+            if len(final_answer_limits) == 0:
+                final_answer_limits.append(Am.instancesNumber(data_current_part))
+            else:
+                final_answer_limits.append(final_answer_limits[len(final_answer_limits) - 1] + Am.instancesNumber(data_current_part))
 
         data_final = Am.joinDatasetByAttributes(data_parts_vector)
         Am.saveInSubfolder(video_name, 'VResp', data_final)
+        return final_answer_limits
 
     @staticmethod
     def voting(labels, classes):
@@ -261,13 +270,13 @@ class VideoFeaturesUnification:
 # ======================================================= AUDIO ========================================================
 
 class AudioFeaturesExtraction:
-    def __init__(self, label_binarization):
-        self.label_binarization = label_binarization
+    def __init__(self, binarize_labels):
+        self.binarize_labels = binarize_labels
         self.microexpression_duration = Datos.TIEMPO_MICROEXPRESION
 
     def __call__(self, file_name, file_path, labels_list, complete_mode=False, extract_from_video=True):
         # Defino los nombres de la clase según si binarizo o no
-        if self.label_binarization:
+        if self.binarize_labels:
             self.classes = np.array(['N', 'E'])
         else:
             self.classes = np.array(['N', 'B', 'M', 'A'])
@@ -293,6 +302,8 @@ class AudioFeaturesExtraction:
         # Ejecuto el método para extraer las caracteristicas del video
         open_smile = Met.OpenSmile(window=True)
         open_smile(file_name, audio_path, window_size=str(self.microexpression_duration))
+        if extract_from_video:
+            os.remove(Hrm.buildOutputPathFFMPEG(file_name))
 
         data = Am.loadAndFiltered(Hrm.buildOpenSmileFilePath(file_name))
         os.remove(Hrm.buildOpenSmileFilePath(file_name))
@@ -335,6 +346,7 @@ class AudioFeaturesExtraction:
             ffmpeg(file_name, file_path)
             audio_path = Hrm.buildOutputPathFFMPEG(file_name)
             open_smile(file_name, audio_path, window_size=str(self.microexpression_duration))
+            os.remove(Hrm.buildOutputPathFFMPEG(file_name))
 
             data = Am.loadAndFiltered(Hrm.buildOpenSmileFilePath(file_name))
             os.remove(Hrm.buildOpenSmileFilePath(file_name))
@@ -351,7 +363,7 @@ class AudioFeaturesExtraction:
             data_parts_vector = np.append(data_parts_vector, data)
 
         data_final = Am.joinDatasetByAttributes(data_parts_vector)
-        Am.saveInSubfolder(file_name, 'AResp', data_final)
+        Am.saveInSubfolder(file_name_general, 'AResp', data_final)
 
 
 # =========================================== CARACTERISTICAS VIDEO ====================================================
@@ -376,8 +388,9 @@ class VideoFeaturesExtraction:
         # Inicializo y ejecuto openface
         op_fa = Met.OpenFace(face=False, hog=False, landmarks=True, aus=True)
         op_fa(video_path)
-
         openface_data = Hrm.readCSVFile(os.path.join(Datos.PATH_PROCESADO, video_name + '.csv'))
+        os.remove(Hrm.buildOutputPathFFMPEG(os.path.join(Datos.PATH_PROCESADO, video_name + '.csv')))
+        os.remove(Hrm.buildOutputPathFFMPEG(os.path.join(Datos.PATH_PROCESADO, video_name + '_of_details.txt')))
 
         # Del 0 al 67 son los landmarks, guardo los índices de inicio y fin de cada coordenada de estos
         lim_landmarks_x1 = openface_data[0].index('x_0')

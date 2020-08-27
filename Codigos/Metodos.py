@@ -1,9 +1,9 @@
-import histogramoforientedphase
+# import histogramoforientedphase
 import imagesc
 import os
 import cv2 as cv
 import numpy as np
-import matlab
+# import matlab
 import subprocess
 import Datos
 import Herramientas as Hrm
@@ -244,26 +244,27 @@ class HistogramOfPhase:
         self.resize = resize
 
     def __call__(self, image):
-        img = np.copy(image)
-
-        # Se convierte a escala de grises por si no lo está
-        img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-
-        # Convierto de tipo np a uint8 de matlab para poder ser pasado a la librería
-        img = matlab.uint8(img.tolist())
-
-        hop = histogramoforientedphase.initialize()
-        # Devuelve los histogramas de HOP concatenados y la congruencia de fase
-        features, pc = hop.execute(img, False, nargout=2)
-        hop.terminate()
-
-        # print(pc.size)
-        # print(features)
-        if self.plot:
-            array_pc = np.array(pc)
-            imagesc.clean(array_pc)
-        # Solo retorno las características
-        return features
+        # img = np.copy(image)
+        #
+        # # Se convierte a escala de grises por si no lo está
+        # img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        #
+        # # Convierto de tipo np a uint8 de matlab para poder ser pasado a la librería
+        # img = matlab.uint8(img.tolist())
+        #
+        # hop = histogramoforientedphase.initialize()
+        # # Devuelve los histogramas de HOP concatenados y la congruencia de fase
+        # features, pc = hop.execute(img, False, nargout=2)
+        # hop.terminate()
+        #
+        # # print(pc.size)
+        # # print(features)
+        # if self.plot:
+        #     array_pc = np.array(pc)
+        #     imagesc.clean(array_pc)
+        # # Solo retorno las características
+        # return features
+        return None
 
 # ====================================================== FFMPEG ========================================================
 
