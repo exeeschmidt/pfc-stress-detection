@@ -100,10 +100,10 @@ class OpenSmile:
         # Si no se llama el ventaneo se define cada 0.5s y el shift inicial en 0
         self.window = window
 
-    def __call__(self, file_name, file_path, window_size='0.125'):
+    def __call__(self, audio_name, audio_path, window_size='0.125'):
         # Comando base de OpenSmile
-        command = ['SMILExtract_Release', '-C', Datos.PATH_CONFIG_FILE, '-I', file_path, '-appendarff', '0',
-                   '-output', os.path.join(Datos.PATH_CARACTERISTICAS, file_name + '.arff')]
+        command = ['SMILExtract_Release', '-C', Datos.PATH_CONFIG_FILE, '-I', audio_path, '-appendarff', '0',
+                   '-output', Hrm.buildOpenSmileFilePath(audio_name)]
 
         # En caso de ventaneo se utiliza el config_file que se permite escribir desde la función archivo_ventaneo
         if self.window:

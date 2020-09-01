@@ -228,7 +228,7 @@ class VideoFeaturesUnification:
             for i in range(0, invalids_count):
                 new_data = Am.addInstanceWithLabel(new_data, vector_features_to_promediate_previous,
                                                    np.where(self.classes == last_valid_label)[0][0])
-        Am.saveInSubfolder(video_name, 'VCompProm', new_data)
+        Am.saveInSubfolder(video_name, 'VCompFus', new_data)
 
     def forAnswer(self, video_name, data, labels_list, au_begin, au_end):
         data_parts_vector = np.empty(0)
@@ -523,8 +523,8 @@ class VideoFeaturesExtraction:
         op_fa = Met.OpenFace(face=False, hog=False, landmarks=True, aus=True)
         op_fa(video_path)
         openface_data = Hrm.readCSVFile(os.path.join(Datos.PATH_PROCESADO, video_name + '.csv'))
-        os.remove(Hrm.buildOutputPathFFMPEG(os.path.join(Datos.PATH_PROCESADO, video_name + '.csv')))
-        os.remove(Hrm.buildOutputPathFFMPEG(os.path.join(Datos.PATH_PROCESADO, video_name + '_of_details.txt')))
+        os.remove(os.path.join(Datos.PATH_PROCESADO, video_name + '.csv'))
+        os.remove(os.path.join(Datos.PATH_PROCESADO, video_name + '_of_details.txt'))
 
         # Del 0 al 67 son los landmarks, guardo los índices de inicio y fin de cada coordenada de estos
         lim_landmarks_x1 = openface_data[0].index('x_0')

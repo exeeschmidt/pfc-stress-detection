@@ -10,11 +10,15 @@ import os
 import numpy as np
 
 
-def featuresSelection(data_train, data_val, data_test, selection_method):
+def featuresSelection(selection_method, data_train, data_val=None, data_test=None):
     # opciones: 'PSO' , 'PCA', 'BF', 'PC'
     data_trn = Instances.copy_instances(data_train)
-    data_vld = Instances.copy_instances(data_val)
-    data_tst = Instances.copy_instances(data_test)
+    if data_val is not None and data_test is not None:
+        data_vld = Instances.copy_instances(data_val)
+        data_tst = Instances.copy_instances(data_test)
+    else:
+        data_vld = None
+        data_tst = None
 
     evaluation_options = ''
     search_options = ''
@@ -28,7 +32,7 @@ def featuresSelection(data_train, data_val, data_test, selection_method):
             evaluation_method = 'weka.attributeSelection.PrincipalComponents'
             evaluation_options = Datos.PARAMETROS_SELECCION_EVALUACION.get(selection_method)
             search_options = ['-N', str(Datos.ATRIBS_FINALES)]
-            data_trn, data_vld, data_tst = featuresSelection(data_trn, data_vld, data_tst, 'PC-pca')
+            data_trn, data_vld, data_tst = featuresSelection('PC-pca', data_trn, data_vld, data_tst)
         else:
             evaluation_method = 'weka.attributeSelection.CorrelationAttributeEval'
         if selection_method == 'PC':
@@ -53,7 +57,7 @@ def featuresSelection(data_train, data_val, data_test, selection_method):
             search_method = 'weka.attributeSelection.BestFirst'
         else:
             search_method = ''
-        data_trn, data_vld, data_tst = featuresSelection(data_trn, data_vld, data_tst, 'PC-' + selection_method.lower())
+        data_trn, data_vld, data_tst = featuresSelection('PC-' + selection_method.lower(), data_trn, data_vld, data_tst)
 
     flter = Filter(classname="weka.filters.supervised.attribute.AttributeSelection")
     aseval = ASEvaluation(evaluation_method, options=evaluation_options)
@@ -62,12 +66,15 @@ def featuresSelection(data_train, data_val, data_test, selection_method):
     flter.set_property("search", assearch.jobject)
     flter.inputformat(data_trn)
     data_trn_filtered = flter.filter(data_trn)
-    data_vld_filtered = flter.filter(data_vld)
-    data_tst_filtered = flter.filter(data_tst)
     print('Atributos ', selection_method, ' :', data_trn_filtered.num_attributes, '/', data_trn.num_attributes)
     Log.add('Atributos ' + selection_method + ' :' + str(data_trn_filtered.num_attributes) + '/' +
             str(data_trn.num_attributes))
-    return data_trn_filtered, data_vld_filtered, data_tst_filtered
+    if data_vld is not None and data_tst is not None:
+        data_vld_filtered = flter.filter(data_vld)
+        data_tst_filtered = flter.filter(data_tst)
+        return data_trn_filtered, data_vld_filtered, data_tst_filtered
+    else:
+        return data_trn_filtered, None, None
 
 
 def classification(data_train, data_val, data_test, classification_method, selection_method, summary=False):
@@ -124,7 +131,7 @@ def classification(data_train, data_val, data_test, classification_method, selec
     return pout_val.buffer_content(), pout_tst.buffer_content()
 
 
-def classificationOnlyTrain(data_train, classification_method, selection_method):
+def classificationOnlyTrain(data_train, path_save, classification_method):
     translate_classifier_name = {
         'J48': 'weka.classifiers.trees.J48',
         'RF': 'weka.classifiers.trees.RandomForest',
@@ -137,25 +144,22 @@ def classificationOnlyTrain(data_train, classification_method, selection_method)
     options = Datos.PARAMETROS_CLASIFICADOR.get(classification_method + ' 1')
     classifier = Classifier(classname=method, options=options)
     classifier.build_classifier(data_train)
-    file_name = os.path.join(Datos.PATH_LOGS, str(Datos.FOLD_ACTUAL) + '_' + selection_method + '-' +
-                             classification_method)
-    serialization.write_all(file_name + '.model', [classifier])
+    serialization.write_all(path_save + '.model', [classifier])
 
     attributes_list = list()
     for i in range(0, data_train.num_attributes - 1):
         attributes_list.append(data_train.attribute(i).name)
 
-    wf = open(file_name + '.txt', 'w')
+    wf = open(path_save + '.txt', 'w')
     attrib_list_m = map(lambda x: x + '\n', attributes_list)
     wf.writelines(attrib_list_m)
     wf.close()
 
 
-def classificationOnlyTest(data_test, file_model_name, filter_attributes=False):
-    file_model_path = os.path.join(Datos.PATH_PROCESADO, file_model_name)
-    classifier = readModel(file_model_path)
+def classificationOnlyTest(data_test, path_load, filter_attributes=True):
+    classifier = readModel(path_load)
     if filter_attributes is True:
-        data_test = filterModelAttributes(file_model_path, data_test)
+        data_test = filterModelAttributes(path_load, data_test)
     pout_tst = PredictionOutput(classname="weka.classifiers.evaluation.output.prediction.CSV")
     evl = Evaluation(data_test)
     evl.test_model(classifier, data_test, output=pout_tst)

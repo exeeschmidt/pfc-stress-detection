@@ -17,7 +17,7 @@ def buildFileName(person, stages, part=-1):
 
 
 def buildFilePath(person, stage, file_name, extension=''):
-    path_video = os.path.join(Datos.PATH_BD, 'Sujeto ' + person, 'Etapa ' + stage, file_name)
+    path_video = os.path.join(Datos.PATH_BD_PROPIA, 'Sujeto ' + person, 'Etapa ' + stage, file_name)
     path_video += extension
     return path_video
 
@@ -611,7 +611,7 @@ def writeLimits(persons_test, answers_limits_list):
 
 
 def processEvalutionFile():
-    complete_list = readCSVFile(os.path.join(Datos.PATH_BD, 'Evalution.txt'), delimiter=';')
+    complete_list = readCSVFile(os.path.join(Datos.PATH_BD_PROPIA, 'Evalution.txt'), delimiter=';')
     new_list = list()
     for row in complete_list:
         if len(row) != 0:
@@ -629,8 +629,8 @@ def processFileHeader(fileheader):
     session = 'session' + fileheader[18]
     sentence = fileheader[11:15]
     type = fileheader[20]
-    video_path = os.path.join(Datos.PATH_BD, 'Video', session, sentence, type, filename + '.avi')
-    audio_path = os.path.join(Datos.PATH_BD, 'Audio', session, sentence, type, filename + '.wav')
+    video_path = os.path.join(Datos.PATH_BD_PROPIA, 'Video', session, sentence, type, filename + '.avi')
+    audio_path = os.path.join(Datos.PATH_BD_PROPIA, 'Audio', session, sentence, type, filename + '.wav')
     return list([filename, video_path, audio_path])
 
 

@@ -107,7 +107,7 @@ def joinListData(file_list):
     answer_limits_list = list()
     for row_file in file_list:
         file_name = row_file[0]
-        path = Hrm.buildSubFilePath(file_name, 'VCom')
+        path = Hrm.buildSubFilePath(file_name, 'VComFus')
         data1 = loadAndFiltered(path)
         path = Hrm.buildSubFilePath(file_name, 'VResp')
         data2 = loadAndFiltered(path)

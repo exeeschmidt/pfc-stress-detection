@@ -5,8 +5,8 @@ from pathlib import Path
 # Se definen las variables y constantes necesarias para la inicialización y ejecución de todas las funciones
 
 ROOT_PATH = Path(__file__).parent.parent
-PATH_BD = os.path.join(ROOT_PATH, 'Base de datos')
-# PATH_BD = os.path.join(ROOT_PATH, 'MSP-IMPROV')
+PATH_BD_PROPIA = os.path.join(ROOT_PATH, 'Base de datos')
+PATH_BD_MSP = os.path.join(ROOT_PATH, 'MSP-IMPROV')
 PATH_CARACTERISTICAS = os.path.join(ROOT_PATH, 'Caracteristicas')
 PATH_CODIGOS = os.path.join(ROOT_PATH, 'Codigos')
 PATH_LIBRERIAS = os.path.join(ROOT_PATH, 'Librerias')
@@ -16,7 +16,7 @@ PATH_LOGS = ''
 PATH_OPENFACE = os.path.join(PATH_LIBRERIAS, 'openface')
 PATH_OPENSMILE = os.path.join(PATH_LIBRERIAS, 'opensmile')
 PATH_FFMPEG = os.path.join(PATH_LIBRERIAS, 'ffmpeg', 'bin')
-PATH_ETIQUETAS = os.path.join(PATH_BD, 'EtiquetadoConTiempo.csv')
+PATH_ETIQUETAS = os.path.join(PATH_BD_PROPIA, 'EtiquetadoConTiempo.csv')
 
 PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
 # PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')

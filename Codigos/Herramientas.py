@@ -17,7 +17,7 @@ def buildFileName(person, stages, part=-1):
 
 
 def buildFilePath(person, stage, file_name, extension=''):
-    path_video = os.path.join(Datos.PATH_BD, 'Sujeto ' + person, 'Etapa ' + stage, file_name)
+    path_video = os.path.join(Datos.PATH_BD_PROPIA, 'Sujeto ' + person, 'Etapa ' + stage, file_name)
     path_video += extension
     return path_video
 
@@ -43,6 +43,10 @@ def buildOpenSmileFilePath(file_name):
 
 def buildOutputPathFFMPEG(file_name):
     return os.path.join(Datos.PATH_PROCESADO, file_name + Datos.EXTENSION_AUDIO)
+
+
+def buildSaveModelPath(file_name):
+    return os.path.join(Datos.PATH_PROCESADO, file_name)
 
 
 def extractStageFromFileName(file_name):
@@ -610,8 +614,8 @@ def writeLimitsOwnBD(persons_test, answers_limits_list):
     file.writelines(str(aux_answer_limits_list))
 
 
-def wirteLimitsMSPImprov(answers_limits_list):
-    aux_answer_limits_list= list()
+def writeLimitsMSPImprov(answers_limits_list):
+    aux_answer_limits_list = list()
     offset_answers = 0
     for instance_per_answer in answers_limits_list:
         aux_answer_limits_list.append(instance_per_answer + offset_answers)
@@ -620,16 +624,17 @@ def wirteLimitsMSPImprov(answers_limits_list):
     file.writelines(str(aux_answer_limits_list))
 
 
-def processEvalutionFile():
-    complete_list = readCSVFile(os.path.join(Datos.PATH_BD, 'Evalution.txt'), delimiter=';')
+def processEvalutionFile(video_filter=True):
+    complete_list = readCSVFile(os.path.join(Datos.PATH_BD_MSP, 'Evalution.txt'), delimiter=';')
     new_list = list()
     for row in complete_list:
         if len(row) != 0:
             if row[0].find('.avi') != -1:
-                label = defineLabelFromValenceAndArousal(row[3][2:len(row[3])], row[4][2:len(row[4])])
-                aux_list = processFileHeader(row[0])
-                aux_list.append(label)
-                new_list.append(aux_list)
+                aux_list, video_type = processFileHeader(row[0])
+                if not video_filter or (video_filter and (video_type == 'R' or video_type == 'S')):
+                    label = defineLabelFromValenceAndArousal(row[3][2:len(row[3])], row[4][2:len(row[4])])
+                    aux_list.append(label)
+                    new_list.append(aux_list)
     return new_list
 
 
@@ -638,10 +643,10 @@ def processFileHeader(fileheader):
     filename = 'MSP' + fileheader[3:26]
     session = 'session' + fileheader[18]
     sentence = fileheader[11:15]
-    type = fileheader[20]
-    video_path = os.path.join(Datos.PATH_BD, 'Video', session, sentence, type, filename + '.avi')
-    audio_path = os.path.join(Datos.PATH_BD, 'Audio', session, sentence, type, filename + '.wav')
-    return list([filename, video_path, audio_path])
+    video_type = fileheader[20]
+    video_path = os.path.join(Datos.PATH_BD_MSP, 'Video', session, sentence, video_type, filename + '.avi')
+    audio_path = os.path.join(Datos.PATH_BD_MSP, 'Audio', session, sentence, video_type, filename + '.wav')
+    return list([filename, video_path, audio_path]), video_type
 
 
 def defineLabelFromValenceAndArousal(valence, arousal):
