@@ -234,9 +234,9 @@ def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
     """
     # Defino los nombres de la clase según si se binariza o no
     if binarize_labels:
-        labels = np.array(['N', 'E'])
+        labels = Datos.ETIQUETAS_BINARIAS
     else:
-        labels = np.array(['N', 'B', 'M', 'A'])
+        labels = Datos.ETIQUETAS_MULTICLASES
 
     # Cargo el archivo con las etiquetas
     data_labels = readCSVFile(Datos.PATH_ETIQUETAS)
@@ -263,7 +263,7 @@ def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
         # respuesta segpun el caso
         actual_label = readLabel(data_labels, person, stage, str(1))
         if binarize_labels:
-            if actual_label != 'N':
+            if actual_label != labels[0]:
                 actual_label = labels[1]
 
         # Leo el video solo para saber el total de frames, este es igual a la cantidad de instancias para el etiquetado
@@ -287,7 +287,7 @@ def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
                 if interval_number == parts:
                     interval_number = -1
                 if binarize_labels:
-                    if actual_label != 'N':
+                    if actual_label != labels[0]:
                         actual_label = labels[1]
             labels_list.append(actual_label)
     else:
@@ -306,7 +306,7 @@ def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
             else:
                 answers_limits.append(answers_limits[len(answers_limits) - 1] + instances_number)
             if binarize_labels:
-                if actual_label != 'N':
+                if actual_label != labels[0]:
                     actual_label = labels[1]
             for i in range(0, instances_number):
                 labels_list.append(actual_label)
@@ -322,8 +322,9 @@ def mapLabelsMSPImprov(row_file, binarize_labels):
 
     label = row_file[3]
     if binarize_labels:
-        if row_file[3] != 'N':
-            label = 'E'
+        labels = Datos.ETIQUETAS_BINARIAS
+        if row_file[3] != labels[0]:
+            label = labels[1]
     for i in range(0, instances_number):
         labels_list.append(label)
 
@@ -631,7 +632,7 @@ def processEvalutionFile(video_filter=True):
         if len(row) != 0:
             if row[0].find('.avi') != -1:
                 aux_list, video_type = processFileHeader(row[0])
-                if not video_filter or (video_filter and (video_type == 'R' or video_type == 'S')):
+                if not video_filter or (video_filter and video_type == 'R'):
                     label = defineLabelFromValenceAndArousal(row[3][2:len(row[3])], row[4][2:len(row[4])])
                     aux_list.append(label)
                     new_list.append(aux_list)
@@ -650,7 +651,30 @@ def processFileHeader(fileheader):
 
 
 def defineLabelFromValenceAndArousal(valence, arousal):
-    if float(valence) < 2.5 < float(arousal):
-        return 'Stress'
+    f_valence = float(valence)
+    f_arousal = float(arousal)
+
+    labels = Datos.ETIQUETAS_MULTICLASES
+    #Zonas para estres bajo
+    if (1 < f_valence < 2.2 and 3.8 < f_arousal < 4.2) or (2.2 < f_valence < 2.6 and 4.2 < f_arousal < 4.6)\
+            or (1.8 < f_valence < 2.2 and 3.4 < f_arousal < 3.8):
+        return labels[1]
+    #Zonas estres medio
+    elif (1 < f_valence < 1.8 and 4.2 < f_arousal < 4.6) or (1.4 < f_valence < 1.8 and 4.6 < f_arousal < 5):
+        return labels[2]
+    #Zona estres alto
+    elif 1 < f_valence < 1.4 and 4.6 < f_arousal < 5:
+        return labels[3]
     else:
-        return 'Neutral'
+        return labels[0]
+    # #Zonas para estres bajo
+    # if (1.4 < f_valence < 2.2 and 3.8 < f_arousal < 4.2) or (2.2 < f_valence < 2.6 and 4.2 < f_arousal < 4.6):
+    #     return labels[1]
+    # #Zonas estres medio
+    # elif (1 < f_valence < 1.8 and 4.2 < f_arousal < 4.6) or (1.4 < f_valence < 1.8 and 4.6 < f_arousal < 5):
+    #     return labels[2]
+    # #Zona estres alto
+    # elif 1 < f_valence < 1.4 and 4.6 < f_arousal < 5:
+    #     return labels[3]
+    # else:
+    #     return labels[0]

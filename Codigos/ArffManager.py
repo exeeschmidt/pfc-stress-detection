@@ -107,9 +107,9 @@ def joinListData(file_list):
     answer_limits_list = list()
     for row_file in file_list:
         file_name = row_file[0]
-        path = Hrm.buildSubFilePath(file_name, 'VComFus')
+        path = Hrm.buildSubFilePath(file_name, 'VCompFus')
         data1 = loadAndFiltered(path)
-        path = Hrm.buildSubFilePath(file_name, 'VResp')
+        path = Hrm.buildSubFilePath(file_name, 'AComp')
         data2 = loadAndFiltered(path)
         data_vec_norm = normalizeDatasets(np.array([data1, data2]))
         data_vec1 = np.append(data_vec1, data_vec_norm[0])

@@ -18,10 +18,11 @@ PATH_OPENSMILE = os.path.join(PATH_LIBRERIAS, 'opensmile')
 PATH_FFMPEG = os.path.join(PATH_LIBRERIAS, 'ffmpeg', 'bin')
 PATH_ETIQUETAS = os.path.join(PATH_BD_PROPIA, 'EtiquetadoConTiempo.csv')
 
-PATH_CONFIG_FILE = os.path.join('config', 'IS09_emotion.conf')
-# PATH_CONFIG_FILE = os.path.join('config', 'gemaps', 'eGeMAPSv01a.conf')
+CONFIG_FILE = 'IS09_emotion.conf'
+# CONFIG_FILE = 'eGeMAPSv01a.conf'
+PATH_CONFIG_FILE = os.path.join('config', CONFIG_FILE)
 
-EXTENSION_VIDEO = '.mp4'
+EXTENSION_VIDEO = '.avi'
 EXTENSION_AUDIO = '.wav'
 
 EXPERIMENTO = ''
@@ -29,16 +30,18 @@ EXPERIMENTO = ''
 TEST = 1
 VAL = 2
 BINARIZO_ETIQUETA = False
+ETIQUETAS_BINARIAS = np.array(['N', 'S'])
+ETIQUETAS_MULTICLASES = np.array(['N', 'B', 'M', 'A'])
 GUARDO_INFO_CLASIFICACION = True
 
 INSTANCIAS_POR_PERIODOS = 20
 VOTO_MEJORES_X = 4
-PORC_ATRIBS_PCA = 50
-PORC_ATRIBS_PSO = 10
-PORC_ATRIBS_BF = 10
 # PORC_ATRIBS_PCA = 2
 # PORC_ATRIBS_PSO = 2
 # PORC_ATRIBS_BF = 2
+PORC_ATRIBS_PCA = 50
+PORC_ATRIBS_PSO = 10
+PORC_ATRIBS_BF = 10
 PORC_ATRIBS_FINALES = 2
 ATRIBS_PCA = 0
 ATRIBS_PSO = 0
@@ -46,6 +49,7 @@ ATRIBS_BF = 0
 ATRIBS_FINALES = 0
 NUM_ATRIBS = 0
 TIEMPO_MICROEXPRESION = 0.25
+LIMITE_FPS = 10
 
 if TEST == -1:
     PERSONAS = np.array(['05', '13', '19'])
@@ -60,7 +64,8 @@ MET_SELECCION = np.array(['PCA', 'BF', 'PSO'])
 MET_CLASIFICACION = np.array(['RF', 'SVM', 'J48', 'MLP'])
 
 MEJORES_CONFIGURACIONES = np.array([
-    np.array(['PCA', 'RF']),
+    np.array(['PCA', 'SVM']),
+    np.array(['PCA', 'MLP']),
     np.array(['BF', 'RF']),
     np.array(['PSO', 'RF'])
 ])

@@ -75,15 +75,8 @@ class VideoFeaturesUnification:
         if not os.path.exists(video_path):
             raise Exception("Ruta de archivo incorrecta o no válida")
 
-        video = cv.VideoCapture(video_path)
-        frames_totales = int(video.get(cv.CAP_PROP_FRAME_COUNT))
-
         # Numero de instancia hasta la que recorro
         instances_number = Am.instancesNumber(data)
-
-        if (frames_totales - 1) != instances_number:
-            print('Frames totales distintos a numero de instancias: ' + str(frames_totales - 1) + ' - '
-                  + str(instances_number))
 
         data = Am.addClassAttribute(data, self.classes)
 
@@ -102,8 +95,9 @@ class VideoFeaturesUnification:
             raise Exception("Ruta de archivo incorrecta o no válida")
 
         video = cv.VideoCapture(video_path)
-        total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
         fps = int(video.get(cv.CAP_PROP_FPS))
+        if fps > Datos.LIMITE_FPS:
+            fps = Datos.LIMITE_FPS
         frame_duration = 1 / fps
 
         # Si es por respuesta necesito segmentar por el tiempo de las micro expresiones, en el completo el
@@ -519,6 +513,14 @@ class VideoFeaturesExtraction:
             raise Exception("Ruta de archivo incorrecta o no válida")
         video = cv.VideoCapture(video_path)
 
+        if video.get(cv.CAP_PROP_FPS) > Datos.LIMITE_FPS:
+            # En caso de tener mas fps de lo adecuado, uso FFMPEG para resamplearlo al limite
+            ffmpeg = Met.FFMPEG()
+            path_aux_video = ffmpeg.lowFpsVideo(video_name, video_path)
+            video_path = path_aux_video
+            video = cv.VideoCapture(video_path)
+            # os.remove(video_path)
+
         # Inicializo y ejecuto openface
         op_fa = Met.OpenFace(face=False, hog=False, landmarks=True, aus=True)
         op_fa(video_path)
@@ -562,6 +564,10 @@ class VideoFeaturesExtraction:
 
         # Inicialización de la barra de progreso
         total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+        if total_frames != len(openface_data) - 1:
+            raise Exception('Numero de frames diferente a frames procesados por OpenFace: '
+                            + str(total_frames) + '/' + str(len(openface_data) - 1))
+
         bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.GREEN)
         with tqdm(total=total_frames, unit='frame', desc="Frames", bar_format=bar_format) as frames_progress:
             frames_progress.update(1)

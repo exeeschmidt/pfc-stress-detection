@@ -24,27 +24,27 @@ def Unimodal():
     num_to_validation = Datos.VAL
     num_to_test = Datos.TEST
 
-    print('Adaptación de caracteristicas en progreso')
-    Log.add('Adaptación de caracteristicas en progreso')
-    features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    answers_limits_list = list()
-    for i in persons:
-        for j in stages:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            Log.add('Persona ' + i + ' -> Etapa ' + j)
-            video_name = Hrm.buildFileName(i, j)
-            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
-            labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=True)
-            answers_limits_list.append(answers_limits)
-            features(video_name, video_path, labels_list, complete_mode=True)
-            print(time.time() - start2)
-            Log.add(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    Log.add('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    Log.add(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # Log.add('Adaptación de caracteristicas en progreso')
+    # features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    # answers_limits_list = list()
+    # for i in persons:
+    #     for j in stages:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         Log.add('Persona ' + i + ' -> Etapa ' + j)
+    #         video_name = Hrm.buildFileName(i, j)
+    #         video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+    #         labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=True)
+    #         answers_limits_list.append(answers_limits)
+    #         features(video_name, video_path, labels_list, complete_mode=True)
+    #         print(time.time() - start2)
+    #         Log.add(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # Log.add('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # Log.add(time.time() - start_total)
 
     result_raw_vector = np.empty((0, 3, selection_methods.size * classification_methods.size + 1))
     result_first_fusion_vector = np.empty((0, 3, 2))
@@ -71,7 +71,7 @@ def Unimodal():
             train_ori = Am.joinPersonStageData(persons_train, stages, 'VCom')
             val_ori = Am.joinPersonStageData(persons_validation, stages, 'VCom')
             test_ori = Am.joinPersonStageData(persons_test, stages, 'VCom')
-            Hrm.writeLimitsOwnBD(persons_test, answers_limits_list)
+            # Hrm.writeLimitsOwnBD(persons_test, answers_limits_list)
 
         Datos.calculateAttributesToCut(train_ori.num_attributes)
         validation_predic_vector = np.array([])
@@ -215,7 +215,7 @@ def PrimerMultimodal():
     for k in range(0, laps):
         Datos.defineActualValidationFold(k + 1)
         if num_to_test == -1:
-            data_v, data_a = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp')
+            data_v, data_a, _ = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp')
             instances_order = Am.generateInstancesOrder(data_v, instances_for_period)
             data_v_ori = Am.mixInstances(data_v, instances_order)
             data_a_ori = Am.mixInstances(data_a, instances_order)
@@ -421,7 +421,7 @@ def SegundoMultimodal():
     for k in range(0, laps):
         Datos.defineActualValidationFold(k + 1)
         if num_to_test == -1:
-            data = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp', join=True)
+            data, _ = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp', join=True)
             instances_order = Am.generateInstancesOrder(data, instances_for_period)
             data_ori = Am.mixInstances(data, instances_order)
             train_ori, val_ori, test_ori = Weka.partitionData(data_ori)
@@ -439,11 +439,11 @@ def SegundoMultimodal():
             #                                                            'VResp', 'AResp', join=True,
             #                                                            answer_limits_list=new_answers_limits_list)
             train_ori, _ = Am.joinPersonStageData(persons_train, stages,
-                                                                        'VResp', 'AResp', join=True)
+                                                  'VResp', 'AResp', join=True)
             val_ori, _ = Am.joinPersonStageData(persons_validation, stages,
-                                                                      'VResp', 'AResp', join=True)
+                                                'VResp', 'AResp', join=True)
             test_ori, _ = Am.joinPersonStageData(persons_test, stages,
-                                                                       'VResp', 'AResp', join=True)
+                                                 'VResp', 'AResp', join=True)
             # Hrm.writeLimitsOwnBD(persons_test, new_answers_limits_list)
 
         Datos.calculateAttributesToCut(train_ori.num_attributes)
@@ -594,32 +594,31 @@ def testMSPImprov():
     binarize_labels = Datos.BINARIZO_ETIQUETA
     instances_for_period = Datos.INSTANCIAS_POR_PERIODOS
 
-    trainWithEntireBD()
+    # trainWithEntireBD()
 
     file_list = Hrm.processEvalutionFile()
-    videoExtractionWrapperMSPImprov(file_list)
-
-    print('Adaptación de caracteristicas en progreso')
-    Log.add('Adaptación de caracteristicas en progreso')
-    video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
-    count = 1
-    for row_file in file_list:
-        start2 = time.time()
-        print('Video nro ' + str(count))
-        count += 1
-        labels_list = Hrm.mapLabelsMSPImprov(row_file, binarize_labels)
-        file_name = row_file[0]
-        video_path = row_file[1]
-        audio_path = row_file[2]
-        video_features(file_name, video_path, labels_list, complete_mode=True, for_frames=False)
-        audio_features(file_name, audio_path, labels_list, complete_mode=True, extract_from_video=False)
-        print(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    Log.add('Completada adaptación de caracteristicas')
-    Log.add(time.time() - start_total)
+    # videoExtractionWrapperMSPImprov(file_list)
+    #
+    # print('Adaptación de caracteristicas en progreso')
+    # Log.add('Adaptación de caracteristicas en progreso')
+    # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    # count = 1
+    # for row_file in file_list:
+    #     start2 = time.time()
+    #     print('Video nro ' + str(count))
+    #     count += 1
+    #     labels_list = Hrm.mapLabelsMSPImprov(row_file, binarize_labels)
+    #     file_name = row_file[0]
+    #     video_path = row_file[1]
+    #     audio_path = row_file[2]
+    #     video_features(file_name, video_path, labels_list, complete_mode=True, for_frames=False)
+    #     audio_features(file_name, audio_path, labels_list, complete_mode=True, extract_from_video=False)
+    #     print(time.time() - start2)
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # Log.add('Completada adaptación de caracteristicas')
+    # Log.add(time.time() - start_total)
 
     data_tst, answer_limits = Am.joinListData(file_list)
     Hrm.writeLimitsMSPImprov(answer_limits)
@@ -629,9 +628,12 @@ def testMSPImprov():
     accuracy = list()
     uar = list()
     for i in range(0, best_configuration.shape[0]):
+        start2 = time.time()
         selection_method = best_configuration[i][0]
         classification_method = best_configuration[i][1]
         actual_configuration_name = selection_method + ' + ' + classification_method
+        print(actual_configuration_name)
+        Log.add(actual_configuration_name)
         methods_list.append(actual_configuration_name)
         path_load = Hrm.buildSaveModelPath(actual_configuration_name)
 
@@ -644,8 +646,11 @@ def testMSPImprov():
         else:
             prediction_vector = np.concatenate([prediction_vector, np.array([prediction])])
 
+        print(time.time() - start2)
+        Log.add(time.time() - start2)
+
     results = Hrm.summarizePredictions(prediction_vector, methods_list, accuracy, uar)
-    best_index = np.array(range(1, best_configuration.shape[1] + 1))
+    best_index = np.array(range(1, best_configuration.shape[0] + 1))
     results_first_fusion = Hrm.fusionClassifiers(results, 'Voto', best_index)
     results_second_fusion = Hrm.voteForPeriod(results_first_fusion, instances_for_period)
 
@@ -662,13 +667,11 @@ def testMSPImprov():
 
 def videoExtractionWrapperMSPImprov(file_list):
     start_total = time.time()
-    jvm.start()
     zones = Datos.ZONAS
     print('Extracción de caracteristicas en progreso')
     features_extraction = Extrc.VideoFeaturesExtraction(zones)
     count = 1
     for row_file in file_list:
-        # if i != '09' or j != '1':
         start2 = time.time()
         print('Video nro ' + str(count))
         count += 1
@@ -691,30 +694,31 @@ def trainWithEntireBD():
     stages = np.array(['1', '2'])
 
     # TODO ESTO ES SUPONIENDO QUE ANDUVO MEJOR EL SEGUNDO EXPERIMENTO MULTIMODAL
-    print('Adaptación de caracteristicas en progreso')
-    Log.add('Adaptación de caracteristicas en progreso')
-    video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
-    for i in persons:
-        for j in stages:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            Log.add('Persona ' + i + ' -> Etapa ' + j)
-            video_name = Hrm.buildFileName(i, j)
-            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
-
-            labels_list, _ = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
-            audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
-            video_features(video_name, video_path, labels_list, complete_mode=False)
-
-            print(time.time() - start2)
-            Log.add(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    Log.add('Completada adaptación de caracteristicas')
-    Log.add(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # Log.add('Adaptación de caracteristicas en progreso')
+    # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    # for i in persons:
+    #     for j in stages:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         Log.add('Persona ' + i + ' -> Etapa ' + j)
+    #         video_name = Hrm.buildFileName(i, j)
+    #         video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+    #
+    #         labels_list, _ = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
+    #         audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
+    #         video_features(video_name, video_path, labels_list, complete_mode=False)
+    #
+    #         print(time.time() - start2)
+    #         Log.add(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # Log.add('Completada adaptación de caracteristicas')
+    # Log.add(time.time() - start_total)
     train_ori, _ = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp', join=True)
+    Datos.calculateAttributesToCut(train_ori.num_attributes)
 
     for i in range(0, best_configuration.shape[0]):
         selection_method = best_configuration[i][0]

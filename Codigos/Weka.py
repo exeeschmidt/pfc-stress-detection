@@ -177,8 +177,8 @@ def partitionData(data):
 def readModel(file_path):
     # Permite leer tanto el clasificador entrenado como los atributos del conjunto con el cual se entreno, luego con
     # esto filtra los datos de validacion y test para aplicar la misma seleccion de caracteristicas
-    objects = serialization.read(file_path + '.model')
-    classifier = Classifier(objects[0])
+    objects = serialization.read_all(file_path + '.model')
+    classifier = Classifier(jobject=objects[0])
     return classifier
 
 
