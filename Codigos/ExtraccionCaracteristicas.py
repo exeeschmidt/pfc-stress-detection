@@ -600,16 +600,10 @@ class VideoFeaturesExtraction:
                         roi = Hrm.ROI(frame, lm_x, lm_y, self.zones[i])
 
                         # Calculo las distintas características
-                        start_aux = time.time()
                         aux_lbp = np.array(Hrm.generateHistogram(lbp(roi)))
-                        print('LBP: ', time.time() - start_aux)
-                        start_aux_2 = time.time()
                         # Ravel lo uso para redimensionarlo en una sola fila
                         aux_hop = np.ravel(hop(roi))
-                        print('HOP: ', time.time() - start_aux_2)
-                        start_aux_3 = time.time()
                         aux_hog = np.ravel(hog.compute(cv.resize(roi, (64, 64))))
-                        print('HOG: ', time.time() - start_aux_3)
 
                         if first_frame:
                             # Agrego el indice hasta donde llegan las características de esta zona
