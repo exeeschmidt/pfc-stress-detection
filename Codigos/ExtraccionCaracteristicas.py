@@ -1,4 +1,6 @@
 import os
+import time
+
 import cv2 as cv
 import numpy as np
 from tqdm import tqdm
@@ -45,7 +47,7 @@ class VideoFeaturesUnification:
 
         self.zones_number = len(self.zones)
 
-    def __call__(self, video_name, video_path, labels_list, complete_mode=False, for_frames=True):
+    def __call__(self, video_name, video_path, labels_list, complete_mode=False, for_frames=True, answers_limits=None):
         # Segun que metodo utilice concateno la data de cada arff que sea necesario
         data_vector = np.empty(0)
         for i in range(0, self.bool_methods.size):
@@ -63,9 +65,9 @@ class VideoFeaturesUnification:
                 self.completeForFrame(video_name, video_path, data, labels_list)
             else:
                 self.completeFusionFrames(video_name, video_path, data, labels_list,
-                                                                  au_begin, au_end)
+                                          au_begin, au_end)
         else:
-            processed_labels_list = self.forAnswer(video_name, data, labels_list, au_begin, au_end)
+            processed_labels_list = self.forAnswer(video_name, data, labels_list, au_begin, au_end, answers_limits)
             return processed_labels_list
 
     def completeForFrame(self, video_name, video_path, data, labels_list):
@@ -224,7 +226,7 @@ class VideoFeaturesUnification:
                                                    np.where(self.classes == last_valid_label)[0][0])
         Am.saveInSubfolder(video_name, 'VCompFus', new_data)
 
-    def forAnswer(self, video_name, data, labels_list, au_begin, au_end):
+    def forAnswer(self, video_name, data, labels_list, au_begin, au_end, answers_limits):
         data_parts_vector = np.empty(0)
 
         person = Hrm.extractPersonFromVideoName(video_name)
@@ -234,9 +236,10 @@ class VideoFeaturesUnification:
         else:
             parts = 6
 
-        from_instance = 0
         # Debo generar una nueva lista de limites por la fusion de cuadros
         final_answer_limits = list()
+        # Contador de instancias recorridas para poder definir que etiqueta debe leer
+        instance_total_count = 0
         for j in range(0, parts):
             # Diferencias en los nombres de archivo y llamada a open face
             video_name_part = Hrm.buildFileName(person, stage, part=(j + 1))
@@ -246,15 +249,15 @@ class VideoFeaturesUnification:
                 raise Exception("Ruta de archivo incorrecta o no válida")
 
             video = cv.VideoCapture(video_path_part)
-            total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
             fps = int(video.get(cv.CAP_PROP_FPS))
             frame_duration = 1 / fps
 
             # Si es por respuesta necesito segmentar por el tiempo de las micro expresiones, en el completo el
             # análisis se hace por cuadro
 
-            # Numero de instancia hasta la que recorro
-            to_instance = from_instance + total_frames + 1
+            # Numero de instancia que tengo que recorrer, corresponden a la respuesta dentro del video completo
+            from_instance = answers_limits[j][0]
+            to_instance = answers_limits[j][1]
             # Acumulador para indicar cuanto tiempo transcurre desde que empece a contar los frames para un segmento
             accumulated_time = 0
             # Vector para acumular las caracteristicas y luego promediarlas
@@ -278,14 +281,18 @@ class VideoFeaturesUnification:
                 # Si no está eliminando silencios o encuentra que el frame se encuentra de los frames audibles
                 # se extraen las caracteristicas.  Verfico también que la confidencialidad encuentra que se detecto
                 # una cara en el cuadro segun un umbral interno
-                if i < len(labels_list):
-                    label = labels_list[i]
+                if instance_total_count < len(labels_list):
+                    label = labels_list[instance_total_count]
                 else:
                     label = labels_list[len(labels_list) - 1]
+                # Actualizo el numero de instancias totales recorridas
+                instance_total_count += 1
 
-                features_vector = Am.getValues(data, i)
-                # Como puede que entre por no eliminar silencios pero en esa instancia no habia caras por
-                # confidencialidad, verifico si no esta vacio
+                if i >= Am.instancesNumber(data):
+                    features_vector = np.empty(0)
+                else:
+                    features_vector = Am.getValues(data, i)
+                # Si en esainstancia no habia caras por confidencialidad, verifico si no esta vacio
                 if features_vector.size != 0:
                     # Agrego las caracteristicas al vector que luego se promedia, la etiqueta
                     # a la lista para luego hacer voto, y el contador de cuadros por segmento
@@ -372,8 +379,6 @@ class VideoFeaturesUnification:
                     data_current_part = Am.addInstanceWithLabel(data_current_part,
                                                                 vector_features_to_promediate_previous,
                                                                 np.where(self.classes == last_valid_label)[0][0])
-            # Actualizo para tomar las instancias equivalentes a la proxima respuesta
-            from_instance = to_instance
             data_parts_vector = np.append(data_parts_vector, data_current_part)
             # Agrego el numero de instancias de los datos de la parte actual a los limites
             if len(final_answer_limits) == 0:
@@ -405,9 +410,9 @@ class AudioFeaturesExtraction:
     def __call__(self, file_name, file_path, labels_list, complete_mode=False, extract_from_video=True):
         # Defino los nombres de la clase según si binarizo o no
         if self.binarize_labels:
-            self.classes = np.array(['N', 'E'])
+            self.classes = Datos.ETIQUETAS_BINARIAS
         else:
-            self.classes = np.array(['N', 'B', 'M', 'A'])
+            self.classes = Datos.ETIQUETAS_MULTICLASES
 
         if complete_mode:
             self.complete(file_name, file_path, labels_list, extract_from_video)
@@ -564,9 +569,9 @@ class VideoFeaturesExtraction:
 
         # Inicialización de la barra de progreso
         total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
-        if total_frames != len(openface_data) - 1:
-            raise Exception('Numero de frames diferente a frames procesados por OpenFace: '
-                            + str(total_frames) + '/' + str(len(openface_data) - 1))
+        # if total_frames != len(openface_data) - 1:
+        #     raise Exception('Numero de frames diferente a frames procesados por OpenFace: '
+        #                     + str(total_frames) + '/' + str(len(openface_data) - 1))
 
         bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.GREEN)
         with tqdm(total=total_frames, unit='frame', desc="Frames", bar_format=bar_format) as frames_progress:
@@ -595,10 +600,16 @@ class VideoFeaturesExtraction:
                         roi = Hrm.ROI(frame, lm_x, lm_y, self.zones[i])
 
                         # Calculo las distintas características
+                        start_aux = time.time()
                         aux_lbp = np.array(Hrm.generateHistogram(lbp(roi)))
+                        print('LBP: ', time.time() - start_aux)
+                        start_aux_2 = time.time()
                         # Ravel lo uso para redimensionarlo en una sola fila
                         aux_hop = np.ravel(hop(roi))
+                        print('HOP: ', time.time() - start_aux_2)
+                        start_aux_3 = time.time()
                         aux_hog = np.ravel(hog.compute(cv.resize(roi, (64, 64))))
+                        print('HOG: ', time.time() - start_aux_3)
 
                         if first_frame:
                             # Agrego el indice hasta donde llegan las características de esta zona

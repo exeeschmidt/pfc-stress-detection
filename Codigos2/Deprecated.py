@@ -595,6 +595,41 @@ def muestraTabla(resultados):
     table = tabulate(resultados[1:3, :], headers, tablefmt="fancy_grid")
     print(table)
     log.add(table)
+
+def pruebaMSP():
+
+    file_list = Hrm.processEvalutionFile()
+
+    cantidad_videos_por_tipo = np.zeros(4)
+    segundos_por_tipo = np.zeros(4)
+    count = 1
+    for row_file in file_list:
+        # print('Video nro ' + str(count))
+        count += 1
+        # Example: UTD-IMPROV-S01A-F02-R-FF01.avi
+        file_name = row_file[0]
+        video_path = row_file[1]
+        audio_path = row_file[2]
+        type = file_name[20]
+        video = cv.VideoCapture(video_path)
+        total_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+        fps = int(video.get(cv.CAP_PROP_FPS))
+        frame_duration = 1 / fps
+        if type == 'P':
+            cantidad_videos_por_tipo[0] = cantidad_videos_por_tipo[0] + 1
+            segundos_por_tipo[0] = segundos_por_tipo[0] + total_frames * frame_duration
+        elif type == 'R':
+            cantidad_videos_por_tipo[1] = cantidad_videos_por_tipo[1] + 1
+            segundos_por_tipo[1] = segundos_por_tipo[1] + total_frames * frame_duration
+        elif type == 'S':
+            cantidad_videos_por_tipo[2] = cantidad_videos_por_tipo[2] + 1
+            segundos_por_tipo[2] = segundos_por_tipo[2] + total_frames * frame_duration
+        elif type == 'T':
+            cantidad_videos_por_tipo[3] = cantidad_videos_por_tipo[3] + 1
+            segundos_por_tipo[3] = segundos_por_tipo[3] + total_frames * frame_duration
+    print(cantidad_videos_por_tipo)
+    print(segundos_por_tipo)
+
 # ================================================= ArffManager ========================================================
 def FilaArff(nombre, lbp_feat, hop_feat, hog_feat, au_feat, etiqueta):
     """

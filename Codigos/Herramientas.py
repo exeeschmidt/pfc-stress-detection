@@ -246,16 +246,19 @@ def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
     else:
         parts = 6
 
+    # Cargo los tiempos donde termina cada respuesta, para saber en que intervalos va cada etiqueta,
+    # esto está en segundos
+    seconds_by_answer = np.zeros(parts)
+    for i in range(0, parts):
+        seconds_by_answer[i] = readAnswersTime(data_labels, person, stage, str(i + 1))
+
     labels_list = list()
+    labels_limits = list()
     answers_limits = list()
     if complete_mode:
         video_name = buildFileName(person, stage)
         video_path = buildFilePath(person, stage, video_name, extension=Datos.EXTENSION_VIDEO)
-        # Cargo los tiempos donde termina cada respuesta, para saber en que intervalos va cada etiqueta,
-        # esto está en segundos
-        seconds_by_answer = np.zeros(parts)
-        for i in range(0, parts):
-            seconds_by_answer[i] = readAnswersTime(data_labels, person, stage, str(i + 1))
+
         # Permite saber en que respuesta voy para saber cuando cambiar la etiqueta
         interval_number = 1
 
@@ -268,10 +271,10 @@ def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
 
         # Leo el video solo para saber el total de frames, este es igual a la cantidad de instancias para el etiquetado
         video = cv.VideoCapture(video_path)
-        instances_number = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+        frames_number = int(video.get(cv.CAP_PROP_FRAME_COUNT))
         fps = int(video.get(cv.CAP_PROP_FPS))
 
-        for i in range(0, instances_number):
+        for i in range(0, frames_number):
             # Para definir intervalo de etiqueta
             # Si paso el tiempo donde termina la respuesta, leo la siguiente etiqueta
             # Me fijo también si el nro de intervalo no es el último, en ese caso debe etiquetarse hasta el
@@ -280,7 +283,7 @@ def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
             # última etiqueta, lo que provocaría que quiera leer la etiqueta de un número de intervalo que
             # no existe
             if (i >= seconds_by_answer[interval_number - 1] * fps) and (interval_number != -1):
-                answers_limits.append(answers_limits[len(answers_limits) - 1] + i)
+                labels_limits.append(labels_limits[len(labels_limits) - 1] + i)
                 interval_number = interval_number + 1
                 actual_label = readLabel(data_labels, person, stage, interval_number)
                 # Paso a usar nro_intervalo como bandera por si es la última etiqueta de la última parte
@@ -290,6 +293,7 @@ def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
                     if actual_label != labels[0]:
                         actual_label = labels[1]
             labels_list.append(actual_label)
+            return labels_list, labels_limits
     else:
         for j in range(0, parts):
             # Diferencias en los nombres de archivo y llamada a open face
@@ -299,18 +303,18 @@ def mapLabelsOwnBD(person, stage, binarize_labels, complete_mode=False):
             # Leo el video solo para saber el total de frames, este es igual a la cantidad de instancias para el
             # etiquetado
             video = cv.VideoCapture(video_path)
-            instances_number = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+            frames_number = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+            fps = int(video.get(cv.CAP_PROP_FPS))
             actual_label = readLabel(data_labels, person, stage, str(j + 1))
-            if len(answers_limits) == 0:
-                answers_limits.append(instances_number)
-            else:
-                answers_limits.append(answers_limits[len(answers_limits) - 1] + instances_number)
+
+            limit = int(seconds_by_answer[j] * fps)
+            answers_limits.append(list([limit - frames_number, limit + 1]))
             if binarize_labels:
                 if actual_label != labels[0]:
                     actual_label = labels[1]
-            for i in range(0, instances_number):
+            for i in range(0, frames_number + 1):
                 labels_list.append(actual_label)
-    return labels_list, answers_limits
+        return labels_list, answers_limits
 
 
 def mapLabelsMSPImprov(row_file, binarize_labels):
@@ -591,28 +595,28 @@ def createFinalSummary(vec_res, vec_res_fus, vec_res_fus_2):
 
 def showTable(summary):
     for j in range(0, summary.shape[0]):
-        file = ''
+        row = ''
         for i in range(0, summary.shape[1] - 1):
-            file = file + summary[j, i] + ' | '
-        file = file + summary[j, summary.shape[1] - 1]
-        print(file)
+            row = row + summary[j, i] + ' | '
+        row = row + summary[j, summary.shape[1] - 1]
+        print(row)
         if j < 3:
-            Log.add(file)
-        Log.addToTable(file)
+            Log.add(row)
+        Log.addToTable(row)
 
 
 def writeLimitsOwnBD(persons_test, answers_limits_list):
-    aux_answer_limits_list = list()
     offset_answers = 0
+    aux_answer_limits = list()
     for i in persons_test:
-        aux_answer_limits = list()
-        for j in range(0, len(answers_limits_list[int(i)])):
-            aux_answer_limits.append(answers_limits_list[int(i)][j] + offset_answers)
-        aux_answer_limits_list.extend(aux_answer_limits)
-        offset_answers += answers_limits_list[int(i)][len(answers_limits_list[int(i)]) - 1]
+        for k in range(0, 2):
+            actual_index = (int(i) - 1) * 2 + int(k)
+            for j in range(0, len(answers_limits_list[actual_index])):
+                aux_answer_limits.append(answers_limits_list[actual_index][j] + offset_answers)
+            offset_answers += answers_limits_list[actual_index][len(answers_limits_list[actual_index]) - 1]
 
     file = open(os.path.join(Datos.PATH_LOGS, str(Datos.FOLD_ACTUAL) + '_limites.txt'), 'a+', encoding="utf-8")
-    file.writelines(str(aux_answer_limits_list))
+    file.writelines(str(aux_answer_limits))
 
 
 def writeLimitsMSPImprov(answers_limits_list):

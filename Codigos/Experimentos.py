@@ -24,27 +24,27 @@ def Unimodal():
     num_to_validation = Datos.VAL
     num_to_test = Datos.TEST
 
-    # print('Adaptación de caracteristicas en progreso')
-    # Log.add('Adaptación de caracteristicas en progreso')
-    # features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    # answers_limits_list = list()
-    # for i in persons:
-    #     for j in stages:
-    #         start2 = time.time()
-    #         print('Persona ' + i + ' -> Etapa ' + j)
-    #         Log.add('Persona ' + i + ' -> Etapa ' + j)
-    #         video_name = Hrm.buildFileName(i, j)
-    #         video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
-    #         labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=True)
-    #         answers_limits_list.append(answers_limits)
-    #         features(video_name, video_path, labels_list, complete_mode=True)
-    #         print(time.time() - start2)
-    #         Log.add(time.time() - start2)
-    #
-    # print('Completada adaptación de caracteristicas')
-    # Log.add('Completada adaptación de caracteristicas')
-    # print(time.time() - start_total)
-    # Log.add(time.time() - start_total)
+    print('Adaptación de caracteristicas en progreso')
+    Log.add('Adaptación de caracteristicas en progreso')
+    features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    labels_limits_list = list()
+    for i in persons:
+        for j in stages:
+            start2 = time.time()
+            print('Persona ' + i + ' -> Etapa ' + j)
+            Log.add('Persona ' + i + ' -> Etapa ' + j)
+            video_name = Hrm.buildFileName(i, j)
+            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+            labels_list, labels_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=True)
+            labels_limits_list.append(labels_limits)
+            features(video_name, video_path, labels_list, complete_mode=True)
+            print(time.time() - start2)
+            Log.add(time.time() - start2)
+
+    print('Completada adaptación de caracteristicas')
+    Log.add('Completada adaptación de caracteristicas')
+    print(time.time() - start_total)
+    Log.add(time.time() - start_total)
 
     result_raw_vector = np.empty((0, 3, selection_methods.size * classification_methods.size + 1))
     result_first_fusion_vector = np.empty((0, 3, 2))
@@ -71,7 +71,7 @@ def Unimodal():
             train_ori = Am.joinPersonStageData(persons_train, stages, 'VCom')
             val_ori = Am.joinPersonStageData(persons_validation, stages, 'VCom')
             test_ori = Am.joinPersonStageData(persons_test, stages, 'VCom')
-            # Hrm.writeLimitsOwnBD(persons_test, answers_limits_list)
+            Hrm.writeLimitsOwnBD(persons_test, labels_limits_list)
 
         Datos.calculateAttributesToCut(train_ori.num_attributes)
         validation_predic_vector = np.array([])
@@ -179,7 +179,7 @@ def PrimerMultimodal():
     # Log.add('Adaptación de caracteristicas en progreso')
     # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
     # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
-    # answers_limits_list = list()
+    # labels_limits_list = list()
     # for i in persons:
     #     for j in stages:
     #         start2 = time.time()
@@ -190,8 +190,9 @@ def PrimerMultimodal():
     #
     #         labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
     #         audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
-    #         final_answer_limits = video_features(video_name, video_path, labels_list, complete_mode=False)
-    #         answers_limits_list.append(final_answer_limits)
+    #         labels_limits = video_features(video_name, video_path, labels_list, complete_mode=False,
+    #                                        answers_limits=answers_limits)
+    #         labels_limits_list.append(labels_limits)
     #
     #         print(time.time() - start2)
     #         Log.add(time.time() - start2)
@@ -225,22 +226,22 @@ def PrimerMultimodal():
             print('Vuelta: ' + str(k + 1) + '/' + str(laps))
             Log.add('Vuelta: ' + str(k + 1) + '/' + str(laps))
             persons_train, persons_validation, persons_test = generateSetsOwnBD(k, num_to_validation, num_to_test)
-            # train_v_ori, train_a_ori, new_answers_limits_list = \
+            # train_v_ori, train_a_ori, new_labels_limits_list = \
             #     Am.joinPersonStageData(persons_train, stages,
             #                            'VResp', 'AResp', join=False,
-            #                            answer_limits_list=answers_limits_list)
-            # val_v_ori, val_a_ori, new_answers_limits_list = \
+            #                            answer_limits_list=labels_limits_list)
+            # val_v_ori, val_a_ori, new_labels_limits_list = \
             #     Am.joinPersonStageData(persons_validation, stages,
             #                            'VResp', 'AResp', join=False,
-            #                            answer_limits_list=new_answers_limits_list)
-            # test_v_ori, test_a_ori, new_answers_limits_list = \
+            #                            answer_limits_list=new_labels_limits_list)
+            # test_v_ori, test_a_ori, new_labels_limits_list = \
             #     Am.joinPersonStageData(persons_test, stages,
             #                            'VResp', 'AResp', join=False,
-            #                            answer_limits_list=new_answers_limits_list)
+            #                            answer_limits_list=new_labels_limits_list)
             train_v_ori, train_a_ori, _ = Am.joinPersonStageData(persons_train, stages, 'VResp', 'AResp', join=False)
             val_v_ori, val_a_ori, _ = Am.joinPersonStageData(persons_validation, stages, 'VResp', 'AResp', join=False)
             test_v_ori, test_a_ori, _ = Am.joinPersonStageData(persons_test, stages, 'VResp', 'AResp', join=False)
-            # Hrm.writeLimitsOwnBD(persons_test, new_answers_limits_list)
+            # Hrm.writeLimitsOwnBD(persons_test, new_labels_limits_list)
 
         Datos.calculateAttributesToCut(train_v_ori.num_attributes)
         validation_predic_vector_v = np.array([])
@@ -385,7 +386,7 @@ def SegundoMultimodal():
     # Log.add('Adaptación de caracteristicas en progreso')
     # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
     # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
-    # answers_limits_list = list()
+    # labels_limits_list = list()
     # for i in persons:
     #     for j in stages:
     #         start2 = time.time()
@@ -396,8 +397,9 @@ def SegundoMultimodal():
     #
     #         labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
     #         audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
-    #         final_answer_limits = video_features(video_name, video_path, labels_list, complete_mode=False)
-    #         answers_limits_list.append(final_answer_limits)
+    #         labels_limits = video_features(video_name, video_path, labels_list, complete_mode=False,
+    #                                        answers_limits=answers_limits)
+    #         labels_limits_list.append(labels_limits)
     #
     #         print(time.time() - start2)
     #         Log.add(time.time() - start2)
@@ -429,22 +431,19 @@ def SegundoMultimodal():
             print('Vuelta: ' + str(k + 1) + '/' + str(laps))
             Log.add('Vuelta: ' + str(k + 1) + '/' + str(laps))
             persons_train, persons_validation, persons_test = generateSetsOwnBD(k, num_to_validation, num_to_test)
-            # train_ori, new_answers_limits_list = Am.joinPersonStageData(persons_train, stages,
-            #                                                             'VResp', 'AResp', join=True,
-            #                                                             answer_limits_list=answers_limits_list)
-            # val_ori, new_answers_limits_list = Am.joinPersonStageData(persons_validation, stages,
-            #                                                           'VResp', 'AResp', join=True,
-            #                                                           answer_limits_list=new_answers_limits_list)
-            # test_ori, new_answers_limits_list = Am.joinPersonStageData(persons_test, stages,
+            # train_ori, new_labels_limits_list = Am.joinPersonStageData(persons_train, stages,
             #                                                            'VResp', 'AResp', join=True,
-            #                                                            answer_limits_list=new_answers_limits_list)
-            train_ori, _ = Am.joinPersonStageData(persons_train, stages,
-                                                  'VResp', 'AResp', join=True)
-            val_ori, _ = Am.joinPersonStageData(persons_validation, stages,
-                                                'VResp', 'AResp', join=True)
-            test_ori, _ = Am.joinPersonStageData(persons_test, stages,
-                                                 'VResp', 'AResp', join=True)
-            # Hrm.writeLimitsOwnBD(persons_test, new_answers_limits_list)
+            #                                                            answer_limits_list=labels_limits_list)
+            # val_ori, new_labels_limits_list = Am.joinPersonStageData(persons_validation, stages,
+            #                                                          'VResp', 'AResp', join=True,
+            #                                                          answer_limits_list=new_labels_limits_list)
+            # test_ori, new_labels_limits_list = Am.joinPersonStageData(persons_test, stages,
+            #                                                           'VResp', 'AResp', join=True,
+            #                                                           answer_limits_list=new_labels_limits_list)
+            train_ori, _ = Am.joinPersonStageData(persons_train, stages, 'VResp', 'AResp', join=True)
+            val_ori, _ = Am.joinPersonStageData(persons_validation, stages, 'VResp', 'AResp', join=True)
+            test_ori, _ = Am.joinPersonStageData(persons_test, stages, 'VResp', 'AResp', join=True)
+            # Hrm.writeLimitsOwnBD(persons_test, new_labels_limits_list)
 
         Datos.calculateAttributesToCut(train_ori.num_attributes)
         validation_predic_vector = np.array([])

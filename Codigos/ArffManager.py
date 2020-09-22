@@ -72,12 +72,12 @@ def joinPersonStageData(persons, stages, sub, optional_sub=None, join=False, ans
                 if answer_limits_list is not None:
                     # El nuevo limite lo establece el numero de instancias luego de la normalizacion
                     new_limit = instancesNumber(data_vec_norm[0])
+                    actual_index = (int(i) - 1) * 2 + int(j) - 1
                     new_limit_index = 0
-                    actual_index = int(i) * 2 + int(j)
                     # Busco donde tengo un limite mayor al nuevo limite, esto por si recorta un intervalo mayor al
                     # del ultimo limite (no deberia pasar nunca, y si lo hace igual seria bastante malo)
                     for k in range(0, len(answer_limits_list[actual_index])):
-                        if answer_limits_list[actual_index][k] > new_limit:
+                        if answer_limits_list[actual_index][k] >= new_limit:
                             new_limit_index = k
                             break
                     # Recorto por si es necesario, que tampoco deberia recortarse si anda bien

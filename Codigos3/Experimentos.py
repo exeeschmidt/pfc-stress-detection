@@ -20,13 +20,14 @@ def Unimodal():
     selection_methods = Datos.MET_SELECCION
     classification_methods = Datos.MET_CLASIFICACION
     binarize_labels = Datos.BINARIZO_ETIQUETA
+    instances_for_period = Datos.INSTANCIAS_POR_PERIODOS
     num_to_validation = Datos.VAL
     num_to_test = Datos.TEST
 
     print('Adaptación de caracteristicas en progreso')
     Log.add('Adaptación de caracteristicas en progreso')
     features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    answers_limits_list = list()
+    labels_limits_list = list()
     for i in persons:
         for j in stages:
             start2 = time.time()
@@ -34,8 +35,8 @@ def Unimodal():
             Log.add('Persona ' + i + ' -> Etapa ' + j)
             video_name = Hrm.buildFileName(i, j)
             video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
-            labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=True)
-            answers_limits_list.append(answers_limits)
+            labels_list, labels_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=True)
+            labels_limits_list.append(labels_limits)
             features(video_name, video_path, labels_list, complete_mode=True)
             print(time.time() - start2)
             Log.add(time.time() - start2)
@@ -60,7 +61,7 @@ def Unimodal():
         Datos.defineActualValidationFold(k + 1)
         if num_to_test == -1:
             data = Am.joinPersonStageData(persons, stages, 'VCom')
-            instances_order = Am.generateInstancesOrder(data, Datos.INSTANCIAS_POR_PERIODOS)
+            instances_order = Am.generateInstancesOrder(data, instances_for_period)
             data_ori = Am.mixInstances(data, instances_order)
             train_ori, val_ori, test_ori = Weka.partitionData(data_ori)
         else:
@@ -70,7 +71,7 @@ def Unimodal():
             train_ori = Am.joinPersonStageData(persons_train, stages, 'VCom')
             val_ori = Am.joinPersonStageData(persons_validation, stages, 'VCom')
             test_ori = Am.joinPersonStageData(persons_test, stages, 'VCom')
-            Hrm.writeLimitsOwnBD(persons_test, answers_limits_list)
+            Hrm.writeLimitsOwnBD(persons_test, labels_limits_list)
 
         Datos.calculateAttributesToCut(train_ori.num_attributes)
         validation_predic_vector = np.array([])
@@ -89,7 +90,7 @@ def Unimodal():
                 print(selection_methods[i])
                 Log.add(selection_methods[i])
                 actual_selection_method = selection_methods[i] + ' + '
-                train, val, test = Weka.featuresSelection(train_ori, val_ori, test_ori, selection_methods[i])
+                train, val, test = Weka.featuresSelection(selection_methods[i], train_ori, val_ori, test_ori)
                 print(time.time() - start2)
                 Log.add(time.time() - start2)
             else:
@@ -99,30 +100,28 @@ def Unimodal():
                 val = val_ori
                 test = test_ori
             for j in range(0, len(classification_methods)):
-                # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
-                if actual_selection_method != '' or classification_methods[j] != 'MLP':
-                    print(classification_methods[j])
-                    Log.add(classification_methods[j])
-                    start2 = time.time()
-                    methods_list.append(actual_selection_method + classification_methods[j])
-                    validation_predic_in_csv, test_predic_in_csv = Weka.classification(train, val, test,
-                                                                                       classification_methods[j],
-                                                                                       selection_methods[i])
-                    validation_prediction = Hrm.predictionCSVtoArray(validation_predic_in_csv)
-                    test_prediction = Hrm.predictionCSVtoArray(test_predic_in_csv)
-                    validation_accuracy.append(Hrm.Accuracy(validation_prediction[:, 1], validation_prediction[:, 2]))
-                    test_accuracy.append(Hrm.Accuracy(test_prediction[:, 1], test_prediction[:, 2]))
-                    validation_uar.append(Hrm.UAR(validation_prediction[:, 1], validation_prediction[:, 2]))
-                    test_uar.append(Hrm.UAR(test_prediction[:, 1], test_prediction[:, 2]))
-                    if len(validation_predic_vector) == 0:
-                        validation_predic_vector = np.array([validation_prediction])
-                        test_predic_vector = np.array([test_prediction])
-                    else:
-                        validation_predic_vector = np.concatenate([validation_predic_vector,
-                                                                   np.array([validation_prediction])])
-                        test_predic_vector = np.concatenate([test_predic_vector, np.array([test_prediction])])
-                    print(time.time() - start2)
-                    Log.add(time.time() - start2)
+                print(classification_methods[j])
+                Log.add(classification_methods[j])
+                start2 = time.time()
+                methods_list.append(actual_selection_method + classification_methods[j])
+                validation_predic_in_csv, test_predic_in_csv = Weka.classification(train, val, test,
+                                                                                   classification_methods[j],
+                                                                                   selection_methods[i])
+                validation_prediction = Hrm.predictionCSVtoArray(validation_predic_in_csv)
+                test_prediction = Hrm.predictionCSVtoArray(test_predic_in_csv)
+                validation_accuracy.append(Hrm.Accuracy(validation_prediction[:, 1], validation_prediction[:, 2]))
+                test_accuracy.append(Hrm.Accuracy(test_prediction[:, 1], test_prediction[:, 2]))
+                validation_uar.append(Hrm.UAR(validation_prediction[:, 1], validation_prediction[:, 2]))
+                test_uar.append(Hrm.UAR(test_prediction[:, 1], test_prediction[:, 2]))
+                if len(validation_predic_vector) == 0:
+                    validation_predic_vector = np.array([validation_prediction])
+                    test_predic_vector = np.array([test_prediction])
+                else:
+                    validation_predic_vector = np.concatenate([validation_predic_vector,
+                                                               np.array([validation_prediction])])
+                    test_predic_vector = np.concatenate([test_predic_vector, np.array([test_prediction])])
+                print(time.time() - start2)
+                Log.add(time.time() - start2)
 
         validation_results = Hrm.summarizePredictions(validation_predic_vector, methods_list, validation_accuracy,
                                                       validation_uar)
@@ -137,10 +136,10 @@ def Unimodal():
         results_first_fusion = Hrm.fusionClassifiers(test_results, 'Voto', best_index)
 
         if num_to_test == -1:
-            results_first_fusion, desfase = Hrm.sortInstances(results_first_fusion, instances_order)
-            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS, desfase)
+            results_first_fusion, gap = Hrm.sortInstances(results_first_fusion, instances_order)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, instances_for_period, gap)
         else:
-            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, instances_for_period)
 
         result_raw_vector = np.concatenate([result_raw_vector, np.array([test_results[0:3, :]])], axis=0)
         result_first_fusion_vector = np.concatenate([result_first_fusion_vector,
@@ -172,34 +171,36 @@ def PrimerMultimodal():
     selection_methods = Datos.MET_SELECCION
     classification_methods = Datos.MET_CLASIFICACION
     binarize_labels = Datos.BINARIZO_ETIQUETA
+    instances_for_period = Datos.INSTANCIAS_POR_PERIODOS
     num_to_validation = Datos.VAL
     num_to_test = Datos.TEST
 
-    print('Adaptación de caracteristicas en progreso')
-    Log.add('Adaptación de caracteristicas en progreso')
-    video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
-    answers_limits_list = list()
-    for i in persons:
-        for j in stages:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            Log.add('Persona ' + i + ' -> Etapa ' + j)
-            video_name = Hrm.buildFileName(i, j)
-            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
-
-            labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
-            audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
-            final_answer_limits = video_features(video_name, video_path, labels_list, complete_mode=False)
-            answers_limits_list.append(final_answer_limits)
-
-            print(time.time() - start2)
-            Log.add(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    Log.add('Completada adaptación de caracteristicas')
-    Log.add(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # Log.add('Adaptación de caracteristicas en progreso')
+    # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    # labels_limits_list = list()
+    # for i in persons:
+    #     for j in stages:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         Log.add('Persona ' + i + ' -> Etapa ' + j)
+    #         video_name = Hrm.buildFileName(i, j)
+    #         video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+    #
+    #         labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
+    #         audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
+    #         labels_limits = video_features(video_name, video_path, labels_list, complete_mode=False,
+    #                                        answers_limits=answers_limits)
+    #         labels_limits_list.append(labels_limits)
+    #
+    #         print(time.time() - start2)
+    #         Log.add(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # Log.add('Completada adaptación de caracteristicas')
+    # Log.add(time.time() - start_total)
 
     result_raw_vector = np.empty((0, 3, 2 * selection_methods.size * classification_methods.size + 1))
     result_first_fusion_vector = np.empty((0, 3, 2))
@@ -215,8 +216,8 @@ def PrimerMultimodal():
     for k in range(0, laps):
         Datos.defineActualValidationFold(k + 1)
         if num_to_test == -1:
-            data_v, data_a = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp')
-            instances_order = Am.generateInstancesOrder(data_v, Datos.INSTANCIAS_POR_PERIODOS)
+            data_v, data_a, _ = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp')
+            instances_order = Am.generateInstancesOrder(data_v, instances_for_period)
             data_v_ori = Am.mixInstances(data_v, instances_order)
             data_a_ori = Am.mixInstances(data_a, instances_order)
             train_v_ori, val_v_ori, test_v_ori = Weka.partitionData(data_v_ori)
@@ -225,19 +226,22 @@ def PrimerMultimodal():
             print('Vuelta: ' + str(k + 1) + '/' + str(laps))
             Log.add('Vuelta: ' + str(k + 1) + '/' + str(laps))
             persons_train, persons_validation, persons_test = generateSetsOwnBD(k, num_to_validation, num_to_test)
-            train_v_ori, train_a_ori, new_answers_limits_list = \
-                Am.joinPersonStageData(persons_train, stages,
-                                       'VResp', 'AResp', join=False,
-                                       answer_limits_list=answers_limits_list)
-            val_v_ori, val_a_ori, new_answers_limits_list = \
-                Am.joinPersonStageData(persons_validation, stages,
-                                       'VResp', 'AResp', join=False,
-                                       answer_limits_list=new_answers_limits_list)
-            test_v_ori, test_a_ori, new_answers_limits_list = \
-                Am.joinPersonStageData(persons_test, stages,
-                                       'VResp', 'AResp', join=False,
-                                       answer_limits_list=new_answers_limits_list)
-            Hrm.writeLimitsOwnBD(persons_test, new_answers_limits_list)
+            # train_v_ori, train_a_ori, new_labels_limits_list = \
+            #     Am.joinPersonStageData(persons_train, stages,
+            #                            'VResp', 'AResp', join=False,
+            #                            answer_limits_list=labels_limits_list)
+            # val_v_ori, val_a_ori, new_labels_limits_list = \
+            #     Am.joinPersonStageData(persons_validation, stages,
+            #                            'VResp', 'AResp', join=False,
+            #                            answer_limits_list=new_labels_limits_list)
+            # test_v_ori, test_a_ori, new_labels_limits_list = \
+            #     Am.joinPersonStageData(persons_test, stages,
+            #                            'VResp', 'AResp', join=False,
+            #                            answer_limits_list=new_labels_limits_list)
+            train_v_ori, train_a_ori, _ = Am.joinPersonStageData(persons_train, stages, 'VResp', 'AResp', join=False)
+            val_v_ori, val_a_ori, _ = Am.joinPersonStageData(persons_validation, stages, 'VResp', 'AResp', join=False)
+            test_v_ori, test_a_ori, _ = Am.joinPersonStageData(persons_test, stages, 'VResp', 'AResp', join=False)
+            # Hrm.writeLimitsOwnBD(persons_test, new_labels_limits_list)
 
         Datos.calculateAttributesToCut(train_v_ori.num_attributes)
         validation_predic_vector_v = np.array([])
@@ -264,12 +268,12 @@ def PrimerMultimodal():
                 actual_selection_method = selection_methods[i] + ' + '
                 print('Video')
                 Log.add('Video')
-                train_v, val_v, test_v = Weka.featuresSelection(train_v_ori, val_v_ori, test_v_ori,
-                                                                selection_methods[i])
+                train_v, val_v, test_v = Weka.featuresSelection(selection_methods[i],
+                                                                train_v_ori, val_v_ori, test_v_ori)
                 print('Audio')
                 Log.add('Audio')
-                train_a, val_a, test_a = Weka.featuresSelection(train_a_ori, val_a_ori, test_a_ori,
-                                                                selection_methods[i])
+                train_a, val_a, test_a = Weka.featuresSelection(selection_methods[i],
+                                                                train_a_ori, val_a_ori, test_a_ori)
                 print(time.time() - start2)
                 Log.add(time.time() - start2)
             else:
@@ -282,46 +286,44 @@ def PrimerMultimodal():
                 val_a = val_a_ori
                 test_a = test_a_ori
             for j in range(0, len(classification_methods)):
-                # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
-                if actual_selection_method != '' or classification_methods[j] != 'MLP':
-                    print(classification_methods[j])
-                    Log.add(classification_methods[j])
-                    start2 = time.time()
-                    methods_list.append(actual_selection_method + classification_methods[j])
-                    validation_predic_in_csv_v, test_predic_in_csv_v = Weka.classification(train_v, val_v, test_v,
-                                                                                           classification_methods[j],
-                                                                                           selection_methods[i])
-                    validation_predic_in_csv_a, test_predic_in_csv_a = Weka.classification(train_a, val_a, test_a,
-                                                                                           classification_methods[j],
-                                                                                           selection_methods[i])
-                    validation_prediction_v = Hrm.predictionCSVtoArray(validation_predic_in_csv_v)
-                    test_prediction_v = Hrm.predictionCSVtoArray(test_predic_in_csv_v)
-                    validation_prediction_a = Hrm.predictionCSVtoArray(validation_predic_in_csv_a)
-                    test_prediction_a = Hrm.predictionCSVtoArray(test_predic_in_csv_a)
-                    validation_accuracy_v.append(Hrm.Accuracy(validation_prediction_v[:, 1],
-                                                              validation_prediction_v[:, 2]))
-                    validation_accuracy_a.append(Hrm.Accuracy(validation_prediction_a[:, 1],
-                                                              validation_prediction_a[:, 2]))
-                    test_accuracy_v.append(Hrm.Accuracy(test_prediction_v[:, 1], test_prediction_v[:, 2]))
-                    test_accuracy_a.append(Hrm.Accuracy(test_prediction_a[:, 1], test_prediction_a[:, 2]))
-                    validation_uar_v.append(Hrm.UAR(validation_prediction_v[:, 1], validation_prediction_v[:, 2]))
-                    validation_uar_a.append(Hrm.UAR(validation_prediction_a[:, 1], validation_prediction_a[:, 2]))
-                    test_uar_v.append(Hrm.UAR(test_prediction_v[:, 1], test_prediction_v[:, 2]))
-                    test_uar_a.append(Hrm.UAR(test_prediction_a[:, 1], test_prediction_a[:, 2]))
-                    if len(validation_predic_vector_v) == 0:
-                        validation_predic_vector_v = np.array([validation_prediction_v])
-                        validation_predic_vector_a = np.array([validation_prediction_a])
-                        test_predic_vector_v = np.array([test_prediction_v])
-                        test_predic_vector_a = np.array([test_prediction_a])
-                    else:
-                        validation_predic_vector_v = np.concatenate([validation_predic_vector_v,
-                                                                     np.array([validation_prediction_v])])
-                        validation_predic_vector_a = np.concatenate([validation_predic_vector_a,
-                                                                     np.array([validation_prediction_a])])
-                        test_predic_vector_v = np.concatenate([test_predic_vector_v, np.array([test_prediction_v])])
-                        test_predic_vector_a = np.concatenate([test_predic_vector_a, np.array([test_prediction_a])])
-                    print(time.time() - start2)
-                    Log.add(time.time() - start2)
+                print(classification_methods[j])
+                Log.add(classification_methods[j])
+                start2 = time.time()
+                methods_list.append(actual_selection_method + classification_methods[j])
+                validation_predic_in_csv_v, test_predic_in_csv_v = Weka.classification(train_v, val_v, test_v,
+                                                                                       classification_methods[j],
+                                                                                       selection_methods[i])
+                validation_predic_in_csv_a, test_predic_in_csv_a = Weka.classification(train_a, val_a, test_a,
+                                                                                       classification_methods[j],
+                                                                                       selection_methods[i])
+                validation_prediction_v = Hrm.predictionCSVtoArray(validation_predic_in_csv_v)
+                test_prediction_v = Hrm.predictionCSVtoArray(test_predic_in_csv_v)
+                validation_prediction_a = Hrm.predictionCSVtoArray(validation_predic_in_csv_a)
+                test_prediction_a = Hrm.predictionCSVtoArray(test_predic_in_csv_a)
+                validation_accuracy_v.append(Hrm.Accuracy(validation_prediction_v[:, 1],
+                                                          validation_prediction_v[:, 2]))
+                validation_accuracy_a.append(Hrm.Accuracy(validation_prediction_a[:, 1],
+                                                          validation_prediction_a[:, 2]))
+                test_accuracy_v.append(Hrm.Accuracy(test_prediction_v[:, 1], test_prediction_v[:, 2]))
+                test_accuracy_a.append(Hrm.Accuracy(test_prediction_a[:, 1], test_prediction_a[:, 2]))
+                validation_uar_v.append(Hrm.UAR(validation_prediction_v[:, 1], validation_prediction_v[:, 2]))
+                validation_uar_a.append(Hrm.UAR(validation_prediction_a[:, 1], validation_prediction_a[:, 2]))
+                test_uar_v.append(Hrm.UAR(test_prediction_v[:, 1], test_prediction_v[:, 2]))
+                test_uar_a.append(Hrm.UAR(test_prediction_a[:, 1], test_prediction_a[:, 2]))
+                if len(validation_predic_vector_v) == 0:
+                    validation_predic_vector_v = np.array([validation_prediction_v])
+                    validation_predic_vector_a = np.array([validation_prediction_a])
+                    test_predic_vector_v = np.array([test_prediction_v])
+                    test_predic_vector_a = np.array([test_prediction_a])
+                else:
+                    validation_predic_vector_v = np.concatenate([validation_predic_vector_v,
+                                                                 np.array([validation_prediction_v])])
+                    validation_predic_vector_a = np.concatenate([validation_predic_vector_a,
+                                                                 np.array([validation_prediction_a])])
+                    test_predic_vector_v = np.concatenate([test_predic_vector_v, np.array([test_prediction_v])])
+                    test_predic_vector_a = np.concatenate([test_predic_vector_a, np.array([test_prediction_a])])
+                print(time.time() - start2)
+                Log.add(time.time() - start2)
 
         validation_results_v = Hrm.summarizePredictions(validation_predic_vector_v, methods_list, validation_accuracy_v,
                                                         validation_uar_v)
@@ -344,9 +346,9 @@ def PrimerMultimodal():
 
         if num_to_test == -1:
             results_first_fusion, gap = Hrm.sortInstances(results_first_fusion, instances_order)
-            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS, gap)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, instances_for_period, gap)
         else:
-            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, instances_for_period)
 
         result_raw_vector = np.concatenate([result_raw_vector, np.array([test_results_joined[0:3, :]])], axis=0)
         result_first_fusion_vector = np.concatenate([result_first_fusion_vector,
@@ -376,34 +378,36 @@ def SegundoMultimodal():
     selection_methods = Datos.MET_SELECCION
     classification_methods = Datos.MET_CLASIFICACION
     binarize_labels = Datos.BINARIZO_ETIQUETA
+    instances_for_period = Datos.INSTANCIAS_POR_PERIODOS
     num_to_validation = Datos.VAL
     num_to_test = Datos.TEST
 
-    print('Adaptación de caracteristicas en progreso')
-    Log.add('Adaptación de caracteristicas en progreso')
-    video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
-    answers_limits_list = list()
-    for i in persons:
-        for j in stages:
-            start2 = time.time()
-            print('Persona ' + i + ' -> Etapa ' + j)
-            Log.add('Persona ' + i + ' -> Etapa ' + j)
-            video_name = Hrm.buildFileName(i, j)
-            video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
-
-            labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
-            audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
-            final_answer_limits = video_features(video_name, video_path, labels_list, complete_mode=False)
-            answers_limits_list.append(final_answer_limits)
-
-            print(time.time() - start2)
-            Log.add(time.time() - start2)
-
-    print('Completada adaptación de caracteristicas')
-    print(time.time() - start_total)
-    Log.add('Completada adaptación de caracteristicas')
-    Log.add(time.time() - start_total)
+    # print('Adaptación de caracteristicas en progreso')
+    # Log.add('Adaptación de caracteristicas en progreso')
+    # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    # labels_limits_list = list()
+    # for i in persons:
+    #     for j in stages:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         Log.add('Persona ' + i + ' -> Etapa ' + j)
+    #         video_name = Hrm.buildFileName(i, j)
+    #         video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+    #
+    #         labels_list, answers_limits = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
+    #         audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
+    #         labels_limits = video_features(video_name, video_path, labels_list, complete_mode=False,
+    #                                        answers_limits=answers_limits)
+    #         labels_limits_list.append(labels_limits)
+    #
+    #         print(time.time() - start2)
+    #         Log.add(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # Log.add('Completada adaptación de caracteristicas')
+    # Log.add(time.time() - start_total)
 
     result_raw_vector = np.empty((0, 3, selection_methods.size * classification_methods.size + 1))
     result_first_fusion_vector = np.empty((0, 3, 2))
@@ -419,24 +423,27 @@ def SegundoMultimodal():
     for k in range(0, laps):
         Datos.defineActualValidationFold(k + 1)
         if num_to_test == -1:
-            data = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp', join=True)
-            instances_order = Am.generateInstancesOrder(data, Datos.INSTANCIAS_POR_PERIODOS)
+            data, _ = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp', join=True)
+            instances_order = Am.generateInstancesOrder(data, instances_for_period)
             data_ori = Am.mixInstances(data, instances_order)
             train_ori, val_ori, test_ori = Weka.partitionData(data_ori)
         else:
             print('Vuelta: ' + str(k + 1) + '/' + str(laps))
             Log.add('Vuelta: ' + str(k + 1) + '/' + str(laps))
             persons_train, persons_validation, persons_test = generateSetsOwnBD(k, num_to_validation, num_to_test)
-            train_ori, new_answers_limits_list = Am.joinPersonStageData(persons_train, stages,
-                                                                        'VResp', 'AResp', join=True,
-                                                                        answer_limits_list=answers_limits_list)
-            val_ori, new_answers_limits_list = Am.joinPersonStageData(persons_validation, stages,
-                                                                      'VResp', 'AResp', join=True,
-                                                                      answer_limits_list=new_answers_limits_list)
-            test_ori, new_answers_limits_list = Am.joinPersonStageData(persons_test, stages,
-                                                                       'VResp', 'AResp', join=True,
-                                                                       answer_limits_list=new_answers_limits_list)
-            Hrm.writeLimitsOwnBD(persons_test, new_answers_limits_list)
+            # train_ori, new_labels_limits_list = Am.joinPersonStageData(persons_train, stages,
+            #                                                            'VResp', 'AResp', join=True,
+            #                                                            answer_limits_list=labels_limits_list)
+            # val_ori, new_labels_limits_list = Am.joinPersonStageData(persons_validation, stages,
+            #                                                          'VResp', 'AResp', join=True,
+            #                                                          answer_limits_list=new_labels_limits_list)
+            # test_ori, new_labels_limits_list = Am.joinPersonStageData(persons_test, stages,
+            #                                                           'VResp', 'AResp', join=True,
+            #                                                           answer_limits_list=new_labels_limits_list)
+            train_ori, _ = Am.joinPersonStageData(persons_train, stages, 'VResp', 'AResp', join=True)
+            val_ori, _ = Am.joinPersonStageData(persons_validation, stages, 'VResp', 'AResp', join=True)
+            test_ori, _ = Am.joinPersonStageData(persons_test, stages, 'VResp', 'AResp', join=True)
+            # Hrm.writeLimitsOwnBD(persons_test, new_labels_limits_list)
 
         Datos.calculateAttributesToCut(train_ori.num_attributes)
         validation_predic_vector = np.array([])
@@ -455,7 +462,7 @@ def SegundoMultimodal():
                 print(selection_methods[i])
                 Log.add(selection_methods[i])
                 actual_selection_method = selection_methods[i] + ' + '
-                train, val, test = Weka.featuresSelection(train_ori, val_ori, test_ori, selection_methods[i])
+                train, val, test = Weka.featuresSelection(selection_methods[i], train_ori, val_ori, test_ori)
                 print(time.time() - start2)
                 Log.add(time.time() - start2)
             else:
@@ -465,31 +472,29 @@ def SegundoMultimodal():
                 val = val_ori
                 test = test_ori
             for j in range(0, len(classification_methods)):
-                # Si no se selecciona caracteristicas y esta MLP, que no lo haga porque va a demorar demasiado
-                if actual_selection_method != '' or classification_methods[j] != 'MLP':
-                    print(classification_methods[j])
-                    Log.add(classification_methods[j])
-                    start2 = time.time()
-                    methods_list.append(actual_selection_method + classification_methods[j])
-                    validation_predic_in_csv, test_predic_in_csv = Weka.classification(train, val, test,
-                                                                                       classification_methods[j],
-                                                                                       selection_methods[i])
-                    validation_prediction = Hrm.predictionCSVtoArray(validation_predic_in_csv)
-                    test_prediction = Hrm.predictionCSVtoArray(test_predic_in_csv)
-                    validation_accuracy.append(
-                        Hrm.Accuracy(validation_prediction[:, 1], validation_prediction[:, 2]))
-                    test_accuracy.append(Hrm.Accuracy(test_prediction[:, 1], test_prediction[:, 2]))
-                    validation_uar.append(Hrm.UAR(validation_prediction[:, 1], validation_prediction[:, 2]))
-                    test_uar.append(Hrm.UAR(test_prediction[:, 1], test_prediction[:, 2]))
-                    if len(validation_predic_vector) == 0:
-                        validation_predic_vector = np.array([validation_prediction])
-                        test_predic_vector = np.array([test_prediction])
-                    else:
-                        validation_predic_vector = np.concatenate([validation_predic_vector,
-                                                                   np.array([validation_prediction])])
-                        test_predic_vector = np.concatenate([test_predic_vector, np.array([test_prediction])])
-                    print(time.time() - start2)
-                    Log.add(time.time() - start2)
+                print(classification_methods[j])
+                Log.add(classification_methods[j])
+                start2 = time.time()
+                methods_list.append(actual_selection_method + classification_methods[j])
+                validation_predic_in_csv, test_predic_in_csv = Weka.classification(train, val, test,
+                                                                                   classification_methods[j],
+                                                                                   selection_methods[i])
+                validation_prediction = Hrm.predictionCSVtoArray(validation_predic_in_csv)
+                test_prediction = Hrm.predictionCSVtoArray(test_predic_in_csv)
+                validation_accuracy.append(
+                    Hrm.Accuracy(validation_prediction[:, 1], validation_prediction[:, 2]))
+                test_accuracy.append(Hrm.Accuracy(test_prediction[:, 1], test_prediction[:, 2]))
+                validation_uar.append(Hrm.UAR(validation_prediction[:, 1], validation_prediction[:, 2]))
+                test_uar.append(Hrm.UAR(test_prediction[:, 1], test_prediction[:, 2]))
+                if len(validation_predic_vector) == 0:
+                    validation_predic_vector = np.array([validation_prediction])
+                    test_predic_vector = np.array([test_prediction])
+                else:
+                    validation_predic_vector = np.concatenate([validation_predic_vector,
+                                                               np.array([validation_prediction])])
+                    test_predic_vector = np.concatenate([test_predic_vector, np.array([test_prediction])])
+                print(time.time() - start2)
+                Log.add(time.time() - start2)
 
         validation_results = Hrm.summarizePredictions(validation_predic_vector, methods_list, validation_accuracy,
                                                       validation_uar)
@@ -504,10 +509,10 @@ def SegundoMultimodal():
         results_first_fusion = Hrm.fusionClassifiers(test_results, 'Voto', best_index)
 
         if num_to_test == -1:
-            results_first_fusion, desfase = Hrm.sortInstances(results_first_fusion, instances_order)
-            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS, desfase)
+            results_first_fusion, gap = Hrm.sortInstances(results_first_fusion, instances_order)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, instances_for_period, gap)
         else:
-            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, Datos.INSTANCIAS_POR_PERIODOS)
+            results_second_fusion = Hrm.voteForPeriod(results_first_fusion, instances_for_period)
 
         result_raw_vector = np.concatenate([result_raw_vector, np.array([test_results[0:3, :]])], axis=0)
         result_first_fusion_vector = np.concatenate([result_first_fusion_vector,
@@ -584,45 +589,88 @@ def testMSPImprov():
 
     zones = Datos.ZONAS
     extraction_methods = Datos.MET_EXTRACCION
-    selection_methods = Datos.MET_SELECCION
-    classification_methods = Datos.MET_CLASIFICACION
+    best_configuration = Datos.MEJORES_CONFIGURACIONES
     binarize_labels = Datos.BINARIZO_ETIQUETA
+    instances_for_period = Datos.INSTANCIAS_POR_PERIODOS
+
+    # trainWithEntireBD()
 
     file_list = Hrm.processEvalutionFile()
-    videoExtractionWrapperMSPImprov(file_list)
+    # videoExtractionWrapperMSPImprov(file_list)
+    #
+    # print('Adaptación de caracteristicas en progreso')
+    # Log.add('Adaptación de caracteristicas en progreso')
+    # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    # count = 1
+    # for row_file in file_list:
+    #     start2 = time.time()
+    #     print('Video nro ' + str(count))
+    #     count += 1
+    #     labels_list = Hrm.mapLabelsMSPImprov(row_file, binarize_labels)
+    #     file_name = row_file[0]
+    #     video_path = row_file[1]
+    #     audio_path = row_file[2]
+    #     video_features(file_name, video_path, labels_list, complete_mode=True, for_frames=False)
+    #     audio_features(file_name, audio_path, labels_list, complete_mode=True, extract_from_video=False)
+    #     print(time.time() - start2)
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # Log.add('Completada adaptación de caracteristicas')
+    # Log.add(time.time() - start_total)
 
-    print('Adaptación de caracteristicas en progreso')
-    Log.add('Adaptación de caracteristicas en progreso')
-    video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
-    audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
-    count = 1
-    for row_file in file_list:
+    data_tst, answer_limits = Am.joinListData(file_list)
+    Hrm.writeLimitsMSPImprov(answer_limits)
+
+    prediction_vector = np.array([])
+    methods_list = list()
+    accuracy = list()
+    uar = list()
+    for i in range(0, best_configuration.shape[0]):
         start2 = time.time()
-        print('Video nro ' + str(count))
-        count += 1
-        labels_list = Hrm.mapLabelsMSPImprov(row_file, binarize_labels)
-        file_name = row_file[0]
-        video_path = row_file[1]
-        audio_path = row_file[2]
-        video_features(file_name, video_path, labels_list, complete_mode=True)
-        audio_features(file_name, audio_path, labels_list, complete_mode=True, extract_from_video=False)
-        print(time.time() - start2)
+        selection_method = best_configuration[i][0]
+        classification_method = best_configuration[i][1]
+        actual_configuration_name = selection_method + ' + ' + classification_method
+        print(actual_configuration_name)
+        Log.add(actual_configuration_name)
+        methods_list.append(actual_configuration_name)
+        path_load = Hrm.buildSaveModelPath(actual_configuration_name)
 
-    print('Completada adaptación de caracteristicas')
+        prediction_in_csv = Weka.classificationOnlyTest(data_tst, path_load, filter_attributes=True)
+        prediction = Hrm.predictionCSVtoArray(prediction_in_csv)
+        accuracy.append(Hrm.Accuracy(prediction[:, 1], prediction[:, 2]))
+        uar.append(Hrm.UAR(prediction[:, 1], prediction[:, 2]))
+        if len(prediction_vector) == 0:
+            prediction_vector = np.array([prediction])
+        else:
+            prediction_vector = np.concatenate([prediction_vector, np.array([prediction])])
+
+        print(time.time() - start2)
+        Log.add(time.time() - start2)
+
+    results = Hrm.summarizePredictions(prediction_vector, methods_list, accuracy, uar)
+    best_index = np.array(range(1, best_configuration.shape[0] + 1))
+    results_first_fusion = Hrm.fusionClassifiers(results, 'Voto', best_index)
+    results_second_fusion = Hrm.voteForPeriod(results_first_fusion, instances_for_period)
+
+    Hrm.showTable(results)
+    Hrm.showTable(results_first_fusion)
+    Hrm.showTable(results_second_fusion)
+
     print(time.time() - start_total)
-    Log.add('Completada adaptación de caracteristicas')
+    Log.add('Tiempo total')
     Log.add(time.time() - start_total)
+    print('Fin de experimento')
+    Log.add('Fin de experimento')
 
 
 def videoExtractionWrapperMSPImprov(file_list):
     start_total = time.time()
-    jvm.start()
     zones = Datos.ZONAS
     print('Extracción de caracteristicas en progreso')
     features_extraction = Extrc.VideoFeaturesExtraction(zones)
     count = 1
     for row_file in file_list:
-        # if i != '09' or j != '1':
         start2 = time.time()
         print('Video nro ' + str(count))
         count += 1
@@ -632,3 +680,64 @@ def videoExtractionWrapperMSPImprov(file_list):
         print(time.time() - start2)
     print('Completada extraccion de caracteristicas')
     print(time.time() - start_total)
+
+
+def trainWithEntireBD():
+    start_total = time.time()
+    zones = Datos.ZONAS
+    extraction_methods = Datos.MET_EXTRACCION
+    best_configuration = Datos.MEJORES_CONFIGURACIONES
+    binarize_labels = Datos.BINARIZO_ETIQUETA
+    persons = np.array(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16',
+                        '17', '18', '19', '20', '21'])
+    stages = np.array(['1', '2'])
+
+    # TODO ESTO ES SUPONIENDO QUE ANDUVO MEJOR EL SEGUNDO EXPERIMENTO MULTIMODAL
+    # print('Adaptación de caracteristicas en progreso')
+    # Log.add('Adaptación de caracteristicas en progreso')
+    # video_features = Extrc.VideoFeaturesUnification(binarize_labels, zones, extraction_methods)
+    # audio_features = Extrc.AudioFeaturesExtraction(binarize_labels)
+    # for i in persons:
+    #     for j in stages:
+    #         start2 = time.time()
+    #         print('Persona ' + i + ' -> Etapa ' + j)
+    #         Log.add('Persona ' + i + ' -> Etapa ' + j)
+    #         video_name = Hrm.buildFileName(i, j)
+    #         video_path = Hrm.buildFilePath(i, j, video_name, extension=Datos.EXTENSION_VIDEO)
+    #
+    #         labels_list, _ = Hrm.mapLabelsOwnBD(i, j, binarize_labels, complete_mode=False)
+    #         audio_features(video_name, video_path, labels_list, complete_mode=False, extract_from_video=True)
+    #         video_features(video_name, video_path, labels_list, complete_mode=False)
+    #
+    #         print(time.time() - start2)
+    #         Log.add(time.time() - start2)
+    #
+    # print('Completada adaptación de caracteristicas')
+    # print(time.time() - start_total)
+    # Log.add('Completada adaptación de caracteristicas')
+    # Log.add(time.time() - start_total)
+    train_ori, _ = Am.joinPersonStageData(persons, stages, 'VResp', 'AResp', join=True)
+    Datos.calculateAttributesToCut(train_ori.num_attributes)
+
+    for i in range(0, best_configuration.shape[0]):
+        selection_method = best_configuration[i][0]
+        classification_method = best_configuration[i][1]
+        actual_configuration_name = selection_method + ' + ' + classification_method
+        path_save = Hrm.buildSaveModelPath(actual_configuration_name)
+
+        start2 = time.time()
+        print(selection_method)
+        Log.add(selection_method)
+        train, _, _ = Weka.featuresSelection(selection_method, train_ori)
+        print(time.time() - start2)
+        Log.add(time.time() - start2)
+
+        start2 = time.time()
+        print(classification_method)
+        Weka.classificationOnlyTrain(train, path_save, classification_method)
+        print(time.time() - start2)
+        Log.add(time.time() - start2)
+
+    print(time.time() - start_total)
+    Log.add('Tiempo de entrenamiento total')
+    Log.add(time.time() - start_total)

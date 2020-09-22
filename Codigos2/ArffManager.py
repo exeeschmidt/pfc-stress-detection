@@ -51,7 +51,7 @@ def joinDatasetByAttributes(data_vec):
     return data
 
 
-def joinPersonStageData(persons, stages, sub, optional_sub='', join=False, answer_limits_list=None):
+def joinPersonStageData(persons, stages, sub, optional_sub=None, join=False, answer_limits_list=None):
     # Levanta y une los dataset de multiples personas y etapas
     # Sub cambia segun el conjunto de caracteristicas, si se presenta sub2 es por si hay que concatenar el audio y video
     # entre sí también
@@ -63,7 +63,7 @@ def joinPersonStageData(persons, stages, sub, optional_sub='', join=False, answe
             file_name = Hrm.buildFileName(i, j)
             path = Hrm.buildSubFilePath(file_name, sub)
             data1 = loadAndFiltered(path)
-            if optional_sub != '':
+            if optional_sub is not None:
                 path = Hrm.buildSubFilePath(file_name, optional_sub)
                 data2 = loadAndFiltered(path)
                 data_vec_norm = normalizeDatasets(np.array([data1, data2]))
@@ -72,12 +72,12 @@ def joinPersonStageData(persons, stages, sub, optional_sub='', join=False, answe
                 if answer_limits_list is not None:
                     # El nuevo limite lo establece el numero de instancias luego de la normalizacion
                     new_limit = instancesNumber(data_vec_norm[0])
+                    actual_index = (int(i) - 1) * 2 + int(j) - 1
                     new_limit_index = 0
-                    actual_index = int(i) * 2 + int(j)
                     # Busco donde tengo un limite mayor al nuevo limite, esto por si recorta un intervalo mayor al
                     # del ultimo limite (no deberia pasar nunca, y si lo hace igual seria bastante malo)
                     for k in range(0, len(answer_limits_list[actual_index])):
-                        if answer_limits_list[actual_index][k] > new_limit:
+                        if answer_limits_list[actual_index][k] >= new_limit:
                             new_limit_index = k
                             break
                     # Recorto por si es necesario, que tampoco deberia recortarse si anda bien
@@ -87,7 +87,7 @@ def joinPersonStageData(persons, stages, sub, optional_sub='', join=False, answe
             else:
                 data_vec1 = np.append(data_vec1, data1)
     data_sub1 = joinDatasetByAttributes(data_vec1)
-    if optional_sub != '':
+    if optional_sub is not None:
         data_sub2 = joinDatasetByAttributes(data_vec2)
         if join:
             data_sub1.no_class()
@@ -107,9 +107,9 @@ def joinListData(file_list):
     answer_limits_list = list()
     for row_file in file_list:
         file_name = row_file[0]
-        path = Hrm.buildSubFilePath(file_name, 'VCom')
+        path = Hrm.buildSubFilePath(file_name, 'VCompFus')
         data1 = loadAndFiltered(path)
-        path = Hrm.buildSubFilePath(file_name, 'VResp')
+        path = Hrm.buildSubFilePath(file_name, 'AComp')
         data2 = loadAndFiltered(path)
         data_vec_norm = normalizeDatasets(np.array([data1, data2]))
         data_vec1 = np.append(data_vec1, data_vec_norm[0])

@@ -1,9 +1,9 @@
 # import histogramoforientedphase
+# import matlab
 import imagesc
 import os
 import cv2 as cv
 import numpy as np
-# import matlab
 import subprocess
 import Datos
 import Herramientas as Hrm
@@ -47,7 +47,9 @@ class OpenFace:
 
         # Cambio al directorio de OpenFace, ejecuto el comando y luego vuelvo al directorio donde están los códigos
         os.chdir(Datos.PATH_OPENFACE)
-        subprocess.run(command, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # results = subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # print("The exit code was: %d" % results.returncode)
         os.chdir(Datos.PATH_CODIGOS)
 
 
@@ -99,10 +101,10 @@ class OpenSmile:
         # Si no se llama el ventaneo se define cada 0.5s y el shift inicial en 0
         self.window = window
 
-    def __call__(self, file_name, file_path, window_size='0.125'):
+    def __call__(self, audio_name, audio_path, window_size='0.125'):
         # Comando base de OpenSmile
-        command = ['SMILExtract_Release', '-C', Datos.PATH_CONFIG_FILE, '-I', file_path, '-appendarff', '0',
-                   '-output', os.path.join(Datos.PATH_CARACTERISTICAS, file_name + '.arff')]
+        command = ['SMILExtract_Release', '-C', Datos.PATH_CONFIG_FILE, '-I', audio_path, '-appendarff', '0',
+                   '-output', Hrm.buildOpenSmileFilePath(audio_name)]
 
         # En caso de ventaneo se utiliza el config_file que se permite escribir desde la función archivo_ventaneo
         if self.window:
@@ -114,7 +116,9 @@ class OpenSmile:
 
         # Cambio al directorio de OpenSmile, ejecuto el comando y luego vuelvo al directorio donde están los códigos
         os.chdir(Datos.PATH_OPENSMILE)
-        subprocess.run(command, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # results = subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # print("The exit code was: %d" % results.returncode)
         os.chdir(Datos.PATH_CODIGOS)
 
     @staticmethod
@@ -282,5 +286,19 @@ class FFMPEG:
 
         # Cambio al directorio de ffmpeg, ejecuto el comando y luego vuelvo al directorio donde están los códigos
         os.chdir(Datos.PATH_FFMPEG)
-        subprocess.run(command, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # results = subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # print("The exit code was: %d" % results.returncode)
         os.chdir(Datos.PATH_CODIGOS)
+
+    def lowFpsVideo(self, video_name, video_path):
+        output_path = os.path.join(Datos.PATH_PROCESADO, video_name + Datos.EXTENSION_VIDEO)
+        command = ['.' + os.sep + 'ffmpeg', '-y', '-i', video_path, '-r', str(Datos.LIMITE_FPS),
+                   '-c:v', 'libx264', '-b:v', '3M', '-strict', '-2', '-movflags', 'faststart', output_path]
+        # Cambio al directorio de ffmpeg, ejecuto el comando y luego vuelvo al directorio donde están los códigos
+        os.chdir(Datos.PATH_FFMPEG)
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # results = subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # print("The exit code was: %d" % results.returncode)
+        os.chdir(Datos.PATH_CODIGOS)
+        return output_path

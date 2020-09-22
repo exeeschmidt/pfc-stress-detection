@@ -23,7 +23,7 @@ def create():
         log_file.write('Leave-' + str(Datos.TEST) + ' -out' + '\n')
         log_file.write('Validación con ' + str(Datos.VAL) + ' personas' + '\n')
     log_file.write('Binarización de etiquetas: ' + str(Datos.BINARIZO_ETIQUETA) + '\n')
-    log_file.write('Eliminación de silencios: ' + str(Datos.ELIMINA_SILENCIOS) + '\n')
+    log_file.write('Conjunto de características de audio: ' + str(Datos.CONFIG_FILE) + '\n')
 
     log_file.write('Instancias por periodos: ' + str(Datos.INSTANCIAS_POR_PERIODOS) + '\n')
     log_file.write('Votos entre mejores ' + str(Datos.VOTO_MEJORES_X) + '\n')
@@ -31,7 +31,8 @@ def create():
     log_file.write('Porcentaje de atributos seleccionados PSO: ' + str(Datos.PORC_ATRIBS_PSO) + '\n')
     log_file.write('Porcentaje de atributos seleccionados BF: ' + str(Datos.PORC_ATRIBS_BF) + '\n')
     log_file.write('Porcentaje de atributos finales: ' + str(Datos.PORC_ATRIBS_FINALES) + '\n')
-    log_file.write('Tiempo de microexpresion(s): ' + str(Datos.TIEMPO_MICROEXPRESION) + '\n\n')
+    log_file.write('Tiempo de microexpresion(s): ' + str(Datos.TIEMPO_MICROEXPRESION) + '\n')
+    log_file.write('Límite de FPS: ' + str(Datos.LIMITE_FPS) + '\n\n')
 
     log_file.write('Personas: ' + '\n')
     for i in range(0, Datos.PERSONAS.size - 1):

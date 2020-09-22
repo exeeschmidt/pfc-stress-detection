@@ -10,9 +10,10 @@ import LogManager as Log
 
 
 def main():
-    # Exp.ExtractorDeCaracteristicas()
-    # Exp.pruebaMSP()
-    jvm.start(max_heap_size="8G", packages=True)
+    jvm.start(max_heap_size="32G", packages=True)
+
+    # Exp.videoFeaturesExtractionWrapperOwnBD(Datos.PERSONAS, Datos.ETAPAS)
+
     # packages.install_package('LibSVM')
     # packages.install_package('PSOSearch')
     # Datos.parametrosSeleccion()
