@@ -427,7 +427,7 @@ class AudioFeaturesExtraction:
         if extract_from_video:
             # Ejecuto el método para extraer el wav del video
             ffmpeg = Met.FFMPEG()
-            ffmpeg(file_name, file_path + Datos.EXTENSION_VIDEO)
+            ffmpeg(file_name, file_path)
             audio_path = Hrm.buildOutputPathFFMPEG(file_name)
         else:
             audio_path = file_path

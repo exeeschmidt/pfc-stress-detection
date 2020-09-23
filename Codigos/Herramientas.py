@@ -1,6 +1,7 @@
 import csv
 import os
-
+import pandas as pd
+import plotly.graph_objs as go
 import cv2 as cv
 import numpy as np
 from sklearn.metrics import recall_score, accuracy_score
@@ -682,3 +683,51 @@ def defineLabelFromValenceAndArousal(valence, arousal):
     #     return labels[3]
     # else:
     #     return labels[0]
+
+
+def plotlyPlot(results, fps, binarize_labels):
+    results_without_metrics = eraseRowsMetrics(results)
+    results_with_indexs = replaceLabelWithIndex(results_without_metrics, fps)
+    pd_results = pd.DataFrame(data=results_with_indexs[1:, 1:], index=results_with_indexs[1:, 0],
+                              columns=results_with_indexs[0, 1:])
+    fig = go.Figure()
+
+    for col in pd_results.columns:
+        fig.add_trace(go.Scatter(
+            x=pd_results.index,
+            y=pd_results[col],
+            mode='lines',
+            name=col
+        ))
+
+    if binarize_labels:
+        tickets_names = ['Neutral', 'Estresado'],
+        tickets_values = Datos.ETIQUETAS_BINARIAS,
+    else:
+        tickets_names = ['Neutral', 'Bajo', 'Medio', 'Alto'],
+        tickets_values = Datos.ETIQUETAS_MULTICLASES,
+
+    fig.update_yaxes(
+        ticktext=tickets_names,
+        tickvals=tickets_values,
+    )
+
+    fig.show()
+
+
+def replaceLabelWithIndex(table, fps):
+    table[0, 0] = 'Index'
+    for i in range(1, table.shape[0]):
+        time_in_secs = float(i)/float(fps)
+        hrs = int(float(time_in_secs) / float(3600))
+        min = int((float(time_in_secs) - (float(hrs) * float(3600)))/float(60))
+        secs = int(float(time_in_secs) - (float(hrs) * float(3600)) - min*float(60))
+        ms = (int((time_in_secs - int(time_in_secs))*100))*10
+        str_time = str(hrs)+':'+str(min)+':'+str(secs)+':'+str(ms)
+        table[i, 0] = str_time
+    return table
+
+
+def eraseRowsMetrics(table):
+    new_table = np.append(np.array(table[0, :]).reshape(1, table.shape[1]), table[3:, :], axis=0)
+    return new_table
