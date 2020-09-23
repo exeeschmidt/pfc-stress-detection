@@ -1,6 +1,4 @@
 import os
-import time
-
 import cv2 as cv
 import numpy as np
 from tqdm import tqdm
@@ -440,15 +438,18 @@ class AudioFeaturesExtraction:
 
         data = Am.loadAndFiltered(Hrm.buildOpenSmileFilePath(file_name))
         os.remove(Hrm.buildOpenSmileFilePath(file_name))
-        # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
-        data = Am.addClassAttribute(data, self.classes)
-        for i in range(0, Am.instancesNumber(data)):
-            if i < len(labels_list):
-                data = Am.addLabel(data, i, np.where(self.classes ==
-                                                     labels_list[i])[0][0])
-            else:
-                data = Am.addLabel(data, i, np.where(self.classes ==
-                                                     labels_list[len(labels_list) - 1])[0][0])
+
+        if labels_list is not None:
+            # Modifico el arff devuelto por opensmile para agregarle la etiqueta a toda la respuesta
+            data = Am.addClassAttribute(data, self.classes)
+            for i in range(0, Am.instancesNumber(data)):
+                if i < len(labels_list):
+                    data = Am.addLabel(data, i, np.where(self.classes ==
+                                                         labels_list[i])[0][0])
+                else:
+                    data = Am.addLabel(data, i, np.where(self.classes ==
+                                                         labels_list[len(labels_list) - 1])[0][0])
+
         Am.saveInSubfolder(file_name, 'AComp', data)
 
     def forAnswer(self, file_name_general, labels_list):
@@ -575,7 +576,6 @@ class VideoFeaturesExtraction:
 
         bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.GREEN)
         with tqdm(total=total_frames, unit='frame', desc="Frames", bar_format=bar_format) as frames_progress:
-            frames_progress.update(1)
 
             while video.isOpened():
                 ret, frame = video.read()

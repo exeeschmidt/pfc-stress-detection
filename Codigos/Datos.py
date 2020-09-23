@@ -11,6 +11,7 @@ PATH_CARACTERISTICAS = os.path.join(ROOT_PATH, 'Caracteristicas')
 PATH_CODIGOS = os.path.join(ROOT_PATH, 'Codigos')
 PATH_LIBRERIAS = os.path.join(ROOT_PATH, 'Librerias')
 PATH_PROCESADO = os.path.join(ROOT_PATH, 'Procesado')
+PATH_MODELS = os.path.join(ROOT_PATH, 'Models')
 PATH_LOGS = ''
 
 PATH_OPENFACE = os.path.join(PATH_LIBRERIAS, 'openface')

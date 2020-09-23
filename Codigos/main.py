@@ -1,7 +1,5 @@
 import os
-
 from weka.core import jvm, packages
-
 import Experimentos as Exp
 import Datos
 import LogManager as Log
@@ -10,10 +8,7 @@ import LogManager as Log
 
 
 def main():
-    jvm.start(max_heap_size="32G", packages=True)
-
-    # Exp.videoFeaturesExtractionWrapperOwnBD(Datos.PERSONAS, Datos.ETAPAS)
-
+    jvm.start(max_heap_size="8G", packages=True)
     # packages.install_package('LibSVM')
     # packages.install_package('PSOSearch')
     # Datos.parametrosSeleccion()

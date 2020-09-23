@@ -47,7 +47,7 @@ def buildOutputPathFFMPEG(file_name):
 
 
 def buildSaveModelPath(file_name):
-    return os.path.join(Datos.PATH_PROCESADO, file_name)
+    return os.path.join(Datos.PATH_MODELS, file_name)
 
 
 def extractStageFromFileName(file_name):
@@ -660,14 +660,14 @@ def defineLabelFromValenceAndArousal(valence, arousal):
     f_arousal = float(arousal)
 
     labels = Datos.ETIQUETAS_MULTICLASES
-    #Zonas para estres bajo
+    # Zonas para estres bajo
     if (1 < f_valence < 2.2 and 3.8 < f_arousal < 4.2) or (2.2 < f_valence < 2.6 and 4.2 < f_arousal < 4.6)\
             or (1.8 < f_valence < 2.2 and 3.4 < f_arousal < 3.8):
         return labels[1]
-    #Zonas estres medio
+    # Zonas estres medio
     elif (1 < f_valence < 1.8 and 4.2 < f_arousal < 4.6) or (1.4 < f_valence < 1.8 and 4.6 < f_arousal < 5):
         return labels[2]
-    #Zona estres alto
+    # Zona estres alto
     elif 1 < f_valence < 1.4 and 4.6 < f_arousal < 5:
         return labels[3]
     else:
