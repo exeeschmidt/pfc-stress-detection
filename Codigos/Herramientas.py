@@ -708,10 +708,16 @@ def plotlyPlot(results, fps, binarize_labels):
         tickets_values = Datos.ETIQUETAS_MULTICLASES,
 
     fig.update_yaxes(
+        type="category",
         ticktext=tickets_names,
         tickvals=tickets_values,
+        autorange=False,
+        showticklabels=True,
+        categoryarray=tickets_values,
+        categoryorder='array',
         title="Estados",
-        tickfont=dict(size=20),
+        tickfont=dict(size=30),
+        dtick=1
     )
 
     paso = int(results_with_indexs.shape[0] / 20)
@@ -724,7 +730,7 @@ def plotlyPlot(results, fps, binarize_labels):
     fig.update_xaxes(
         title="Tiempo en HH:MM:SS:MS",
         tickangle=20,
-        tickfont=dict(family='Rockwell', color='crimson', size=14),
+        tickfont=dict(family='Rockwell', color='crimson', size=20),
         ticktext=ticket_names,
         tickvals=ticket_values
     )
@@ -732,13 +738,13 @@ def plotlyPlot(results, fps, binarize_labels):
     fig.update_layout(
         font_family="Calibri",
         font_color="blue",
-        font_size=14,
+        font_size=20,
         showlegend=False,
         title={
             'text': "Análisis del estrés",
-            'font_size': 30,
+            'font_size': 50,
             'font_color': "black",
-            'y': 0.9,
+            'y': 0.95,
             'x': 0.5,
             'xanchor': 'center',
             'yanchor': 'top'}
