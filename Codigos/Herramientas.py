@@ -710,6 +710,38 @@ def plotlyPlot(results, fps, binarize_labels):
     fig.update_yaxes(
         ticktext=tickets_names,
         tickvals=tickets_values,
+        title="Estados",
+        tickfont=dict(size=20),
+    )
+
+    paso = int(results_with_indexs.shape[0] / 20)
+    ticket_names = list()
+    ticket_values = list()
+    for i in range(1, results_with_indexs.shape[0], paso):
+        ticket_names.append(results_with_indexs[i, 0])
+        ticket_values.append(results_with_indexs[i, 0])
+
+    fig.update_xaxes(
+        title="Tiempo en HH:MM:SS:MS",
+        tickangle=20,
+        tickfont=dict(family='Rockwell', color='crimson', size=14),
+        ticktext=ticket_names,
+        tickvals=ticket_values
+    )
+
+    fig.update_layout(
+        font_family="Calibri",
+        font_color="blue",
+        font_size=14,
+        showlegend=False,
+        title={
+            'text': "Análisis del estrés",
+            'font_size': 30,
+            'font_color': "black",
+            'y': 0.9,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'}
     )
 
     fig.show()
@@ -723,6 +755,12 @@ def replaceLabelWithIndex(table, fps):
         min = int((float(time_in_secs) - (float(hrs) * float(3600)))/float(60))
         secs = int(float(time_in_secs) - (float(hrs) * float(3600)) - min*float(60))
         ms = (int((time_in_secs - int(time_in_secs))*100))*10
+        if hrs < 10:
+            hrs = '0'+str(hrs)
+        if min < 10:
+            min = '0'+str(min)
+        if secs < 10:
+            secs = '0'+str(secs)
         str_time = str(hrs)+':'+str(min)+':'+str(secs)+':'+str(ms)
         table[i, 0] = str_time
     return table
