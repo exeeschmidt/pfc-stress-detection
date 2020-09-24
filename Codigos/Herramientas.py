@@ -2,6 +2,7 @@ import csv
 import os
 import pandas as pd
 import plotly.graph_objs as go
+import plotly.io as pio
 import cv2 as cv
 import numpy as np
 from sklearn.metrics import recall_score, accuracy_score
@@ -672,24 +673,23 @@ def defineLabelFromValenceAndArousal(valence, arousal):
         return labels[3]
     else:
         return labels[0]
-    # #Zonas para estres bajo
-    # if (1.4 < f_valence < 2.2 and 3.8 < f_arousal < 4.2) or (2.2 < f_valence < 2.6 and 4.2 < f_arousal < 4.6):
-    #     return labels[1]
-    # #Zonas estres medio
-    # elif (1 < f_valence < 1.8 and 4.2 < f_arousal < 4.6) or (1.4 < f_valence < 1.8 and 4.6 < f_arousal < 5):
-    #     return labels[2]
-    # #Zona estres alto
-    # elif 1 < f_valence < 1.4 and 4.6 < f_arousal < 5:
-    #     return labels[3]
-    # else:
-    #     return labels[0]
 
 
-def plotlyPlot(results, fps, binarize_labels):
+def plotlyPlot(results, video_path, binarize_labels):
+    video = cv.VideoCapture(video_path)
+    fps = video.get(cv.CAP_PROP_FPS)
+
+    if fps > Datos.LIMITE_FPS:
+        fps = Datos.LIMITE_FPS
+
     results_without_metrics = eraseRowsMetrics(results)
+
+    results_without_metrics = results_without_metrics.astype(np.dtype('U25'))
+
     results_with_indexs = replaceLabelWithIndex(results_without_metrics, fps)
     pd_results = pd.DataFrame(data=results_with_indexs[1:, 1:], index=results_with_indexs[1:, 0],
                               columns=results_with_indexs[0, 1:])
+
     fig = go.Figure()
 
     for col in pd_results.columns:
@@ -701,11 +701,11 @@ def plotlyPlot(results, fps, binarize_labels):
         ))
 
     if binarize_labels:
-        tickets_names = ['Neutral', 'Estresado'],
-        tickets_values = Datos.ETIQUETAS_BINARIAS,
+        tickets_names = ['Neutral', 'Estresado']
+        tickets_values = ['1:N', '2:S']
     else:
-        tickets_names = ['Neutral', 'Bajo', 'Medio', 'Alto'],
-        tickets_values = Datos.ETIQUETAS_MULTICLASES,
+        tickets_names = ['Neutral', 'Bajo', 'Medio', 'Alto']
+        tickets_values = ['1:N', '2:B', '3:M', '4:A']
 
     fig.update_yaxes(
         type="category",
@@ -721,6 +721,8 @@ def plotlyPlot(results, fps, binarize_labels):
     )
 
     paso = int(results_with_indexs.shape[0] / 20)
+    if paso == 0:
+        paso = 1
     ticket_names = list()
     ticket_values = list()
     for i in range(1, results_with_indexs.shape[0], paso):
@@ -749,8 +751,7 @@ def plotlyPlot(results, fps, binarize_labels):
             'xanchor': 'center',
             'yanchor': 'top'}
     )
-
-    fig.show()
+    pio.write_html(fig, file="Resultado.html", auto_open=True)
 
 
 def replaceLabelWithIndex(table, fps):
@@ -761,6 +762,7 @@ def replaceLabelWithIndex(table, fps):
         min = int((float(time_in_secs) - (float(hrs) * float(3600)))/float(60))
         secs = int(float(time_in_secs) - (float(hrs) * float(3600)) - min*float(60))
         ms = (int((time_in_secs - int(time_in_secs))*100))*10
+
         if hrs < 10:
             hrs = '0'+str(hrs)
         if min < 10:

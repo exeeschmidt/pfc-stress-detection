@@ -75,6 +75,7 @@ def fileProcessing(video_path, video_name, audio_path, audio_name, binarize_labe
 
     print(colored('Detección de estrés finalizada', 'green'))
 
+    Hrm.plotlyPlot(results_second_fusion, video_path, binarize_labels)
     return
 
 
