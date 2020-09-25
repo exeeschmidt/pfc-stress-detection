@@ -676,17 +676,12 @@ def defineLabelFromValenceAndArousal(valence, arousal):
 
 
 def plotlyPlot(results, video_path, binarize_labels):
-    video = cv.VideoCapture(video_path)
-    fps = video.get(cv.CAP_PROP_FPS)
-
-    if fps > Datos.LIMITE_FPS:
-        fps = Datos.LIMITE_FPS
 
     results_without_metrics = eraseRowsMetrics(results)
 
     results_without_metrics = results_without_metrics.astype(np.dtype('U25'))
 
-    results_with_indexs = replaceLabelWithIndex(results_without_metrics, fps)
+    results_with_indexs = replaceLabelWithIndex(results_without_metrics)
     pd_results = pd.DataFrame(data=results_with_indexs[1:, 1:], index=results_with_indexs[1:, 0],
                               columns=results_with_indexs[0, 1:])
 
@@ -754,10 +749,10 @@ def plotlyPlot(results, video_path, binarize_labels):
     pio.write_html(fig, file="Resultado.html", auto_open=True)
 
 
-def replaceLabelWithIndex(table, fps):
+def replaceLabelWithIndex(table):
     table[0, 0] = 'Index'
     for i in range(1, table.shape[0]):
-        time_in_secs = float(i)/float(fps)
+        time_in_secs = float(i) * Datos.TIEMPO_MICROEXPRESION
         hrs = int(float(time_in_secs) / float(3600))
         min = int((float(time_in_secs) - (float(hrs) * float(3600)))/float(60))
         secs = int(float(time_in_secs) - (float(hrs) * float(3600)) - min*float(60))
