@@ -49,8 +49,6 @@ def cli(video, audio, binarizar):
                 click.secho("OK: Audio " + click.format_filename(audio_name), fg='green')
 
     # Si todo va bien, comienza a procesar
-    # if binarizar is None:
-    #     binarizar = False
     if binarizar:
         click.secho("Salida expresada en estresado/no estrado", fg='green')
     else:

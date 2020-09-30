@@ -6,6 +6,7 @@ from termcolor import colored
 import Herramientas as Hrm
 import ArffManager as Am
 import ExtraccionCaracteristicas as Extrc
+import WebManager as Webmgr
 import Weka
 import Datos
 
@@ -74,8 +75,11 @@ def fileProcessing(video_path, video_name, audio_path, audio_name, binarize_labe
     results_second_fusion = Hrm.voteForPeriod(results_first_fusion, instances_for_period)
 
     print(colored('Detección de estrés finalizada', 'green'))
+    print(colored('Generando informe con los resultados. Espere por favor...', 'green'))
 
     Hrm.plotlyPlot(results_second_fusion, video_path, binarize_labels)
+
+    Webmgr.buildHtml(video_path)
     return
 
 

@@ -1,56 +1,46 @@
-<!DOCTYPE html>
-<html lang="en">
 
-  <head>
-    <title>Stress Detection</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <!-- Bootstrap -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-
-    <!-- Video-JS -->
-    <link rel="stylesheet" href="css/video-js.css">
-    <script src="js/video.js"></script>
-
-    <!-- Styles -->
-    <link rel="stylesheet" href="css/styles.css">
-  </head>
-
-  <body>
-
-    <header class="text-center">
-      <h1>Detecci√≥n de estr√©s</h1>
-      <p>Resultados de la ejecuci√≥n</p>
-    </header>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Stress Detection</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
     
-    <main>
-      <div class="container">
-        <div class="row">
-
-          <div class="col-sm-6">
-            <h3>Video de entrada</h3>
-            <video class="fm-video video-js vjs-16-9 vjs-big-play-centered" data-setup="{}" controls id="fm-video">
-              <source src="..\Input\Mauricio Macri 3seg.mp4" type="video/mp4">
-            </video>
-          </div>
-
-          <div class="col-sm-6">
-            <h3>Estr√©s</h3>
-            <object data="resultado.html">
-            </object>
-          </div>
-
-        </div>
-      </div>
-    </main>
-
-    <script>
-      var reproductor = videojs('fm-video', { fluid: true });
-    </script>
-  
-  </body>
-
-</html>
+            <!-- Bootstrap -->
+            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    
+            <!-- Video-JS -->
+            <link rel="stylesheet" href="css/video-js.css">
+            <script src="js/video.js"></script>
+    
+            <!-- Styles -->
+            <link rel="stylesheet" href="css/styles.css">
+        </head>
+        <body>
+            <header class="text-center">
+              <h1>DetecciÛn de estrÈs</h1>
+              <p>Resultados de la ejecuciÛn</p>
+            </header>
+            <main>
+              <div class="container">
+                <div class="row">
+                  <div class="col-sm-6">
+                    <h3>Video de entrada</h3>
+                    <video class="fm-video video-js vjs-16-9 vjs-big-play-centered" data-setup="{}" controls id="fm-video">
+                      <source src='D:\Git\pfc-stress-detection\Input\Mauricio Macri 6seg.mp4'>
+                    </video>
+                  </div>
+                  <div class="col-sm-6">
+                    <iframe width="700" height="500" frameborder="0" seamless="seamless" scrolling="yes" src="resultado.html">
+                    </iframe>
+                  </div>
+                </div>
+              </div>
+            </main>
+            <script>
+              var reproductor = videojs('fm-video', { fluid: true });
+            </script>
+        </body>
+    </html>

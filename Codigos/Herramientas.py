@@ -711,7 +711,7 @@ def plotlyPlot(results, video_path, binarize_labels):
         categoryarray=tickets_values,
         categoryorder='array',
         title="Estados",
-        tickfont=dict(size=30),
+        tickfont=dict(size=15),
         dtick=1
     )
 
@@ -727,26 +727,28 @@ def plotlyPlot(results, video_path, binarize_labels):
     fig.update_xaxes(
         title="Tiempo en HH:MM:SS:MS",
         tickangle=20,
-        tickfont=dict(family='Rockwell', color='crimson', size=20),
+        tickfont=dict(family='Rockwell', color='crimson', size=10),
         ticktext=ticket_names,
         tickvals=ticket_values
     )
 
     fig.update_layout(
         font_family="Calibri",
-        font_color="blue",
-        font_size=20,
+        font_color="black",
+        font_size=10,
         showlegend=False,
         title={
             'text': "Análisis del estrés",
-            'font_size': 50,
+            'font_size': 20,
             'font_color': "black",
             'y': 0.95,
             'x': 0.5,
             'xanchor': 'center',
             'yanchor': 'top'}
     )
-    pio.write_html(fig, file="Resultado.html", auto_open=True)
+    html_path = os.path.join(Datos.PATH_HTML, "resultado.html")
+    pio.write_html(fig, file=html_path, auto_open=False)
+    return
 
 
 def replaceLabelWithIndex(table):
